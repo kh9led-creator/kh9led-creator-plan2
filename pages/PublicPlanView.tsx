@@ -35,7 +35,7 @@ const PublicPlanView: React.FC = () => {
     }
   }, [school, selectedClass]);
 
-  if (!school) return <div className="p-24 text-center font-black animate-pulse text-slate-400">جاري تحميل البوابة التعليمية...</div>;
+  if (!school) return <div className="p-24 text-center font-black animate-pulse text-slate-400 text-2xl">جاري تحميل البوابة التعليمية...</div>;
 
   const headerLines = (school.headerContent || "المملكة العربية السعودية\nوزارة التعليم").split('\n');
 
@@ -48,7 +48,7 @@ const PublicPlanView: React.FC = () => {
             {school.logoUrl ? (
               <img src={school.logoUrl} className="w-16 h-16 object-contain bg-white p-2 rounded-2xl shadow-sm border border-slate-100" />
             ) : (
-              <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><GraduationCap size={32} /></div>
+              <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-100"><GraduationCap size={32} /></div>
             )}
             <div className="text-right">
               <h1 className="text-2xl font-black text-slate-900">{school.name}</h1>
@@ -69,7 +69,7 @@ const PublicPlanView: React.FC = () => {
                 onClick={() => window.print()} 
                 className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black shadow-xl shadow-slate-200 flex items-center gap-2 hover:bg-black transition active:scale-95"
               >
-                <Printer size={18} /> طباعة الخطة
+                <Printer size={18} /> طباعة الجدول
               </button>
             </div>
           )}
@@ -90,25 +90,21 @@ const PublicPlanView: React.FC = () => {
                  <p className="font-black text-slate-300 text-xl">لا توجد فصول دراسية مسجلة حالياً.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                 {availableClasses.map((cls, idx) => (
                   <button 
                     key={cls}
                     onClick={() => setSelectedClass(cls)}
-                    className="group bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:border-blue-200 hover:-translate-y-2 transition-all duration-300 text-right flex flex-col items-center justify-center gap-4 relative overflow-hidden"
+                    className="group bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:border-blue-200 hover:-translate-y-2 transition-all duration-500 text-right flex flex-col items-center justify-center gap-4 relative overflow-hidden"
                     style={{ animationDelay: `${idx * 100}ms` }}
                   >
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-[4rem] -z-0 group-hover:bg-blue-600 transition-colors duration-500"></div>
-                    <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-3xl flex items-center justify-center mb-2 group-hover:bg-white group-hover:scale-110 transition-all duration-500 shadow-inner relative z-10">
-                       <Book size={36} />
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-[5rem] -z-0 group-hover:bg-blue-600 transition-colors duration-500"></div>
+                    <div className="w-24 h-24 bg-blue-100 text-blue-600 rounded-[2rem] flex items-center justify-center mb-2 group-hover:bg-white group-hover:scale-110 transition-all duration-500 shadow-inner relative z-10">
+                       <Book size={44} />
                     </div>
                     <div className="relative z-10 text-center">
-                      <h3 className="text-xl font-black text-slate-800 group-hover:text-blue-700 transition-colors">{cls}</h3>
-                      <p className="text-xs text-slate-400 font-bold mt-1 uppercase tracking-widest">عرض الجدول المدرسي</p>
-                    </div>
-                    <div className="mt-4 flex items-center gap-2 text-blue-600 font-black text-sm opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
-                       دخول الفصل
-                       <ChevronLeft size={16} />
+                      <h3 className="text-2xl font-black text-slate-800 group-hover:text-blue-700 transition-colors">{cls}</h3>
+                      <p className="text-xs text-slate-400 font-bold mt-1 uppercase tracking-widest">عرض الخطة المدرسية</p>
                     </div>
                   </button>
                 ))}
@@ -121,39 +117,39 @@ const PublicPlanView: React.FC = () => {
             <div className="a4-page mx-auto bg-white shadow-2xl border p-[8mm] relative flex flex-col text-[10pt] min-h-[297mm]" style={{ width: '210mm' }}>
               
               {/* Header Branding */}
-              <div className="flex justify-between items-start mb-4">
-                <div className="space-y-0 font-black text-slate-900 text-right leading-tight min-w-[150px]">
-                  {headerLines.map((line, i) => <p key={i} className={i === 0 ? 'text-[9pt] mb-0.5 underline underline-offset-4' : 'text-[8pt]'}>{line}</p>)}
+              <div className="flex justify-between items-start mb-6">
+                <div className="space-y-0.5 font-black text-slate-900 text-right leading-tight min-w-[180px]">
+                  {headerLines.map((line, i) => <p key={i} className={i === 0 ? 'text-[10pt] mb-1 underline underline-offset-4 font-black' : 'text-[8pt]'}>{line}</p>)}
                 </div>
                 <div className="flex flex-col items-center">
                   {school.logoUrl ? (
-                    <img src={school.logoUrl} alt="Logo" className="w-16 h-16 object-contain" />
+                    <img src={school.logoUrl} alt="Logo" className="w-20 h-20 object-contain" />
                   ) : (
-                    <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-300 border-2 border-dashed"><Book size={24} /></div>
+                    <div className="w-20 h-20 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-300 border-2 border-dashed"><Book size={32} /></div>
                   )}
                 </div>
-                <div className="space-y-0.5 font-black text-left text-slate-900 text-[8pt]" dir="ltr">
-                  <p>School: {school.name}</p>
+                <div className="space-y-1 font-black text-left text-slate-900 text-[8pt]" dir="ltr">
+                  <p className="font-black text-[9pt] border-b border-slate-900 pb-0.5 mb-1">{school.name}</p>
                   <p>Class: {selectedClass}</p>
                   <p>Date: {new Date().toLocaleDateString('en-GB')}</p>
                 </div>
               </div>
 
               <div className="text-center mb-4">
-                <h2 className="text-lg font-black bg-slate-900 text-white py-1.5 px-8 inline-block rounded-lg">الخطة الأسبوعية</h2>
-                <div className="h-0.5 bg-slate-900 w-full mt-1"></div>
+                <h2 className="text-xl font-black bg-slate-900 text-white py-2 px-12 inline-block rounded-xl shadow-lg">الخطة الأسبوعية</h2>
+                <div className="h-0.5 bg-slate-900 w-full mt-2"></div>
               </div>
 
-              {/* Weekly Schedule Table */}
+              {/* Weekly Schedule Table - Corrected Columns as requested */}
               <div className="flex-1 overflow-hidden border-2 border-slate-900 rounded-sm mb-4">
                 <table className="w-full border-collapse table-fixed">
                   <thead>
                     <tr className="bg-slate-100 border-b-2 border-slate-900">
-                      <th className="border-l-2 border-slate-900 p-1 text-[9pt] font-black w-10">اليوم</th>
-                      <th className="border-l-2 border-slate-900 p-1 text-[8pt] font-black w-6">م</th>
-                      <th className="border-l-2 border-slate-900 p-1 text-[9pt] font-black w-24">المادة</th>
-                      <th className="border-l-2 border-slate-900 p-1 text-[9pt] font-black">الدرس المقرر</th>
-                      <th className="p-1 text-[9pt] font-black w-48">الواجب والمهام</th>
+                      <th className="border-l-2 border-slate-900 p-2 text-[10pt] font-black w-12 text-center">اليوم</th>
+                      <th className="border-l-2 border-slate-900 p-2 text-[9pt] font-black w-8 text-center">م</th>
+                      <th className="border-l-2 border-slate-900 p-2 text-[10pt] font-black w-28 text-center">المادة</th>
+                      <th className="border-l-2 border-slate-900 p-2 text-[10pt] font-black text-center">الدرس المقرر</th>
+                      <th className="p-2 text-[10pt] font-black w-56 text-center">الواجب والملاحظات</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -165,18 +161,18 @@ const PublicPlanView: React.FC = () => {
                           const subject = subjects.find(s => s.id === sched.subjectId)?.name || '---';
                           
                           return (
-                            <tr key={`${day.id}-${period}`} className={`h-8 border-b ${pIdx === PERIODS.length - 1 ? 'border-b-2 border-slate-900' : 'border-slate-300'}`}>
+                            <tr key={`${day.id}-${period}`} className={`h-9 border-b ${pIdx === PERIODS.length - 1 ? 'border-b-2 border-slate-900' : 'border-slate-300'}`}>
                               {pIdx === 0 && (
-                                <td rowSpan={PERIODS.length} className="border-l-2 border-slate-900 p-0 text-center font-black rotate-180 [writing-mode:vertical-rl] bg-slate-50 text-slate-900 text-[8pt] tracking-widest">
+                                <td rowSpan={PERIODS.length} className="border-l-2 border-slate-900 p-0 text-center font-black rotate-180 [writing-mode:vertical-rl] bg-slate-50 text-slate-900 text-[9pt] tracking-widest">
                                   {day.label}
                                 </td>
                               )}
-                              <td className="border-l-2 border-slate-900 p-0.5 text-center text-[8pt] font-black">{period}</td>
-                              <td className="border-l-2 border-slate-900 p-0.5 text-center text-[8pt] font-black bg-slate-50/50 truncate px-1">{subject}</td>
-                              <td className="border-l-2 border-slate-900 p-0.5 text-center text-[9pt] font-bold leading-none truncate px-1">{plan.lesson || '---'}</td>
-                              <td className="p-0.5 text-center text-[8pt] font-medium leading-tight overflow-hidden px-1">
-                                 {plan.homework && <span className="text-slate-900 font-black">ج: {plan.homework} </span>}
-                                 {plan.enrichment && <span className="text-slate-500 italic text-[7pt]">/ {plan.enrichment}</span>}
+                              <td className="border-l-2 border-slate-900 p-1 text-center text-[9pt] font-black">{period}</td>
+                              <td className="border-l-2 border-slate-900 p-1 text-center text-[9pt] font-black bg-slate-50/50 truncate px-2">{subject}</td>
+                              <td className="border-l-2 border-slate-900 p-1 text-center text-[9pt] font-bold leading-tight px-2">{plan.lesson || '---'}</td>
+                              <td className="p-1 text-center text-[8pt] font-medium leading-tight overflow-hidden px-2">
+                                 {plan.homework && <span className="text-slate-900 font-black">{plan.homework} </span>}
+                                 {plan.enrichment && <span className="text-slate-500 italic block mt-0.5 border-t border-slate-100 pt-0.5">{plan.enrichment}</span>}
                                  {!plan.homework && !plan.enrichment && '---'}
                               </td>
                             </tr>
@@ -188,23 +184,23 @@ const PublicPlanView: React.FC = () => {
                 </table>
               </div>
 
-              {/* Footer Notes (Branding Saved Info) */}
-              <div className="grid grid-cols-2 gap-4 mt-auto">
-                 <div className="border-2 border-slate-900 p-3 rounded-xl bg-white min-h-[30mm] max-h-[35mm] overflow-hidden">
-                   <h3 className="text-[8pt] font-black mb-1 border-b border-slate-900 pb-0.5 text-center uppercase tracking-tighter">توجيهات عامة</h3>
-                   <p className="text-[8pt] font-bold leading-tight whitespace-pre-wrap text-slate-700">{school.generalMessages || "..."}</p>
+              {/* Footer Branding Section */}
+              <div className="grid grid-cols-2 gap-6 mt-auto">
+                 <div className="border-2 border-slate-900 p-4 rounded-2xl bg-white min-h-[35mm] max-h-[40mm] overflow-hidden shadow-sm">
+                   <h3 className="text-[9pt] font-black mb-2 border-b border-slate-900 pb-1 text-center uppercase tracking-tighter">توجيهات عامة</h3>
+                   <p className="text-[8.5pt] font-bold leading-tight whitespace-pre-wrap text-slate-700">{school.generalMessages || "..."}</p>
                  </div>
-                 <div className="border-2 border-slate-900 p-3 rounded-xl bg-white min-h-[30mm] max-h-[35mm] flex flex-col items-center overflow-hidden">
-                   <h3 className="text-[8pt] font-black mb-1 border-b border-slate-900 pb-0.5 text-center w-full uppercase tracking-tighter">نشاط الأسبوع</h3>
-                   <div className="flex-1 flex flex-col items-center justify-center">
-                     {school.weeklyNotesImage && <img src={school.weeklyNotesImage} className="max-h-[15mm] object-contain mb-1" />}
-                     <p className="text-[8pt] font-black text-center text-blue-800 leading-none">{school.weeklyNotes}</p>
+                 <div className="border-2 border-slate-900 p-4 rounded-2xl bg-white min-h-[35mm] max-h-[40mm] flex flex-col items-center overflow-hidden shadow-sm">
+                   <h3 className="text-[9pt] font-black mb-2 border-b border-slate-900 pb-1 text-center w-full uppercase tracking-tighter">نشاط الأسبوع</h3>
+                   <div className="flex-1 flex flex-col items-center justify-center w-full">
+                     {school.weeklyNotesImage && <img src={school.weeklyNotesImage} className="max-h-[18mm] object-contain mb-2" />}
+                     <p className="text-[9pt] font-black text-center text-blue-800 leading-none">{school.weeklyNotes || "..."}</p>
                    </div>
                  </div>
               </div>
               
-              <div className="mt-4 text-center border-t border-slate-100 pt-2 opacity-40">
-                 <p className="text-[7pt] font-bold text-slate-400 italic">تم إنشاء الخطة الأسبوعية آلياً عبر منصة مدرستي للخدمات التعليمية</p>
+              <div className="mt-6 text-center border-t border-slate-100 pt-3 opacity-50">
+                 <p className="text-[7.5pt] font-black text-slate-400 italic">تم إنشاء الخطة الأسبوعية آلياً عبر منصة مدرستي للخدمات التعليمية - حقوق الطبع محفوظة {school.name}</p>
               </div>
             </div>
           </div>
@@ -223,7 +219,7 @@ const PublicPlanView: React.FC = () => {
             box-shadow: none !important; 
             border: none !important; 
             margin: 0 auto !important; 
-            padding: 8mm !important;
+            padding: 10mm !important;
             width: 210mm !important;
             height: 297mm !important;
             page-break-after: always;
