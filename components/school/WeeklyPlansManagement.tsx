@@ -19,6 +19,16 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
+  // تحديث القيم عند تغير المدرسة (مثلاً عند الاستعادة)
+  useEffect(() => {
+    setHeaderContent(initialSchool.headerContent || "");
+    setGeneralMessages(initialSchool.generalMessages || "");
+    setWeeklyNotes(initialSchool.weeklyNotes || "");
+    setWeeklyNotesImage(initialSchool.weeklyNotesImage || null);
+    setLogoUrl(initialSchool.logoUrl || null);
+    setSchool(initialSchool);
+  }, [initialSchool]);
+
   const handleSaveBranding = () => {
     const updated: School = { 
       ...school, 
@@ -130,7 +140,7 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div className="space-y-4">
                  <label className="text-sm font-black text-slate-700 mr-2 flex items-center gap-2">
-                    <Camera size={16} className="text-blue-500" /> شعار المدرسة
+                    <Camera size={16} className="text-blue-500" /> شعار المدرسة الرسمي
                  </label>
                  <div className="bg-slate-50 border-4 border-dashed border-slate-100 rounded-[2.5rem] p-8 text-center h-64 flex flex-col items-center justify-center relative overflow-hidden group">
                     {logoUrl ? (
@@ -172,17 +182,17 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
 
               <div className="space-y-4">
                  <label className="text-sm font-black text-slate-700 mr-2">ترويسة الخطة (أعلى اليمين)</label>
-                 <textarea rows={4} className="w-full p-6 bg-slate-50 rounded-[2rem] font-bold outline-none border-2 border-transparent focus:border-blue-100 transition" value={headerContent} onChange={e => setHeaderContent(e.target.value)} />
+                 <textarea rows={4} className="w-full p-6 bg-slate-50 rounded-[2rem] font-bold outline-none border-2 border-transparent focus:border-blue-100 transition shadow-inner" value={headerContent} onChange={e => setHeaderContent(e.target.value)} placeholder="المملكة العربية السعودية&#10;وزارة التعليم&#10;إدارة التعليم بمحافظة..." />
               </div>
 
               <div className="space-y-4">
                  <label className="text-sm font-black text-slate-700 mr-2">الرسائل العامة (تذييل الخطة)</label>
-                 <textarea rows={4} className="w-full p-6 bg-slate-50 rounded-[2rem] font-bold outline-none border-2 border-transparent focus:border-blue-100 transition" value={generalMessages} onChange={e => setGeneralMessages(e.target.value)} />
+                 <textarea rows={4} className="w-full p-6 bg-slate-50 rounded-[2rem] font-bold outline-none border-2 border-transparent focus:border-blue-100 transition shadow-inner" value={generalMessages} onChange={e => setGeneralMessages(e.target.value)} placeholder="عزيزي ولي الأمر.. نرجو التعاون في.." />
               </div>
 
               <div className="md:col-span-2 space-y-4">
-                 <label className="text-sm font-black text-slate-700 mr-2">ملاحظة أسفل النشاط</label>
-                 <input className="w-full p-5 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-blue-100 transition" value={weeklyNotes} onChange={e => setWeeklyNotes(e.target.value)} />
+                 <label className="text-sm font-black text-slate-700 mr-2">ملاحظة النشاط (أسفل صورة النشاط)</label>
+                 <input className="w-full p-5 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-blue-100 transition shadow-inner" value={weeklyNotes} onChange={e => setWeeklyNotes(e.target.value)} placeholder="مثال: قيمة الأسبوع هي الأمانة" />
               </div>
            </div>
            
@@ -192,7 +202,7 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
                 className={`w-full py-6 rounded-[2rem] font-black text-xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${isSaved ? 'bg-emerald-500 text-white shadow-emerald-100' : 'bg-slate-900 text-white shadow-slate-200 hover:bg-black'}`}
              >
                 {isSaved ? <CheckCircle2 size={24} /> : <Save size={24} />}
-                {isSaved ? 'تم حفظ كافة التعديلات بنجاح' : 'حفظ التغييرات'}
+                {isSaved ? 'تم حفظ التغييرات بنجاح' : 'حفظ التغييرات'}
              </button>
            </div>
         </div>

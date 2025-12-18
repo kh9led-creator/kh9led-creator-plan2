@@ -93,19 +93,19 @@ const BulkStudentPlans: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Individual Student Info Bar - Updated to show full name prominently */}
-                <div className="bg-slate-900 text-white p-3 rounded-xl flex justify-between items-center mb-4 border-b-4 border-blue-600">
-                   <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black text-sm shadow-sm">
-                        <User size={16} />
+                {/* Individual Student Info Bar - Updated to show full name prominently and hide phone */}
+                <div className="bg-slate-900 text-white p-4 rounded-xl flex justify-between items-center mb-4 border-b-4 border-blue-600">
+                   <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-sm">
+                        <User size={20} />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase tracking-widest opacity-60">اسم الطالب الكامل:</span>
-                        <span className="text-base font-black tracking-tight">{student.name}</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest opacity-60">اسم الطالب الكامل:</span>
+                        <span className="text-lg font-black tracking-tight">{student.name}</span>
                       </div>
                    </div>
-                   <div className="text-left">
-                     <div className="text-[8px] font-black opacity-40 mb-0.5">سجل المتابعة الأسبوعي</div>
+                   <div className="text-left border-l border-white/20 pl-4">
+                     <div className="text-[8px] font-black opacity-40 mb-0.5 uppercase">سجل المتابعة الأسبوعي</div>
                      <div className="text-[10pt] font-black text-blue-400">{classTitle}</div>
                    </div>
                 </div>

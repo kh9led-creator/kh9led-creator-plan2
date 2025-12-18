@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { DAYS, PERIODS, db } from '../constants.tsx';
-import { Printer, Book, LayoutGrid, ArrowRight, Users, GraduationCap, ChevronLeft } from 'lucide-react';
+import { Printer, Book, LayoutGrid, Users, GraduationCap, ChevronLeft, ArrowRight } from 'lucide-react';
 import { School, Subject } from '../types.ts';
 
 const PublicPlanView: React.FC = () => {
