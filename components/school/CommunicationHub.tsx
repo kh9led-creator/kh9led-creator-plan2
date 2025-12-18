@@ -1,14 +1,19 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { MessageSquare, Send, User, Bell, Search } from 'lucide-react';
-import { MOCK_TEACHERS } from '../../constants';
+// Fix: Removed missing MOCK_TEACHERS import and added db for data fetching
+import { db } from '../../constants.tsx';
 
-const CommunicationHub: React.FC = () => {
+// Fix: Updated component to accept schoolId as a prop to fetch current school teachers
+const CommunicationHub: React.FC<{ schoolId: string }> = ({ schoolId }) => {
   const [messages, setMessages] = useState([
     { id: '1', sender: 'الإدارة', content: 'نرجو من الجميع إنهاء رصد الخطط قبل يوم الخميس الساعة ١٢ ظهراً.', time: 'منذ ساعتين', isOwn: false },
     { id: '2', sender: 'الإدارة', content: 'تم تحديث نظام طباعة الطلاب، يمكنكم الآن معاينة النسخة النهائية.', time: 'أمس', isOwn: false }
   ]);
   const [newMessage, setNewMessage] = useState('');
+
+  // Fetch actual teachers for this school
+  const teachers = useMemo(() => db.getTeachers(schoolId), [schoolId]);
 
   const handleSend = () => {
     if(!newMessage) return;
@@ -49,15 +54,16 @@ const CommunicationHub: React.FC = () => {
                 <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center font-black">ج</div>
                 <div>
                    <div className="font-bold">الجميع (غرفة عامة)</div>
-                   <div className="text-xs opacity-70">٣٢ معلم متصل</div>
+                   <div className="text-xs opacity-70">{teachers.length} معلم متصل</div>
                 </div>
              </button>
-             {MOCK_TEACHERS.map(t => (
+             {/* Fix: Using actual teachers fetched from db instead of MOCK_TEACHERS */}
+             {teachers.map(t => (
                <button key={t.id} className="w-full p-4 rounded-2xl hover:bg-white transition flex items-center gap-3 text-right">
                   <div className="w-10 h-10 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center font-bold">{t.name[0]}</div>
                   <div>
                     <div className="font-bold">{t.name}</div>
-                    <div className="text-xs text-slate-400">نشط منذ ٥ د</div>
+                    <div className="text-xs text-slate-400">نشط منذ قليل</div>
                   </div>
                </button>
              ))}

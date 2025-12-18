@@ -1,11 +1,12 @@
 
 import React, { useState } from 'react';
-import { MOCK_STUDENTS, MOCK_SCHOOLS } from '../../constants';
+// Fix: Removed missing MOCK_STUDENTS and MOCK_SCHOOLS imports from constants
+import { School } from '../../types.ts';
 import { ClipboardCheck, Search, Check, X, Printer, Archive, History, FileText } from 'lucide-react';
 
-const AttendanceManagement: React.FC = () => {
+// Fix: Updated component to accept school as a prop to avoid using non-existent MOCK_SCHOOLS
+const AttendanceManagement: React.FC<{ school: School }> = ({ school }) => {
   const [activeTab, setActiveTab] = useState<'daily' | 'archive'>('daily');
-  const school = MOCK_SCHOOLS[0];
   const [reports, setReports] = useState([
     { id: 'rep1', date: '2024-05-19', day: 'الأحد', teacherName: 'أ. محمد العتيبي', absentCount: 3, students: ['أحمد إبراهيم', 'فهد كمال', 'سلمان راشد'] },
     { id: 'rep2', date: '2024-05-18', day: 'الخميس', teacherName: 'أ. سارة القحطاني', absentCount: 1, students: ['خالد سلمان'] }
@@ -35,7 +36,7 @@ const AttendanceManagement: React.FC = () => {
                   <div className="font-black text-sm">
                     {headerLines.map((l, i) => <p key={i}>{l}</p>)}
                   </div>
-                  <img src={school.logoUrl} className="w-16 h-16 object-contain" />
+                  {school.logoUrl && <img src={school.logoUrl} className="w-16 h-16 object-contain" alt="logo" />}
                   <div className="text-left font-black text-sm" dir="ltr">
                     <p>Date: {report.date}</p>
                     <p>Day: {report.day}</p>
