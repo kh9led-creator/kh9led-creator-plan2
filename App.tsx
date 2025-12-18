@@ -11,6 +11,7 @@ import SystemAdminDashboard from './pages/SystemAdminDashboard.tsx';
 import Login from './pages/Login.tsx';
 import TeacherLogin from './pages/TeacherLogin.tsx';
 import SchoolRegistration from './pages/SchoolRegistration.tsx';
+import SystemAdminLogin from './pages/SystemAdminLogin.tsx';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>({
@@ -35,6 +36,9 @@ const App: React.FC = () => {
           <Route path="/login" element={<Login onLogin={login} />} />
           <Route path="/register-school" element={<SchoolRegistration onLogin={login} />} />
           
+          {/* البوابة المخفية لمدير النظام */}
+          <Route path="/system-access-portal" element={<SystemAdminLogin onLogin={login} />} />
+          
           {/* School Teacher Specific Login Link */}
           <Route path="/school/:schoolSlug/teacher-login" element={<TeacherLogin onLogin={login} />} />
 
@@ -44,7 +48,7 @@ const App: React.FC = () => {
             element={
               state.role === 'SYSTEM_ADMIN' 
                 ? <SystemAdminDashboard onLogout={logout} /> 
-                : <Navigate to="/login" />
+                : <Navigate to="/system-access-portal" />
             } 
           />
 

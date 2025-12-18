@@ -88,7 +88,7 @@ const LandingPage: React.FC = () => {
           </div>
           <p className="text-slate-300 text-xs font-bold">© {new Date().getFullYear()} جميع الحقوق محفوظة</p>
           <div 
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/system-access-portal')}
             className="w-4 h-4 rounded-full bg-slate-50 hover:bg-slate-100 cursor-default flex items-center justify-center transition-all group"
           >
             <Lock size={8} className="text-slate-200 opacity-0 group-hover:opacity-100 transition" />
