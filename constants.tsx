@@ -8,7 +8,8 @@ const STORAGE_KEYS = {
   SCHEDULES: 'madrasati_schedules',
   PLANS: 'madrasati_plans',
   ATTENDANCE: 'madrasati_attendance',
-  SYSTEM_ADMIN: 'madrasati_sysadmin'
+  SYSTEM_ADMIN: 'madrasati_sysadmin',
+  SUBJECTS: 'madrasati_subjects'
 };
 
 if (!localStorage.getItem(STORAGE_KEYS.SYSTEM_ADMIN)) {
@@ -24,6 +25,11 @@ export const DAYS = [
 ];
 
 export const PERIODS = [1, 2, 3, 4, 5, 6, 7];
+
+const DEFAULT_SUBJECTS: Subject[] = [
+  { id: '1', name: 'لغتي' }, { id: '2', name: 'علوم' }, { id: '3', name: 'فنية' },
+  { id: '4', name: 'رياضيات' }, { id: '5', name: 'تربية إسلامية' }, { id: '6', name: 'انجليزي' }
+];
 
 export const db = {
   // المدارس
@@ -69,6 +75,24 @@ export const db = {
     localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(all));
   },
 
+  // المواد
+  getSubjects: (schoolId: string): Subject[] => {
+    const all = JSON.parse(localStorage.getItem(`${STORAGE_KEYS.SUBJECTS}_${schoolId}`) || '[]');
+    return all.length > 0 ? all : DEFAULT_SUBJECTS;
+  },
+  saveSubject: (schoolId: string, subject: Subject) => {
+    const all = db.getSubjects(schoolId);
+    const index = all.findIndex(s => s.id === subject.id);
+    if (index > -1) all[index] = subject;
+    else all.push(subject);
+    localStorage.setItem(`${STORAGE_KEYS.SUBJECTS}_${schoolId}`, JSON.stringify(all));
+  },
+  deleteSubject: (schoolId: string, subjectId: string) => {
+    const all = db.getSubjects(schoolId);
+    const filtered = all.filter(s => s.id !== subjectId);
+    localStorage.setItem(`${STORAGE_KEYS.SUBJECTS}_${schoolId}`, JSON.stringify(filtered));
+  },
+
   // الجداول (توزيع الحصص)
   getSchedule: (schoolId: string, classId: string) => {
     const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.SCHEDULES) || '{}');
@@ -97,7 +121,4 @@ export const db = {
   }
 };
 
-export const MOCK_SUBJECTS: Subject[] = [
-  { id: '1', name: 'لغتي' }, { id: '2', name: 'علوم' }, { id: '3', name: 'فنية' },
-  { id: '4', name: 'رياضيات' }, { id: '5', name: 'تربية إسلامية' }, { id: '6', name: 'انجليزي' }
-];
+export const MOCK_SUBJECTS = DEFAULT_SUBJECTS;

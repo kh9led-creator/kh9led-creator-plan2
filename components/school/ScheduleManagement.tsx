@@ -1,12 +1,13 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { DAYS, PERIODS, MOCK_SUBJECTS, db } from '../../constants.tsx';
-import { School, Teacher } from '../../types.ts';
+import { DAYS, PERIODS, db } from '../../constants.tsx';
+import { School, Teacher, Subject } from '../../types.ts';
 import { Save, Info, User, Book, LayoutGrid, CheckCircle2 } from 'lucide-react';
 
 const ScheduleManagement: React.FC<{ school: School }> = ({ school }) => {
   const students = db.getStudents(school.id);
   const teachers = db.getTeachers(school.id);
+  const subjects = db.getSubjects(school.id);
   
   const availableClasses = useMemo(() => {
     const classes = students.map(s => `${s.grade} - فصل ${s.section}`);
@@ -40,13 +41,13 @@ const ScheduleManagement: React.FC<{ school: School }> = ({ school }) => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-black">إعداد الجداول</h2>
           <p className="text-slate-500">وزع المواد والمعلمين على الحصص.</p>
         </div>
-        <button onClick={saveAll} className={`px-8 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all ${saved ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white shadow-lg'}`}>
+        <button onClick={saveAll} className={`px-8 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all ${saved ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white shadow-lg shadow-slate-200'}`}>
           {saved ? <CheckCircle2 /> : <Save />}
           {saved ? 'تم الحفظ بنجاح' : 'حفظ الجدول'}
         </button>
@@ -54,7 +55,7 @@ const ScheduleManagement: React.FC<{ school: School }> = ({ school }) => {
 
       <div className="bg-white p-2 rounded-[2rem] border shadow-sm flex flex-wrap gap-2">
         {availableClasses.map((cls) => (
-          <button key={cls} onClick={() => setSelectedClass(cls)} className={`px-6 py-3 rounded-xl font-bold transition ${selectedClass === cls ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+          <button key={cls} onClick={() => setSelectedClass(cls)} className={`px-6 py-3 rounded-xl font-bold transition ${selectedClass === cls ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>
             {cls}
           </button>
         ))}
@@ -65,7 +66,7 @@ const ScheduleManagement: React.FC<{ school: School }> = ({ school }) => {
           <table className="w-full min-w-[1000px]">
             <thead className="bg-slate-50">
               <tr>
-                <th className="p-6 border-b border-l text-slate-400">الحصة</th>
+                <th className="p-6 border-b border-l text-slate-400 font-black">الحصة</th>
                 {DAYS.map(day => <th key={day.id} className="p-6 border-b border-l font-black">{day.label}</th>)}
               </tr>
             </thead>
@@ -78,15 +79,15 @@ const ScheduleManagement: React.FC<{ school: School }> = ({ school }) => {
                     return (
                       <td key={`${day.id}-${period}`} className="p-4 border-b border-l space-y-2">
                         <select 
-                          className="w-full p-2 bg-slate-50 rounded-xl text-xs font-bold outline-none"
+                          className="w-full p-2 bg-slate-50 rounded-xl text-xs font-bold outline-none border border-transparent focus:border-blue-100"
                           value={cellData.subjectId || ""}
                           onChange={e => handleCellChange(day.id, period, 'subjectId', e.target.value)}
                         >
                           <option value="">- المادة -</option>
-                          {MOCK_SUBJECTS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                          {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                         <select 
-                          className="w-full p-2 bg-blue-50/50 rounded-xl text-xs font-bold outline-none text-blue-700"
+                          className="w-full p-2 bg-blue-50/50 rounded-xl text-xs font-bold outline-none text-blue-700 border border-transparent focus:border-blue-200"
                           value={cellData.teacherId || ""}
                           onChange={e => handleCellChange(day.id, period, 'teacherId', e.target.value)}
                         >
@@ -102,7 +103,7 @@ const ScheduleManagement: React.FC<{ school: School }> = ({ school }) => {
           </table>
         </div>
       ) : (
-        <div className="p-20 text-center font-bold text-slate-400">يرجى إضافة طلاب لإنشاء فصول أولاً.</div>
+        <div className="p-20 text-center font-bold text-slate-300 border-4 border-dashed rounded-[3rem]">يرجى إضافة طلاب لإنشاء فصول أولاً.</div>
       )}
     </div>
   );

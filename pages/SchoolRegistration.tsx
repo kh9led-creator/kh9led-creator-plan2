@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../constants.tsx';
 import { UserRole, School } from '../types.ts';
@@ -12,7 +12,9 @@ import {
   User, 
   Globe, 
   Zap, 
-  Sparkles 
+  Sparkles,
+  Camera,
+  X
 } from 'lucide-react';
 
 interface Props {
@@ -23,11 +25,13 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     schoolName: '',
     slug: '',
     adminName: '',
     adminPassword: '',
+    logoUrl: '',
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,6 +48,17 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
     });
   };
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, logoUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleCreateEnvironment = () => {
     setLoading(true);
     
@@ -53,6 +68,7 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
         id: Date.now().toString(),
         name: formData.schoolName,
         slug: formData.slug,
+        logoUrl: formData.logoUrl,
         adminPassword: formData.adminPassword,
         subscriptionActive: true,
         studentCount: 0,
@@ -98,6 +114,30 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
             </div>
 
             <div className="space-y-6">
+              {/* Logo Upload Section */}
+              <div className="flex flex-col items-center gap-4 mb-4">
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-32 h-32 bg-slate-50 rounded-[2.5rem] border-4 border-dashed border-slate-100 flex items-center justify-center cursor-pointer hover:border-blue-200 hover:bg-blue-50 transition-all relative group overflow-hidden"
+                >
+                  {formData.logoUrl ? (
+                    <img src={formData.logoUrl} alt="Logo" className="w-full h-full object-contain p-2" />
+                  ) : (
+                    <div className="flex flex-col items-center text-slate-400 group-hover:text-blue-500 transition">
+                      <Camera size={32} />
+                      <span className="text-[10px] font-black mt-1">شعار المدرسة</span>
+                    </div>
+                  )}
+                  {formData.logoUrl && (
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                      <Sparkles className="text-white" size={24} />
+                    </div>
+                  )}
+                </div>
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
+                <p className="text-[10px] text-slate-400 font-bold">يفضل أن تكون الصورة بصيغة PNG وبخلفية شفافة</p>
+              </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-black text-slate-700 mr-2 flex items-center gap-2">
                   <Sparkles size={16} className="text-blue-500" /> اسم المدرسة

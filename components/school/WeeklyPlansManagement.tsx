@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { School, Student } from '../../types.ts';
-import { Image as ImageIcon, Globe, Printer, Share2, Users, Archive, History, Sparkles, MessageCircle, StickyNote, Camera, Trash2, ExternalLink } from 'lucide-react';
+// Added missing Save import from lucide-react
+import { Image as ImageIcon, Globe, Printer, Share2, Users, Archive, History, Sparkles, MessageCircle, StickyNote, Camera, Trash2, ExternalLink, X, Save } from 'lucide-react';
 import { db } from '../../constants.tsx';
 import { Link } from 'react-router-dom';
 
@@ -10,8 +11,10 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school }) => {
   const [generalMessages, setGeneralMessages] = useState(school.generalMessages || "");
   const [weeklyNotes, setWeeklyNotes] = useState(school.weeklyNotes || "");
   const [weeklyNotesImage, setWeeklyNotesImage] = useState<string | null>(school.weeklyNotesImage || null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(school.logoUrl || null);
   const [activeTab, setActiveTab] = useState<'branding' | 'general' | 'students'>('general');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const students = db.getStudents(school.id);
   const classesGroups = useMemo(() => {
@@ -25,7 +28,7 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school }) => {
   }, [students]);
 
   const handleSaveBranding = () => {
-    const updated = { ...school, headerContent, generalMessages, weeklyNotes, weeklyNotesImage };
+    const updated = { ...school, headerContent, generalMessages, weeklyNotes, weeklyNotesImage, logoUrl: logoUrl || undefined };
     db.saveSchool(updated);
     alert('تم حفظ كافة إعدادات الهوية والترويسة بنجاح');
   };
@@ -39,35 +42,53 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school }) => {
     }
   };
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setLogoUrl(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-black">إدارة الخطط الأسبوعية</h2>
-          <p className="text-slate-500">تحكم في الروابط العامة وهوية الخطط المطبوعة.</p>
+          <h2 className="text-3xl font-black text-slate-900">إدارة الخطط الأسبوعية</h2>
+          <p className="text-slate-500 font-bold mt-1">تحكم في الروابط العامة وهوية الخطط المطبوعة.</p>
         </div>
       </div>
 
       <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl w-fit">
-        {[{id:'general', label:'روابط الفصول'}, {id:'students', label:'خطط الطلاب'}, {id:'branding', label:'الهوية والترويسة'}].map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-6 py-2 rounded-xl font-bold transition ${activeTab === tab.id ? 'bg-white text-blue-600' : 'text-slate-500'}`}>{tab.label}</button>
+        {[{id:'general', label:'روابط الفصول'}, {id:'branding', label:'الهوية والترويسة'}, {id:'students', label:'خطط الطلاب'}].map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-6 py-2 rounded-xl font-bold transition ${activeTab === tab.id ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>{tab.label}</button>
         ))}
       </div>
 
       {activeTab === 'general' && (
         <div className="grid grid-cols-1 gap-6">
           {Object.keys(classesGroups).length === 0 ? (
-            <div className="bg-white p-20 rounded-[3rem] text-center font-bold text-slate-400 border border-dashed">يرجى إضافة طلاب أولاً لتوليد روابط الفصول.</div>
+            <div className="bg-white p-24 rounded-[3.5rem] text-center font-black text-slate-300 border-4 border-dashed">يرجى إضافة طلاب أولاً لتوليد روابط الفصول.</div>
           ) : (
             Object.keys(classesGroups).map(className => (
-              <div key={className} className="bg-white p-8 rounded-[2.5rem] border shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-                <div>
-                   <h3 className="text-xl font-black text-slate-800">{className}</h3>
-                   <div className="text-xs font-mono text-blue-500 mt-1">/p/{school.slug}/{className.replace(/\s+/g, '-')}</div>
+              <div key={className} className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 hover:shadow-md transition group">
+                <div className="flex items-center gap-5">
+                   <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-black text-xl shadow-inner group-hover:scale-110 transition">
+                      {className[0]}
+                   </div>
+                   <div>
+                      <h3 className="text-xl font-black text-slate-800">{className}</h3>
+                      <div className="text-xs font-mono text-blue-500 mt-1 flex items-center gap-1">
+                        <Globe size={12} /> /p/{school.slug}/{className.replace(/\s+/g, '-')}
+                      </div>
+                   </div>
                 </div>
-                <Link to={`/p/${school.slug}/${className.replace(/\s+/g, '-')}`} target="_blank" className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2">
-                   <ExternalLink size={18} /> معاينة وطباعة الفصل
-                </Link>
+                <div className="flex items-center gap-3">
+                   <Link to={`/p/${school.slug}/${className.replace(/\s+/g, '-')}`} target="_blank" className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-slate-200 hover:bg-black transition active:scale-95">
+                      <ExternalLink size={18} /> معاينة وطباعة الفصل
+                   </Link>
+                </div>
               </div>
             ))
           )}
@@ -75,31 +96,100 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school }) => {
       )}
 
       {activeTab === 'branding' && (
-        <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm space-y-10">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-12">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              {/* Logo Section */}
               <div className="space-y-4">
-                 <label className="text-sm font-black text-slate-700">ترويسة الخطة (أعلى اليمين)</label>
-                 <textarea rows={4} className="w-full p-5 bg-slate-50 rounded-3xl font-bold outline-none" value={headerContent} onChange={e => setHeaderContent(e.target.value)} />
+                 <label className="text-sm font-black text-slate-700 mr-2 flex items-center gap-2">
+                    <Camera size={16} className="text-blue-500" /> شعار المدرسة الرسمي
+                 </label>
+                 <div className="bg-slate-50 border-4 border-dashed border-slate-100 rounded-[2.5rem] p-8 text-center group relative overflow-hidden h-64 flex flex-col items-center justify-center">
+                    {logoUrl ? (
+                      <div className="relative group/img h-full">
+                        <img src={logoUrl} className="h-full object-contain mb-4 transition group-hover/img:scale-105" />
+                        <button onClick={() => setLogoUrl(null)} className="absolute -top-2 -right-2 bg-white text-rose-500 p-2 rounded-full shadow-lg opacity-0 group-hover/img:opacity-100 transition"><X size={16} /></button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-3 text-slate-300">
+                        <ImageIcon size={64} className="opacity-20" />
+                        <p className="font-bold text-sm">ارفع الشعار الرسمي للمدرسة</p>
+                      </div>
+                    )}
+                    <button onClick={() => logoInputRef.current?.click()} className="mt-4 bg-white px-6 py-2.5 rounded-xl text-xs font-black shadow-sm border border-slate-100 hover:bg-blue-600 hover:text-white transition">اختيار شعار</button>
+                    <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
+                 </div>
               </div>
+
+              {/* Activity Image Section */}
               <div className="space-y-4">
-                 <label className="text-sm font-black text-slate-700">الرسائل العامة (أسفل اليمين)</label>
-                 <textarea rows={4} className="w-full p-5 bg-slate-50 rounded-3xl font-bold outline-none" value={generalMessages} onChange={e => setGeneralMessages(e.target.value)} />
-              </div>
-              <div className="space-y-4">
-                 <label className="text-sm font-black text-slate-700">صورة النشاط (أسفل اليسار)</label>
-                 <div className="bg-slate-50 border-2 border-dashed rounded-3xl p-6 text-center">
-                    {weeklyNotesImage ? <img src={weeklyNotesImage} className="h-32 mx-auto object-contain mb-4" /> : <Camera className="mx-auto text-slate-300 mb-2" size={32} />}
-                    <button onClick={() => fileInputRef.current?.click()} className="bg-slate-200 px-4 py-2 rounded-xl text-xs font-bold">رفع صورة</button>
+                 <label className="text-sm font-black text-slate-700 mr-2 flex items-center gap-2">
+                    <Sparkles size={16} className="text-blue-500" /> صورة النشاط الأسبوعي
+                 </label>
+                 <div className="bg-slate-50 border-4 border-dashed border-slate-100 rounded-[2.5rem] p-8 text-center h-64 flex flex-col items-center justify-center relative">
+                    {weeklyNotesImage ? (
+                      <div className="relative group/act h-full">
+                        <img src={weeklyNotesImage} className="h-full object-contain mb-4" />
+                        <button onClick={() => setWeeklyNotesImage(null)} className="absolute -top-2 -right-2 bg-white text-rose-500 p-2 rounded-full shadow-lg opacity-0 group-hover/act:opacity-100 transition"><X size={16} /></button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-3 text-slate-300">
+                         <Camera size={64} className="opacity-20" />
+                         <p className="font-bold text-sm">تغيير صورة النشاط (أسفل الخطة)</p>
+                      </div>
+                    )}
+                    <button onClick={() => fileInputRef.current?.click()} className="mt-4 bg-white px-6 py-2.5 rounded-xl text-xs font-black shadow-sm border border-slate-100 hover:bg-blue-600 hover:text-white transition">رفع صورة نشاط</button>
                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
                  </div>
               </div>
+
+              <div className="space-y-4">
+                 <label className="text-sm font-black text-slate-700 mr-2">ترويسة الخطة (أعلى اليمين)</label>
+                 <textarea 
+                  rows={5} 
+                  className="w-full p-6 bg-slate-50 rounded-[2rem] font-bold outline-none border-2 border-transparent focus:border-blue-100 transition shadow-inner" 
+                  value={headerContent} 
+                  onChange={e => setHeaderContent(e.target.value)} 
+                  placeholder="المملكة العربية السعودية&#10;وزارة التعليم&#10;إدارة التعليم بمحافظة..."
+                 />
+              </div>
+
+              <div className="space-y-4">
+                 <label className="text-sm font-black text-slate-700 mr-2">الرسائل العامة (أسفل اليمين)</label>
+                 <textarea 
+                  rows={5} 
+                  className="w-full p-6 bg-slate-50 rounded-[2rem] font-bold outline-none border-2 border-transparent focus:border-blue-100 transition shadow-inner" 
+                  value={generalMessages} 
+                  onChange={e => setGeneralMessages(e.target.value)} 
+                  placeholder="عزيزي ولي الأمر.. نرجو التعاون في.."
+                 />
+              </div>
+
+              <div className="md:col-span-2 space-y-4">
+                 <label className="text-sm font-black text-slate-700 mr-2">ملاحظة أسفل صورة النشاط</label>
+                 <input 
+                  className="w-full p-5 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-blue-100 transition shadow-inner" 
+                  value={weeklyNotes} 
+                  onChange={e => setWeeklyNotes(e.target.value)} 
+                  placeholder="مثال: كن فطناً.. أو قيمة الأسبوع هي.."
+                 />
+              </div>
            </div>
-           <button onClick={handleSaveBranding} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black">حفظ التعديلات</button>
+           
+           <div className="pt-6 border-t border-slate-50">
+             <button onClick={handleSaveBranding} className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black text-xl shadow-xl shadow-slate-200 hover:bg-black transition-all active:scale-95 flex items-center justify-center gap-3">
+                <Save size={24} className="text-blue-400" />
+                حفظ كافة تعديلات الهوية
+             </button>
+           </div>
         </div>
       )}
 
       {activeTab === 'students' && (
-         <div className="text-center p-20 text-slate-400 font-bold bg-white rounded-[3rem] border border-dashed">هذه الميزة متاحة في الإصدار المتقدم للطباعة الفردية.</div>
+         <div className="text-center p-32 text-slate-300 font-black bg-white rounded-[3.5rem] border-4 border-dashed">
+            <Users size={64} className="mx-auto mb-6 opacity-20" />
+            <h3 className="text-2xl">الطباعة الفردية للطلاب</h3>
+            <p className="mt-2 text-slate-400 font-bold max-w-sm mx-auto text-sm">هذه الميزة تتيح استخراج خطة خاصة لكل طالب باسمه وحالته، وهي قيد التطوير حالياً.</p>
+         </div>
       )}
     </div>
   );
