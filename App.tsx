@@ -6,6 +6,7 @@ import LandingPage from './pages/LandingPage.tsx';
 import SchoolDashboard from './pages/SchoolDashboard.tsx';
 import TeacherDashboard from './pages/TeacherDashboard.tsx';
 import PublicPlanView from './pages/PublicPlanView.tsx';
+import BulkStudentPlans from './pages/BulkStudentPlans.tsx';
 import SystemAdminDashboard from './pages/SystemAdminDashboard.tsx';
 import Login from './pages/Login.tsx';
 import TeacherLogin from './pages/TeacherLogin.tsx';
@@ -69,6 +70,7 @@ const App: React.FC = () => {
 
           {/* Public Access */}
           <Route path="/p/:schoolSlug/:classId" element={<PublicPlanView />} />
+          <Route path="/p/:schoolSlug/bulk/students" element={<BulkStudentPlans />} />
         </Routes>
       </div>
     </Router>

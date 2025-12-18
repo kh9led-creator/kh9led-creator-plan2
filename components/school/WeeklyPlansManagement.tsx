@@ -1,8 +1,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { School, Student } from '../../types.ts';
-// Added missing Save import from lucide-react
-import { Image as ImageIcon, Globe, Printer, Share2, Users, Archive, History, Sparkles, MessageCircle, StickyNote, Camera, Trash2, ExternalLink, X, Save } from 'lucide-react';
+import { Image as ImageIcon, Globe, Printer, Share2, Users, Archive, History, Sparkles, MessageCircle, StickyNote, Camera, Trash2, ExternalLink, X, Save, FileText } from 'lucide-react';
 import { db } from '../../constants.tsx';
 import { Link } from 'react-router-dom';
 
@@ -61,7 +60,7 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school }) => {
       </div>
 
       <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl w-fit">
-        {[{id:'general', label:'روابط الفصول'}, {id:'branding', label:'الهوية والترويسة'}, {id:'students', label:'خطط الطلاب'}].map(tab => (
+        {[{id:'general', label:'روابط الفصول'}, {id:'branding', label:'الهوية والترويسة'}, {id:'students', label:'الطباعة الفردية'}].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-6 py-2 rounded-xl font-bold transition ${activeTab === tab.id ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>{tab.label}</button>
         ))}
       </div>
@@ -98,7 +97,6 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school }) => {
       {activeTab === 'branding' && (
         <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-12">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-              {/* Logo Section */}
               <div className="space-y-4">
                  <label className="text-sm font-black text-slate-700 mr-2 flex items-center gap-2">
                     <Camera size={16} className="text-blue-500" /> شعار المدرسة الرسمي
@@ -120,7 +118,6 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school }) => {
                  </div>
               </div>
 
-              {/* Activity Image Section */}
               <div className="space-y-4">
                  <label className="text-sm font-black text-slate-700 mr-2 flex items-center gap-2">
                     <Sparkles size={16} className="text-blue-500" /> صورة النشاط الأسبوعي
@@ -185,10 +182,42 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school }) => {
       )}
 
       {activeTab === 'students' && (
-         <div className="text-center p-32 text-slate-300 font-black bg-white rounded-[3.5rem] border-4 border-dashed">
-            <Users size={64} className="mx-auto mb-6 opacity-20" />
-            <h3 className="text-2xl">الطباعة الفردية للطلاب</h3>
-            <p className="mt-2 text-slate-400 font-bold max-w-sm mx-auto text-sm">هذه الميزة تتيح استخراج خطة خاصة لكل طالب باسمه وحالته، وهي قيد التطوير حالياً.</p>
+         <div className="space-y-10 animate-in fade-in">
+            <div className="bg-blue-600 text-white p-10 rounded-[3.5rem] shadow-xl shadow-blue-100 flex flex-col md:flex-row items-center justify-between gap-8">
+               <div className="text-center md:text-right">
+                  <h3 className="text-3xl font-black mb-2 flex items-center gap-3 justify-center md:justify-start">
+                     <Users size={32} />
+                     الطباعة الفردية للطلاب
+                  </h3>
+                  <p className="text-blue-100 font-bold">هذه الميزة تولد ملف PDF يحتوي على صفحة مخصصة لكل طالب باسمه.</p>
+               </div>
+               <Link 
+                  to={`/p/${school.slug}/bulk/students`} 
+                  className="bg-white text-blue-600 px-10 py-5 rounded-[2rem] font-black text-xl hover:bg-blue-50 transition shadow-lg active:scale-95 flex items-center gap-3"
+               >
+                  <Printer size={24} />
+                  فتح محرك الطباعة الجماعي
+               </Link>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+               {Object.keys(classesGroups).map(className => (
+                  <div key={className} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between group hover:border-blue-200 transition">
+                     <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center font-black group-hover:bg-blue-100 group-hover:text-blue-600 transition">
+                           {classesGroups[className].length}
+                        </div>
+                        <div>
+                           <div className="font-black text-slate-800">{className}</div>
+                           <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">عدد الطلاب المسجلين</div>
+                        </div>
+                     </div>
+                     <Link to={`/p/${school.slug}/bulk/students?class=${encodeURIComponent(className)}`} className="p-3 text-blue-600 hover:bg-blue-50 rounded-xl transition">
+                        <Printer size={20} />
+                     </Link>
+                  </div>
+               ))}
+            </div>
          </div>
       )}
     </div>
