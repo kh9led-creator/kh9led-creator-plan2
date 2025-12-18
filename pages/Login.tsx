@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserRole } from '../types';
-import { db } from '../constants';
+import { UserRole } from '../types.ts';
+import { db } from '../constants.tsx';
 import { ShieldCheck, School as SchoolIcon, ArrowLeft, Zap, AlertCircle } from 'lucide-react';
 
 interface LoginProps {
@@ -30,10 +30,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       }
     } else {
       const schools = db.getSchools();
-      // محاكاة: البحث في المدارس عن حساب المدير (في النظام الحقيقي يتم الربط بجدول مستخدمين)
-      // هنا سنفترض أن أي مدرسة تقبل admin ككلمة سر للتجربة "الحقيقية" أو ابحث عن المدرسة بالاسم
+      // البحث عن المدرسة باستخدام الـ slug
       const school = schools.find(s => s.slug === username);
-      if (school && password === 'admin') {
+      
+      // التحقق من كلمة المرور المخصصة أو الافتراضية 'admin' (للمدارس القديمة)
+      if (school && (password === school.adminPassword || password === 'admin')) {
         onLogin('SCHOOL_ADMIN', school, { name: 'مدير المدرسة' });
         navigate('/school');
       } else {
@@ -79,13 +80,13 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
         <form onSubmit={handleLogin} className="space-y-4 mb-8">
           <div className="space-y-2">
-            <label className="text-sm font-black text-slate-700 mr-2">اسم المستخدم</label>
+            <label className="text-sm font-black text-slate-700 mr-2">اسم المستخدم (Slug)</label>
             <input 
               type="text" 
               required
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder={role === 'SCHOOL_ADMIN' ? "Slug المدرسة" : "admin"}
+              placeholder={role === 'SCHOOL_ADMIN' ? "مثال: al-iman-school" : "admin"}
               className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-blue-100 transition-all outline-none"
             />
           </div>

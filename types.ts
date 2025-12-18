@@ -11,6 +11,7 @@ export interface School {
   weeklyNotesImage?: string;
   subscriptionActive: boolean;
   slug: string;
+  adminPassword?: string; // أضفنا هذا الحقل لتخزين كلمة المرور المختارة
   studentCount: number;
   teacherCount: number;
   expiryDate: string;
@@ -22,6 +23,7 @@ export interface Teacher {
   username: string;
   password?: string;
   subjects: string[];
+  schoolId: string;
 }
 
 export interface Student {

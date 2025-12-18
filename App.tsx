@@ -32,7 +32,7 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login onLogin={login} />} />
-          <Route path="/register-school" element={<SchoolRegistration />} />
+          <Route path="/register-school" element={<SchoolRegistration onLogin={login} />} />
           
           {/* School Teacher Specific Login Link */}
           <Route path="/school/:schoolSlug/teacher-login" element={<TeacherLogin onLogin={login} />} />
