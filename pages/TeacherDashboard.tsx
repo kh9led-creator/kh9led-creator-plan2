@@ -4,7 +4,7 @@ import { School, Teacher } from '../types';
 import { DAYS, PERIODS, MOCK_STUDENTS } from '../constants';
 import { 
   LogOut, CheckCircle, ClipboardCheck, BookOpen, 
-  MessageSquare, Edit2, Home, Sparkles, StickyNote, Book
+  MessageSquare, Edit2, Home, Sparkles, StickyNote, Book, Save
 } from 'lucide-react';
 import CommunicationHub from '../components/school/CommunicationHub';
 
@@ -17,13 +17,14 @@ interface Props {
 const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
   const [activeTab, setActiveTab] = useState<'plans' | 'attendance' | 'messages'>('plans');
   const [selectedDay, setSelectedDay] = useState(DAYS[0]);
-  const [absentStudents, setAbsentStudents] = useState<Set<string>>(new Set());
+  const [isSaving, setIsSaving] = useState(false);
 
-  const toggleAbsence = (id: string) => {
-    const newSet = new Set(absentStudents);
-    if (newSet.has(id)) newSet.delete(id);
-    else newSet.add(id);
-    setAbsentStudents(newSet);
+  const handleSavePlan = () => {
+    setIsSaving(true);
+    setTimeout(() => {
+      setIsSaving(false);
+      alert('تم حفظ الخطة بنجاح');
+    }, 800);
   };
 
   return (
@@ -35,14 +36,14 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
             {teacher.name[0]}
           </div>
           <h3 className="font-black text-slate-900">{teacher.name}</h3>
-          <p className="text-xs text-slate-400 mt-1 font-bold">بوابة المعلم</p>
+          <p className="text-[10px] text-blue-600 mt-1 font-black uppercase tracking-widest">{school.name}</p>
         </div>
 
         <nav className="p-6 space-y-2 flex-1">
           {[
             { id: 'plans', label: 'رصد الخطط', icon: <BookOpen size={20} /> },
             { id: 'attendance', label: 'رصد الغياب', icon: <ClipboardCheck size={20} /> },
-            { id: 'messages', label: 'التعاميم والرسائل', icon: <MessageSquare size={20} /> },
+            { id: 'messages', label: 'التعاميم', icon: <MessageSquare size={20} /> },
           ].map((tab) => (
             <button 
               key={tab.id}
@@ -81,14 +82,16 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
                   ))}
                 </div>
               </div>
-              <button className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-blue-100 transition-all active:scale-95">
-                <CheckCircle size={20} />
-                اعتماد رصد اليوم
+              <button 
+                onClick={handleSavePlan}
+                className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-blue-100 transition-all active:scale-95 hover:bg-blue-700"
+              >
+                {isSaving ? 'جاري الحفظ...' : <><Save size={20} /> اعتماد رصد اليوم</>}
               </button>
             </header>
 
             <div className="space-y-8">
-              {PERIODS.slice(0, 4).map((p) => (
+              {PERIODS.slice(0, 5).map((p) => (
                 <div key={p} className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden flex flex-col md:flex-row group hover:border-blue-200 transition-all duration-300">
                   <div className="w-full md:w-24 bg-slate-50 border-l flex flex-col items-center justify-center p-4">
                     <span className="text-xs font-black text-slate-400">الحصة</span>
@@ -96,18 +99,18 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
                   </div>
                   
                   <div className="flex-1 p-8 space-y-8">
-                    {/* الصف الأول: المادة وعنوان الدرس */}
+                    {/* الدرس والمادة */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                      <div>
+                      <div className="md:col-span-1">
                         <label className="block text-xs font-black text-slate-400 mb-2 flex items-center gap-1">
                           <Book size={14} className="text-blue-600" />
                           المادة
                         </label>
-                        <input 
-                          readOnly 
-                          value="لغتي" 
-                          className="w-full p-4 bg-slate-50 rounded-2xl border-none font-black text-blue-600 cursor-default" 
-                        />
+                        <select className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold text-slate-800 outline-none">
+                          <option>لغتي</option>
+                          <option>رياضيات</option>
+                          <option>علوم</option>
+                        </select>
                       </div>
                       <div className="md:col-span-3">
                         <label className="block text-xs font-black text-slate-400 mb-2 flex items-center gap-1">
@@ -116,45 +119,45 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
                         </label>
                         <input 
                           type="text" 
-                          placeholder="أدخل عنوان الدرس الذي سيتم تدريسه في هذه الحصة..." 
-                          className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold focus:ring-2 focus:ring-blue-100 transition-all" 
+                          placeholder="مثال: النص الشعري، الجمع مع إعادة التجميع..." 
+                          className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold focus:ring-2 focus:ring-blue-100 transition-all outline-none" 
                         />
                       </div>
                     </div>
 
-                    {/* الصف الثاني: الواجبات، المهام الإثرائية، الملاحظات */}
+                    {/* الحقول التفصيلية */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div>
-                        <label className="block text-xs font-black text-slate-400 mb-2 flex items-center gap-1">
-                          <Home size={14} className="text-emerald-500" />
-                          الواجبات
+                      <div className="space-y-2">
+                        <label className="text-xs font-black text-emerald-600 flex items-center gap-2 mr-2">
+                          <Home size={14} />
+                          الواجبات المنزلية
                         </label>
                         <textarea 
                           rows={3} 
-                          placeholder="الواجبات المنزلية المطلوبة..." 
-                          className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold focus:ring-2 focus:ring-emerald-50 transition-all resize-none"
+                          placeholder="أدخل نص الواجب هنا..." 
+                          className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold focus:ring-2 focus:ring-emerald-50 transition-all resize-none outline-none"
                         ></textarea>
                       </div>
-                      <div>
-                        <label className="block text-xs font-black text-slate-400 mb-2 flex items-center gap-1">
-                          <Sparkles size={14} className="text-amber-500" />
+                      <div className="space-y-2">
+                        <label className="text-xs font-black text-amber-600 flex items-center gap-2 mr-2">
+                          <Sparkles size={14} />
                           المهام الإثرائية
                         </label>
                         <textarea 
                           rows={3} 
-                          placeholder="أنشطة ومهام إضافية لتعزيز التعلم..." 
-                          className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold focus:ring-2 focus:ring-amber-50 transition-all resize-none"
+                          placeholder="أنشطة إضافية لتعزيز الفهم..." 
+                          className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold focus:ring-2 focus:ring-amber-50 transition-all resize-none outline-none"
                         ></textarea>
                       </div>
-                      <div>
-                        <label className="block text-xs font-black text-slate-400 mb-2 flex items-center gap-1">
-                          <StickyNote size={14} className="text-purple-500" />
-                          ملاحظات
+                      <div className="space-y-2">
+                        <label className="text-xs font-black text-purple-600 flex items-center gap-2 mr-2">
+                          <StickyNote size={14} />
+                          ملاحظات إضافية
                         </label>
                         <textarea 
                           rows={3} 
-                          placeholder="أي ملاحظات إضافية تخص هذه الحصة..." 
-                          className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold focus:ring-2 focus:ring-purple-50 transition-all resize-none"
+                          placeholder="أي تنبيهات تخص الحصة..." 
+                          className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold focus:ring-2 focus:ring-purple-50 transition-all resize-none outline-none"
                         ></textarea>
                       </div>
                     </div>
@@ -170,7 +173,7 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
              <header className="flex justify-between items-center mb-10">
                 <div>
                   <h1 className="text-3xl font-black">كشف الغياب اليومي</h1>
-                  <p className="text-slate-500 mt-1">تاريخ اليوم: {new Date().toLocaleDateString('ar-SA')}</p>
+                  <p className="text-slate-500 mt-1">رصد الحضور والغياب لطلاب فصلك</p>
                 </div>
                 <button className="bg-emerald-600 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-emerald-100">
                   إرسال الكشف للإدارة
@@ -178,9 +181,9 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
              </header>
 
              <div className="bg-white rounded-[2.5rem] border shadow-sm overflow-hidden">
-                <table className="w-full text-right border-collapse">
+                <table className="w-full text-right">
                   <thead>
-                    <tr className="bg-slate-50 text-slate-400 text-xs font-black border-b uppercase tracking-widest">
+                    <tr className="bg-slate-50 text-slate-400 text-xs font-black border-b">
                       <th className="p-6">اسم الطالب</th>
                       <th className="p-6">الفصل</th>
                       <th className="p-6 text-center">الحالة</th>
@@ -188,17 +191,13 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
                   </thead>
                   <tbody>
                     {MOCK_STUDENTS.map(student => (
-                      <tr key={student.id} className="border-b last:border-0 hover:bg-slate-50 transition">
+                      <tr key={student.id} className="border-b last:border-0">
                         <td className="p-6 font-bold">{student.name}</td>
-                        <td className="p-6 text-slate-500">{student.grade} - {student.section}</td>
+                        <td className="p-6 text-slate-500">{student.grade}</td>
                         <td className="p-6">
-                           <div className="flex justify-center">
-                              <button 
-                                onClick={() => toggleAbsence(student.id)}
-                                className={`px-6 py-2 rounded-xl font-bold transition border-2 ${absentStudents.has(student.id) ? 'bg-rose-500 border-rose-500 text-white shadow-lg shadow-rose-100' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}
-                              >
-                                {absentStudents.has(student.id) ? 'غائب' : 'حاضر'}
-                              </button>
+                           <div className="flex justify-center gap-2">
+                              <button className="px-6 py-2 rounded-xl bg-emerald-100 text-emerald-700 font-bold border border-emerald-200">حاضر</button>
+                              <button className="px-6 py-2 rounded-xl bg-slate-100 text-slate-400 font-bold hover:bg-rose-100 hover:text-rose-600 transition">غائب</button>
                            </div>
                         </td>
                       </tr>
