@@ -5,7 +5,7 @@ import { School as SchoolType } from '../types';
 import { 
   LayoutDashboard, ShieldCheck, School, 
   CreditCard, Settings, LogOut, CheckCircle2, 
-  XCircle, ArrowUpRight, Plus, Globe, User, Lock, Save, Check
+  XCircle, ArrowUpRight, Plus, Globe, User, Lock, Save, Check, Key
 } from 'lucide-react';
 
 const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
@@ -31,6 +31,15 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
+  const deleteSchool = (id: string) => {
+    if (confirm('هل أنت متأكد من حذف هذه المدرسة نهائياً؟ سيتم حذف كافة البيانات المرتبطة بها.')) {
+      const all = db.getSchools();
+      const filtered = all.filter(s => s.id !== id);
+      localStorage.setItem('madrasati_schools', JSON.stringify(filtered));
+      setSchools(db.getSchools());
+    }
+  };
+
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden font-['Tajawal']">
       {/* Sidebar */}
@@ -51,7 +60,7 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
             onClick={() => setActiveTab('schools')}
             className={`w-full flex items-center gap-4 p-4 rounded-2xl font-bold transition ${activeTab === 'schools' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900' : 'text-slate-400 hover:bg-slate-800'}`}
           >
-            <School size={20} /> المدارس
+            <School size={20} /> المدارس والبيانات
           </button>
           <button 
             onClick={() => setActiveTab('profile')}
@@ -145,7 +154,10 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
         {(activeTab === 'home' || activeTab === 'schools') && (
            <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden mt-8">
             <div className="p-8 border-b bg-slate-50/50 flex justify-between items-center">
-              <h3 className="text-xl font-black text-slate-800">المدارس المسجلة فعلياً</h3>
+              <div>
+                <h3 className="text-xl font-black text-slate-800">إدارة المدارس والبيانات الحساسة</h3>
+                <p className="text-xs text-slate-400 font-bold mt-1">بيانات الدخول الكاملة لجميع المدارس المسجلة.</p>
+              </div>
             </div>
             {schools.length === 0 ? (
                <div className="p-20 text-center text-slate-400 font-bold">لا يوجد مدارس مسجلة بعد.</div>
@@ -154,21 +166,39 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
                 <thead className="bg-slate-50/50 text-slate-400 text-xs font-black uppercase tracking-widest">
                   <tr>
                     <th className="p-6">المدرسة</th>
-                    <th className="p-6">Slug</th>
+                    <th className="p-6">اسم المستخدم (Slug)</th>
+                    <th className="p-6">كلمة المرور</th>
                     <th className="p-6">الحالة</th>
-                    <th className="p-6">الإجراءات</th>
+                    <th className="p-6 text-left">الإجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
                   {schools.map(school => (
                     <tr key={school.id} className="border-b last:border-0 hover:bg-slate-50 transition">
-                      <td className="p-6 font-black">{school.name}</td>
-                      <td className="p-6 font-mono text-blue-600">{school.slug}</td>
                       <td className="p-6">
-                        <span className="bg-emerald-50 text-emerald-600 px-4 py-1 rounded-full text-xs font-black">نشط</span>
+                        <div className="flex items-center gap-3">
+                           {school.logoUrl && <img src={school.logoUrl} className="w-8 h-8 rounded-lg object-contain bg-white border" />}
+                           <span className="font-black text-slate-900">{school.name}</span>
+                        </div>
+                      </td>
+                      <td className="p-6 font-mono text-blue-600 font-bold">{school.slug}</td>
+                      <td className="p-6">
+                         <div className="flex items-center gap-2 text-slate-600 font-black">
+                            <Key size={14} className="text-amber-500" />
+                            <span>{school.adminPassword || 'admin (افتراضي)'}</span>
+                         </div>
                       </td>
                       <td className="p-6">
-                        <button className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition"><XCircle size={18} /></button>
+                        <span className="bg-emerald-50 text-emerald-600 px-4 py-1 rounded-full text-[10px] font-black border border-emerald-100">نشط</span>
+                      </td>
+                      <td className="p-6 text-left">
+                        <button 
+                          onClick={() => deleteSchool(school.id)}
+                          className="p-3 text-rose-500 hover:bg-rose-50 rounded-xl transition"
+                          title="حذف المدرسة"
+                        >
+                          <XCircle size={18} />
+                        </button>
                       </td>
                     </tr>
                   ))}
