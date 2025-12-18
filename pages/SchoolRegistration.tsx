@@ -14,7 +14,8 @@ import {
   Zap, 
   Sparkles,
   Camera,
-  X
+  X,
+  Mail
 } from 'lucide-react';
 
 interface Props {
@@ -29,6 +30,7 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
   const [formData, setFormData] = useState({
     schoolName: '',
     slug: '',
+    email: '',
     adminName: '',
     adminPassword: '',
     logoUrl: '',
@@ -39,7 +41,6 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
     setFormData(prev => {
       const newData = { ...prev, [name]: value };
       if (name === 'schoolName') {
-        // توليد Slug ذكي من اسم المدرسة
         newData.slug = value.toLowerCase()
           .replace(/[^\u0621-\u064A0-9a-zA-Z\s]/g, '')
           .replace(/\s+/g, '-');
@@ -61,13 +62,12 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
 
   const handleCreateEnvironment = () => {
     setLoading(true);
-    
-    // محاكاة عملية "تهيئة الخوادم والبيئة الرقمية" لإعطاء شعور بالاحترافية
     setTimeout(() => {
       const newSchool: School = {
         id: Date.now().toString(),
         name: formData.schoolName,
         slug: formData.slug,
+        email: formData.email,
         logoUrl: formData.logoUrl,
         adminPassword: formData.adminPassword,
         subscriptionActive: true,
@@ -95,7 +95,6 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 font-['Tajawal']">
       <div className="bg-white p-10 md:p-16 rounded-[4rem] shadow-2xl shadow-slate-200 border border-slate-100 max-w-2xl w-full relative overflow-hidden">
         
-        {/* Step Progress Bar */}
         {step < 3 && (
           <div className="absolute top-0 left-0 w-full h-2 flex">
             <div className={`h-full transition-all duration-500 bg-blue-600 ${step >= 1 ? 'w-1/2' : 'w-0'}`}></div>
@@ -114,7 +113,6 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
             </div>
 
             <div className="space-y-6">
-              {/* Logo Upload Section */}
               <div className="flex flex-col items-center gap-4 mb-4">
                 <div 
                   onClick={() => fileInputRef.current?.click()}
@@ -128,14 +126,8 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
                       <span className="text-[10px] font-black mt-1">شعار المدرسة</span>
                     </div>
                   )}
-                  {formData.logoUrl && (
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                      <Sparkles className="text-white" size={24} />
-                    </div>
-                  )}
                 </div>
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
-                <p className="text-[10px] text-slate-400 font-bold">يفضل أن تكون الصورة بصيغة PNG وبخلفية شفافة</p>
               </div>
 
               <div className="space-y-2">
@@ -156,18 +148,16 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
                 <label className="text-sm font-black text-slate-700 mr-2 flex items-center gap-2">
                   <Globe size={16} className="text-blue-500" /> رابط الوصول الفريد
                 </label>
-                <div className="flex items-center gap-3 bg-slate-50 p-5 rounded-3xl border-2 border-transparent focus-within:border-blue-100 transition-all">
-                  <span className="text-slate-400 font-bold hidden sm:inline" dir="ltr">app.madrasati.sa/</span>
+                <div className="flex items-center gap-3 bg-slate-50 p-5 rounded-3xl border-2 border-transparent focus-within:border-blue-100 transition-all text-left" dir="ltr">
+                  <span className="text-slate-400 font-bold hidden sm:inline">madrasati.sa/p/</span>
                   <input 
                     type="text" 
                     name="slug"
                     value={formData.slug}
                     onChange={handleInputChange}
                     className="flex-1 bg-transparent border-none outline-none font-black text-blue-600 text-lg"
-                    dir="ltr"
                   />
                 </div>
-                <p className="text-[10px] text-slate-400 mr-2">هذا الرابط سيستخدمه المعلمون للدخول والطلاب لمشاهدة الخطط.</p>
               </div>
             </div>
 
@@ -189,7 +179,7 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
                 <Lock size={40} />
               </div>
               <h2 className="text-3xl font-black text-slate-900">حساب المدير</h2>
-              <p className="text-slate-500 mt-2">بيانات الدخول للوحة تحكم المدرسة</p>
+              <p className="text-slate-500 mt-2">بيانات الدخول والبريد الرسمي للمدرسة</p>
             </div>
 
             <div className="space-y-6">
@@ -202,14 +192,29 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
                   name="adminName"
                   value={formData.adminName}
                   onChange={handleInputChange}
-                  placeholder="الاسم الكامل"
+                  placeholder="الاسم الكامل للمدير"
                   className="w-full p-5 bg-slate-50 border-none rounded-3xl font-black text-lg outline-none focus:ring-4 focus:ring-blue-50 transition-all"
                 />
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-black text-slate-700 mr-2 flex items-center gap-2">
-                  <Lock size={16} className="text-blue-500" /> كلمة مرور قوية
+                  <Mail size={16} className="text-blue-500" /> البريد الإلكتروني (للاستعادة)
+                </label>
+                <input 
+                  type="email" 
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="email@school.com"
+                  className="w-full p-5 bg-slate-50 border-none rounded-3xl font-black text-lg outline-none focus:ring-4 focus:ring-blue-50 transition-all text-left"
+                  dir="ltr"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-black text-slate-700 mr-2 flex items-center gap-2">
+                  <Lock size={16} className="text-blue-500" /> كلمة المرور
                 </label>
                 <input 
                   type="password" 
@@ -217,14 +222,15 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
                   value={formData.adminPassword}
                   onChange={handleInputChange}
                   placeholder="••••••••"
-                  className="w-full p-5 bg-slate-50 border-none rounded-3xl font-black text-lg outline-none focus:ring-4 focus:ring-blue-50 transition-all"
+                  className="w-full p-5 bg-slate-50 border-none rounded-3xl font-black text-lg outline-none focus:ring-4 focus:ring-blue-50 transition-all text-left"
+                  dir="ltr"
                 />
               </div>
             </div>
 
             <button 
               onClick={handleCreateEnvironment}
-              disabled={loading || !formData.adminName || !formData.adminPassword}
+              disabled={loading || !formData.adminName || !formData.adminPassword || !formData.email}
               className="w-full py-6 bg-blue-600 text-white rounded-[2rem] font-black text-xl hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
             >
               {loading ? (
@@ -238,13 +244,6 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
                   إطلاق المنصة الآن
                 </>
               )}
-            </button>
-            
-            <button 
-              onClick={() => setStep(1)} 
-              className="w-full text-slate-400 font-bold text-sm hover:text-slate-600 transition"
-            >
-              العودة لتعديل بيانات المدرسة
             </button>
           </div>
         )}
@@ -263,13 +262,6 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
                لقد تم إنشاء البيئة الرقمية لمدرسة <br/>
                <span className="text-blue-600 font-black">{formData.schoolName}</span> بنجاح!
              </p>
-
-             <div className="grid grid-cols-1 gap-4 mb-10">
-                <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100 text-right">
-                   <div className="text-xs font-black text-slate-400 uppercase mb-2">رابط المدرسة المخصص</div>
-                   <div className="text-lg font-mono text-blue-600">madrasati.sa/p/{formData.slug}</div>
-                </div>
-             </div>
 
              <button 
               onClick={handleAutoLogin} 

@@ -36,13 +36,10 @@ const App: React.FC = () => {
           <Route path="/login" element={<Login onLogin={login} />} />
           <Route path="/register-school" element={<SchoolRegistration onLogin={login} />} />
           
-          {/* البوابة المخفية لمدير النظام */}
           <Route path="/system-access-portal" element={<SystemAdminLogin onLogin={login} />} />
           
-          {/* School Teacher Specific Login Link */}
           <Route path="/school/:schoolSlug/teacher-login" element={<TeacherLogin onLogin={login} />} />
 
-          {/* System Admin Routes */}
           <Route 
             path="/admin/*" 
             element={
@@ -52,7 +49,6 @@ const App: React.FC = () => {
             } 
           />
 
-          {/* School Admin Routes */}
           <Route 
             path="/school/*" 
             element={
@@ -62,7 +58,6 @@ const App: React.FC = () => {
             } 
           />
 
-          {/* Teacher Routes */}
           <Route 
             path="/teacher/*" 
             element={
@@ -72,8 +67,8 @@ const App: React.FC = () => {
             } 
           />
 
-          {/* Public Access */}
-          <Route path="/p/:schoolSlug/:classId" element={<PublicPlanView />} />
+          {/* المسار العام الموحد الجديد */}
+          <Route path="/p/:schoolSlug" element={<PublicPlanView />} />
           <Route path="/p/:schoolSlug/bulk/students" element={<BulkStudentPlans />} />
         </Routes>
       </div>

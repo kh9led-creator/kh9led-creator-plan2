@@ -1,35 +1,44 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { School, Student } from '../../types.ts';
-import { Image as ImageIcon, Globe, Printer, Share2, Users, Archive, History, Sparkles, MessageCircle, StickyNote, Camera, Trash2, ExternalLink, X, Save, FileText } from 'lucide-react';
+import { Globe, Printer, Users, Sparkles, Camera, X, Save, CheckCircle2, Copy, ExternalLink, Link as LinkIcon } from 'lucide-react';
 import { db } from '../../constants.tsx';
 import { Link } from 'react-router-dom';
 
-const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school }) => {
+const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSchool }) => {
+  const [school, setSchool] = useState<School>(initialSchool);
   const [headerContent, setHeaderContent] = useState(school.headerContent || "");
   const [generalMessages, setGeneralMessages] = useState(school.generalMessages || "");
   const [weeklyNotes, setWeeklyNotes] = useState(school.weeklyNotes || "");
   const [weeklyNotesImage, setWeeklyNotesImage] = useState<string | null>(school.weeklyNotesImage || null);
   const [logoUrl, setLogoUrl] = useState<string | null>(school.logoUrl || null);
-  const [activeTab, setActiveTab] = useState<'branding' | 'general' | 'students'>('general');
+  const [activeTab, setActiveTab] = useState<'branding' | 'links' | 'students'>('links');
+  const [isSaved, setIsSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
-  const students = db.getStudents(school.id);
-  const classesGroups = useMemo(() => {
-    const groups: Record<string, Student[]> = {};
-    students.forEach(s => {
-      const key = `${s.grade} - فصل ${s.section}`;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(s);
-    });
-    return groups;
-  }, [students]);
-
   const handleSaveBranding = () => {
-    const updated = { ...school, headerContent, generalMessages, weeklyNotes, weeklyNotesImage, logoUrl: logoUrl || undefined };
+    const updated: School = { 
+      ...school, 
+      headerContent, 
+      generalMessages, 
+      weeklyNotes, 
+      weeklyNotesImage: weeklyNotesImage || undefined, 
+      logoUrl: logoUrl || undefined 
+    };
     db.saveSchool(updated);
-    alert('تم حفظ كافة إعدادات الهوية والترويسة بنجاح');
+    setSchool(updated);
+    setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 3000);
+  };
+
+  const handleCopyLink = () => {
+    const link = `${window.location.origin}/#/p/${school.slug}`;
+    navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,70 +59,92 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school }) => {
     }
   };
 
+  const students = db.getStudents(school.id);
+  const classesGroups = useMemo(() => {
+    const groups: Record<string, Student[]> = {};
+    students.forEach(s => {
+      const key = `${s.grade} - فصل ${s.section}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(s);
+    });
+    return groups;
+  }, [students]);
+
   return (
     <div className="space-y-8 animate-in fade-in">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-black text-slate-900">إدارة الخطط الأسبوعية</h2>
-          <p className="text-slate-500 font-bold mt-1">تحكم في الروابط العامة وهوية الخطط المطبوعة.</p>
-        </div>
+      <div>
+        <h2 className="text-3xl font-black text-slate-900">بوابة الخطط الأسبوعية</h2>
+        <p className="text-slate-500 font-bold mt-1">إدارة الرابط الموحد وهوية المطبوعات.</p>
       </div>
 
       <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl w-fit">
-        {[{id:'general', label:'روابط الفصول'}, {id:'branding', label:'الهوية والترويسة'}, {id:'students', label:'الطباعة الفردية'}].map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-6 py-2 rounded-xl font-bold transition ${activeTab === tab.id ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>{tab.label}</button>
+        {[
+          {id:'links', label:'الرابط العام'}, 
+          {id:'branding', label:'الهوية والترويسة'}, 
+          {id:'students', label:'الطباعة الفردية'}
+        ].map(tab => (
+          <button 
+            key={tab.id} 
+            onClick={() => setActiveTab(tab.id as any)} 
+            className={`px-6 py-2 rounded-xl font-bold transition ${activeTab === tab.id ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}
+          >
+            {tab.label}
+          </button>
         ))}
       </div>
 
-      {activeTab === 'general' && (
-        <div className="grid grid-cols-1 gap-6">
-          {Object.keys(classesGroups).length === 0 ? (
-            <div className="bg-white p-24 rounded-[3.5rem] text-center font-black text-slate-300 border-4 border-dashed">يرجى إضافة طلاب أولاً لتوليد روابط الفصول.</div>
-          ) : (
-            Object.keys(classesGroups).map(className => (
-              <div key={className} className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 hover:shadow-md transition group">
-                <div className="flex items-center gap-5">
-                   <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-black text-xl shadow-inner group-hover:scale-110 transition">
-                      {className[0]}
-                   </div>
-                   <div>
-                      <h3 className="text-xl font-black text-slate-800">{className}</h3>
-                      <div className="text-xs font-mono text-blue-500 mt-1 flex items-center gap-1">
-                        <Globe size={12} /> /p/{school.slug}/{className.replace(/\s+/g, '-')}
-                      </div>
-                   </div>
-                </div>
-                <div className="flex items-center gap-3">
-                   <Link to={`/p/${school.slug}/${className.replace(/\s+/g, '-')}`} target="_blank" className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-slate-200 hover:bg-black transition active:scale-95">
-                      <ExternalLink size={18} /> معاينة وطباعة الفصل
-                   </Link>
-                </div>
+      {activeTab === 'links' && (
+        <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm text-center space-y-8">
+           <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-[2rem] flex items-center justify-center mx-auto shadow-inner">
+              <Globe size={40} />
+           </div>
+           <div>
+              <h3 className="text-2xl font-black text-slate-800">الرابط الموحد للمدرسة</h3>
+              <p className="text-slate-500 font-bold mt-2">رابط واحد يحتوي على كافة خطط الفصول المتاحة في مدرستك.</p>
+           </div>
+           
+           <div className="max-w-xl mx-auto flex items-center gap-3 bg-slate-50 p-3 rounded-[2rem] border-2 border-slate-100">
+              <div className="flex-1 text-left px-4 font-mono text-blue-600 font-bold overflow-hidden truncate">
+                 {window.location.origin}/#/p/{school.slug}
               </div>
-            ))
-          )}
+              <button 
+                onClick={handleCopyLink}
+                className={`px-6 py-3 rounded-2xl font-black transition-all flex items-center gap-2 ${copied ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white hover:bg-black'}`}
+              >
+                 {copied ? <CheckCircle2 size={18} /> : <Copy size={18} />}
+                 {copied ? 'تم النسخ' : 'نسخ الرابط'}
+              </button>
+           </div>
+
+           <div className="flex justify-center gap-4">
+              <Link to={`/p/${school.slug}`} target="_blank" className="flex items-center gap-2 text-blue-600 font-black hover:underline underline-offset-8">
+                 <ExternalLink size={18} />
+                 فتح الرابط كولي أمر
+              </Link>
+           </div>
         </div>
       )}
 
       {activeTab === 'branding' && (
-        <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-12">
+        <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-10">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div className="space-y-4">
                  <label className="text-sm font-black text-slate-700 mr-2 flex items-center gap-2">
-                    <Camera size={16} className="text-blue-500" /> شعار المدرسة الرسمي
+                    <Camera size={16} className="text-blue-500" /> شعار المدرسة
                  </label>
-                 <div className="bg-slate-50 border-4 border-dashed border-slate-100 rounded-[2.5rem] p-8 text-center group relative overflow-hidden h-64 flex flex-col items-center justify-center">
+                 <div className="bg-slate-50 border-4 border-dashed border-slate-100 rounded-[2.5rem] p-8 text-center h-64 flex flex-col items-center justify-center relative overflow-hidden group">
                     {logoUrl ? (
-                      <div className="relative group/img h-full">
-                        <img src={logoUrl} className="h-full object-contain mb-4 transition group-hover/img:scale-105" />
+                      <div className="relative group/img h-full flex items-center">
+                        <img src={logoUrl} className="max-h-full object-contain transition group-hover/img:scale-105" />
                         <button onClick={() => setLogoUrl(null)} className="absolute -top-2 -right-2 bg-white text-rose-500 p-2 rounded-full shadow-lg opacity-0 group-hover/img:opacity-100 transition"><X size={16} /></button>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-3 text-slate-300">
-                        <ImageIcon size={64} className="opacity-20" />
-                        <p className="font-bold text-sm">ارفع الشعار الرسمي للمدرسة</p>
+                        <LinkIcon size={64} className="opacity-20" />
+                        <p className="font-bold text-sm">ارفع الشعار الرسمي</p>
                       </div>
                     )}
-                    <button onClick={() => logoInputRef.current?.click()} className="mt-4 bg-white px-6 py-2.5 rounded-xl text-xs font-black shadow-sm border border-slate-100 hover:bg-blue-600 hover:text-white transition">اختيار شعار</button>
+                    <button onClick={() => logoInputRef.current?.click()} className="mt-4 bg-white px-6 py-2 rounded-xl text-xs font-black shadow-sm border hover:bg-blue-600 hover:text-white transition">اختيار شعار</button>
                     <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
                  </div>
               </div>
@@ -122,60 +153,46 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school }) => {
                  <label className="text-sm font-black text-slate-700 mr-2 flex items-center gap-2">
                     <Sparkles size={16} className="text-blue-500" /> صورة النشاط الأسبوعي
                  </label>
-                 <div className="bg-slate-50 border-4 border-dashed border-slate-100 rounded-[2.5rem] p-8 text-center h-64 flex flex-col items-center justify-center relative">
+                 <div className="bg-slate-50 border-4 border-dashed border-slate-100 rounded-[2.5rem] p-8 text-center h-64 flex flex-col items-center justify-center relative overflow-hidden group">
                     {weeklyNotesImage ? (
-                      <div className="relative group/act h-full">
-                        <img src={weeklyNotesImage} className="h-full object-contain mb-4" />
+                      <div className="relative group/act h-full flex items-center">
+                        <img src={weeklyNotesImage} className="max-h-full object-contain" />
                         <button onClick={() => setWeeklyNotesImage(null)} className="absolute -top-2 -right-2 bg-white text-rose-500 p-2 rounded-full shadow-lg opacity-0 group-hover/act:opacity-100 transition"><X size={16} /></button>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-3 text-slate-300">
                          <Camera size={64} className="opacity-20" />
-                         <p className="font-bold text-sm">تغيير صورة النشاط (أسفل الخطة)</p>
+                         <p className="font-bold text-sm">تغيير صورة النشاط</p>
                       </div>
                     )}
-                    <button onClick={() => fileInputRef.current?.click()} className="mt-4 bg-white px-6 py-2.5 rounded-xl text-xs font-black shadow-sm border border-slate-100 hover:bg-blue-600 hover:text-white transition">رفع صورة نشاط</button>
+                    <button onClick={() => fileInputRef.current?.click()} className="mt-4 bg-white px-6 py-2 rounded-xl text-xs font-black shadow-sm border hover:bg-blue-600 hover:text-white transition">رفع صورة نشاط</button>
                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
                  </div>
               </div>
 
               <div className="space-y-4">
                  <label className="text-sm font-black text-slate-700 mr-2">ترويسة الخطة (أعلى اليمين)</label>
-                 <textarea 
-                  rows={5} 
-                  className="w-full p-6 bg-slate-50 rounded-[2rem] font-bold outline-none border-2 border-transparent focus:border-blue-100 transition shadow-inner" 
-                  value={headerContent} 
-                  onChange={e => setHeaderContent(e.target.value)} 
-                  placeholder="المملكة العربية السعودية&#10;وزارة التعليم&#10;إدارة التعليم بمحافظة..."
-                 />
+                 <textarea rows={4} className="w-full p-6 bg-slate-50 rounded-[2rem] font-bold outline-none border-2 border-transparent focus:border-blue-100 transition" value={headerContent} onChange={e => setHeaderContent(e.target.value)} />
               </div>
 
               <div className="space-y-4">
-                 <label className="text-sm font-black text-slate-700 mr-2">الرسائل العامة (أسفل اليمين)</label>
-                 <textarea 
-                  rows={5} 
-                  className="w-full p-6 bg-slate-50 rounded-[2rem] font-bold outline-none border-2 border-transparent focus:border-blue-100 transition shadow-inner" 
-                  value={generalMessages} 
-                  onChange={e => setGeneralMessages(e.target.value)} 
-                  placeholder="عزيزي ولي الأمر.. نرجو التعاون في.."
-                 />
+                 <label className="text-sm font-black text-slate-700 mr-2">الرسائل العامة (تذييل الخطة)</label>
+                 <textarea rows={4} className="w-full p-6 bg-slate-50 rounded-[2rem] font-bold outline-none border-2 border-transparent focus:border-blue-100 transition" value={generalMessages} onChange={e => setGeneralMessages(e.target.value)} />
               </div>
 
               <div className="md:col-span-2 space-y-4">
-                 <label className="text-sm font-black text-slate-700 mr-2">ملاحظة أسفل صورة النشاط</label>
-                 <input 
-                  className="w-full p-5 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-blue-100 transition shadow-inner" 
-                  value={weeklyNotes} 
-                  onChange={e => setWeeklyNotes(e.target.value)} 
-                  placeholder="مثال: كن فطناً.. أو قيمة الأسبوع هي.."
-                 />
+                 <label className="text-sm font-black text-slate-700 mr-2">ملاحظة أسفل النشاط</label>
+                 <input className="w-full p-5 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-blue-100 transition" value={weeklyNotes} onChange={e => setWeeklyNotes(e.target.value)} />
               </div>
            </div>
            
-           <div className="pt-6 border-t border-slate-50">
-             <button onClick={handleSaveBranding} className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black text-xl shadow-xl shadow-slate-200 hover:bg-black transition-all active:scale-95 flex items-center justify-center gap-3">
-                <Save size={24} className="text-blue-400" />
-                حفظ كافة تعديلات الهوية
+           <div className="pt-6 border-t">
+             <button 
+                onClick={handleSaveBranding} 
+                className={`w-full py-6 rounded-[2rem] font-black text-xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${isSaved ? 'bg-emerald-500 text-white shadow-emerald-100' : 'bg-slate-900 text-white shadow-slate-200 hover:bg-black'}`}
+             >
+                {isSaved ? <CheckCircle2 size={24} /> : <Save size={24} />}
+                {isSaved ? 'تم حفظ كافة التعديلات بنجاح' : 'حفظ التغييرات'}
              </button>
            </div>
         </div>
@@ -189,14 +206,11 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school }) => {
                      <Users size={32} />
                      الطباعة الفردية للطلاب
                   </h3>
-                  <p className="text-blue-100 font-bold">هذه الميزة تولد ملف PDF يحتوي على صفحة مخصصة لكل طالب باسمه.</p>
+                  <p className="text-blue-100 font-bold">توليد صفحة خطة مخصصة لكل طالب تحمل اسمه وتفاصيله.</p>
                </div>
-               <Link 
-                  to={`/p/${school.slug}/bulk/students`} 
-                  className="bg-white text-blue-600 px-10 py-5 rounded-[2rem] font-black text-xl hover:bg-blue-50 transition shadow-lg active:scale-95 flex items-center gap-3"
-               >
+               <Link to={`/p/${school.slug}/bulk/students`} className="bg-white text-blue-600 px-10 py-5 rounded-[2rem] font-black text-xl hover:bg-blue-50 transition shadow-lg active:scale-95 flex items-center gap-3">
                   <Printer size={24} />
-                  فتح محرك الطباعة الجماعي
+                  فتح محرك الطباعة
                </Link>
             </div>
 
@@ -209,7 +223,7 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school }) => {
                         </div>
                         <div>
                            <div className="font-black text-slate-800">{className}</div>
-                           <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">عدد الطلاب المسجلين</div>
+                           <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">طلاب الفصل</div>
                         </div>
                      </div>
                      <Link to={`/p/${school.slug}/bulk/students?class=${encodeURIComponent(className)}`} className="p-3 text-blue-600 hover:bg-blue-50 rounded-xl transition">

@@ -4,6 +4,7 @@ export type UserRole = 'SYSTEM_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PUBLIC';
 export interface School {
   id: string;
   name: string;
+  email: string; // الحقل الجديد للاستعادة
   logoUrl?: string;
   headerContent?: string;
   generalMessages?: string;
@@ -11,7 +12,7 @@ export interface School {
   weeklyNotesImage?: string;
   subscriptionActive: boolean;
   slug: string;
-  adminPassword?: string; // أضفنا هذا الحقل لتخزين كلمة المرور المختارة
+  adminPassword?: string;
   studentCount: number;
   teacherCount: number;
   expiryDate: string;
