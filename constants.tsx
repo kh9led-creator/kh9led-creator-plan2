@@ -1,6 +1,22 @@
 
 import { School, Teacher, Student, Subject } from './types';
 
+// مفاتيح التخزين
+const STORAGE_KEYS = {
+  SCHOOLS: 'madrasati_schools',
+  TEACHERS: 'madrasati_teachers',
+  STUDENTS: 'madrasati_students',
+  SYSTEM_ADMIN: 'madrasati_sysadmin'
+};
+
+// تهيئة مدير النظام الافتراضي إذا لم يوجد
+if (!localStorage.getItem(STORAGE_KEYS.SYSTEM_ADMIN)) {
+  localStorage.setItem(STORAGE_KEYS.SYSTEM_ADMIN, JSON.stringify({
+    username: 'admin',
+    password: '123'
+  }));
+}
+
 export const DAYS = [
   { id: 'sun', label: 'الأحد' },
   { id: 'mon', label: 'الإثنين' },
@@ -11,32 +27,32 @@ export const DAYS = [
 
 export const PERIODS = [1, 2, 3, 4, 5, 6, 7];
 
-export const MOCK_SCHOOLS: School[] = [
-  {
-    id: '1',
-    name: 'مدرسة أحد الابتدائية',
-    slug: 'ohod-school',
-    headerContent: 'وزارة التعليم - الإدارة العامة للتعليم بالمنطقة الشرقية\nمدرسة أحد الابتدائية للبنين',
-    generalMessages: 'يرجى من ولي أمر الطالب الكريم متابعة ابنكم في رصد الواجبات والدروس اليومية.',
-    weeklyNotes: 'يرجى إحضار الأدوات الفنية ليوم الثلاثاء القادم.',
-    logoUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_x_Pz9E_qS8YV0Y4Xj_mI7Fq_YF8_H6J1_A&s',
-    subscriptionActive: true,
-    studentCount: 450,
-    teacherCount: 32,
-    expiryDate: '2025-12-30'
+// وظائف مساعدة لإدارة البيانات الحقيقية
+export const db = {
+  getSchools: (): School[] => JSON.parse(localStorage.getItem(STORAGE_KEYS.SCHOOLS) || '[]'),
+  saveSchool: (school: School) => {
+    const schools = db.getSchools();
+    const index = schools.findIndex(s => s.id === school.id);
+    if (index > -1) schools[index] = school;
+    else schools.push(school);
+    localStorage.setItem(STORAGE_KEYS.SCHOOLS, JSON.stringify(schools));
   },
-  {
-    id: '2',
-    name: 'مدرسة التميز العالمية',
-    slug: 'excellence-intl',
-    headerContent: 'التعليم الأهلي - مدرسة التميز العالمية\nقسم البنين والبنات',
-    subscriptionActive: false,
-    studentCount: 210,
-    teacherCount: 15,
-    expiryDate: '2024-01-15'
-  }
-];
+  
+  getSystemAdmin: () => JSON.parse(localStorage.getItem(STORAGE_KEYS.SYSTEM_ADMIN) || '{"username":"admin","password":"123"}'),
+  updateSystemAdmin: (data: any) => localStorage.setItem(STORAGE_KEYS.SYSTEM_ADMIN, JSON.stringify(data)),
 
+  getTeachers: (schoolId?: string): Teacher[] => {
+    const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.TEACHERS) || '[]');
+    return schoolId ? all.filter((t: any) => t.schoolId === schoolId) : all;
+  },
+  saveTeacher: (teacher: Teacher & { schoolId: string }) => {
+    const teachers = JSON.parse(localStorage.getItem(STORAGE_KEYS.TEACHERS) || '[]');
+    teachers.push(teacher);
+    localStorage.setItem(STORAGE_KEYS.TEACHERS, JSON.stringify(teachers));
+  }
+};
+
+// للواجهات التي لا تزال تتطلب مصفوفة أولية
 export const MOCK_SUBJECTS: Subject[] = [
   { id: '1', name: 'لغتي' },
   { id: '2', name: 'علوم' },
@@ -44,12 +60,6 @@ export const MOCK_SUBJECTS: Subject[] = [
   { id: '4', name: 'رياضيات' }
 ];
 
-export const MOCK_TEACHERS: Teacher[] = [
-  { id: 't1', name: 'أ. محمد العتيبي', username: 'mohammad_ati', subjects: ['1', '2'] },
-  { id: 't2', name: 'أ. سارة القحطاني', username: 'sara_q', subjects: ['3', '4'] }
-];
-
-export const MOCK_STUDENTS: Student[] = [
-  { id: 's1', name: 'أحمد إبراهيم', grade: 'الأول الابتدائي', section: '1', phoneNumber: '0500000001' },
-  { id: 's2', name: 'خالد سلمان', grade: 'الأول الابتدائي', section: '1', phoneNumber: '0500000002' }
-];
+export const MOCK_SCHOOLS = db.getSchools();
+export const MOCK_TEACHERS = db.getTeachers();
+export const MOCK_STUDENTS: Student[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.STUDENTS) || '[]');

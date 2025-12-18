@@ -1,125 +1,182 @@
 
-import React from 'react';
-import { MOCK_SCHOOLS } from '../constants';
+import React, { useState, useEffect } from 'react';
+import { db } from '../constants';
+import { School as SchoolType } from '../types';
 import { 
   LayoutDashboard, ShieldCheck, School, 
   CreditCard, Settings, LogOut, CheckCircle2, 
-  XCircle, ArrowUpRight, Plus, Globe
+  XCircle, ArrowUpRight, Plus, Globe, User, Lock, Save, Check
 } from 'lucide-react';
 
 const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
+  const [activeTab, setActiveTab] = useState<'home' | 'schools' | 'profile'>('home');
+  const [schools, setSchools] = useState<SchoolType[]>([]);
+  
+  // بيانات الملف الشخصي
+  const [adminData, setAdminData] = useState(db.getSystemAdmin());
+  const [newUsername, setNewUsername] = useState(adminData.username);
+  const [newPassword, setNewPassword] = useState(adminData.password);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  useEffect(() => {
+    setSchools(db.getSchools());
+  }, []);
+
+  const handleUpdateProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updated = { username: newUsername, password: newPassword };
+    db.updateSystemAdmin(updated);
+    setAdminData(updated);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
+  };
+
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden font-['Tajawal']">
       {/* Sidebar */}
-      <aside className="w-80 bg-slate-900 text-white flex flex-col p-8">
+      <aside className="w-80 bg-slate-900 text-white flex flex-col p-8 shrink-0">
         <div className="flex items-center gap-3 mb-12">
           <div className="bg-blue-500 p-2 rounded-xl"><ShieldCheck /></div>
           <span className="text-2xl font-black">إدارة النظام</span>
         </div>
 
         <nav className="flex-1 space-y-3">
-          {[
-            { label: 'الرئيسية', icon: <LayoutDashboard size={20} />, active: true },
-            { label: 'المدارس المشتركة', icon: <School size={20} /> },
-            { label: 'الاشتراكات والمدفوعات', icon: <CreditCard size={20} /> },
-            { label: 'إعدادات المنصة', icon: <Settings size={20} /> },
-          ].map((item, i) => (
-            <button key={i} className={`w-full flex items-center gap-4 p-4 rounded-2xl font-bold transition ${item.active ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
+          <button 
+            onClick={() => setActiveTab('home')}
+            className={`w-full flex items-center gap-4 p-4 rounded-2xl font-bold transition ${activeTab === 'home' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900' : 'text-slate-400 hover:bg-slate-800'}`}
+          >
+            <LayoutDashboard size={20} /> الرئيسية
+          </button>
+          <button 
+            onClick={() => setActiveTab('schools')}
+            className={`w-full flex items-center gap-4 p-4 rounded-2xl font-bold transition ${activeTab === 'schools' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900' : 'text-slate-400 hover:bg-slate-800'}`}
+          >
+            <School size={20} /> المدارس
+          </button>
+          <button 
+            onClick={() => setActiveTab('profile')}
+            className={`w-full flex items-center gap-4 p-4 rounded-2xl font-bold transition ${activeTab === 'profile' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900' : 'text-slate-400 hover:bg-slate-800'}`}
+          >
+            <User size={20} /> إعدادات حسابي
+          </button>
         </nav>
 
         <button onClick={onLogout} className="mt-auto flex items-center gap-3 p-4 text-rose-400 font-bold hover:bg-rose-950/30 rounded-2xl transition">
-          <LogOut size={20} />
-          تسجيل الخروج
+          <LogOut size={20} /> تسجيل الخروج
         </button>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-12">
-        <header className="flex justify-between items-center mb-10">
-          <div>
-            <h1 className="text-4xl font-black text-slate-900">مرحباً، المشرف العام</h1>
-            <p className="text-slate-500 mt-1">نظرة شاملة على كافة المدارس والاشتراكات النشطة.</p>
-          </div>
-          <button className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-xl shadow-blue-100 hover:scale-105 transition">
-            <Plus size={20} />
-            إضافة مدرسة جديدة
-          </button>
-        </header>
+        {activeTab === 'home' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4">
+            <header className="flex justify-between items-center mb-10">
+              <div>
+                <h1 className="text-4xl font-black text-slate-900">مرحباً، {adminData.username}</h1>
+                <p className="text-slate-500 mt-1">نظرة عامة على حالة المنصة ككل.</p>
+              </div>
+            </header>
 
-        {/* Global Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          {[
-            { label: 'إجمالي المدارس', value: '154', color: 'blue' },
-            { label: 'اشتراكات نشطة', value: '142', color: 'emerald' },
-            { label: 'إجمالي الطلاب', value: '45,200', color: 'purple' },
-          ].map((stat, i) => (
-            <div key={i} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
-               <div className="text-slate-400 font-bold text-sm uppercase tracking-widest">{stat.label}</div>
-               <div className="text-4xl font-black text-slate-900 mt-2">{stat.value}</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+              <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
+                <div className="text-slate-400 font-bold text-sm uppercase tracking-widest">إجمالي المدارس</div>
+                <div className="text-4xl font-black text-slate-900 mt-2">{schools.length}</div>
+              </div>
+              <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
+                <div className="text-slate-400 font-bold text-sm uppercase tracking-widest">المعلمون النشطون</div>
+                <div className="text-4xl font-black text-emerald-600 mt-2">--</div>
+              </div>
+              <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
+                <div className="text-slate-400 font-bold text-sm uppercase tracking-widest">الطلاب المسجلون</div>
+                <div className="text-4xl font-black text-blue-600 mt-2">--</div>
+              </div>
             </div>
-          ))}
-        </div>
-
-        {/* Schools Table */}
-        <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden">
-          <div className="p-8 border-b bg-slate-50/50 flex justify-between items-center">
-            <h3 className="text-xl font-black text-slate-800">المدارس المسجلة</h3>
-            <button className="text-blue-600 font-bold text-sm flex items-center gap-1">عرض الكل <ArrowUpRight size={16} /></button>
           </div>
-          <table className="w-full text-right">
-            <thead className="bg-slate-50/50 text-slate-400 text-xs font-black uppercase tracking-widest">
-              <tr>
-                <th className="p-6">المدرسة</th>
-                <th className="p-6">الحالة</th>
-                <th className="p-6">الطلاب/المعلمون</th>
-                <th className="p-6">تاريخ الانتهاء</th>
-                <th className="p-6">الإجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
-              {MOCK_SCHOOLS.map(school => (
-                <tr key={school.id} className="border-b last:border-0 hover:bg-slate-50 transition">
-                  <td className="p-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-slate-100 rounded-xl overflow-hidden flex items-center justify-center">
-                        {school.logoUrl ? <img src={school.logoUrl} className="w-full h-full object-cover" /> : <School size={24} className="text-slate-300" />}
-                      </div>
-                      <div>
-                        <div className="font-black text-slate-800">{school.name}</div>
-                        <div className="text-xs text-slate-400 font-bold">slug: {school.slug}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-6">
-                    {school.subscriptionActive ? (
-                      <span className="bg-emerald-50 text-emerald-600 px-4 py-1 rounded-full text-xs font-black flex items-center gap-1 w-fit">
-                        <CheckCircle2 size={14} /> نشط
-                      </span>
-                    ) : (
-                      <span className="bg-rose-50 text-rose-600 px-4 py-1 rounded-full text-xs font-black flex items-center gap-1 w-fit">
-                        <XCircle size={14} /> منتهي
-                      </span>
-                    )}
-                  </td>
-                  <td className="p-6 font-bold text-slate-600">
-                    <span className="text-blue-600">{school.studentCount}</span> / <span className="text-purple-600">{school.teacherCount}</span>
-                  </td>
-                  <td className="p-6 font-mono text-slate-400">{school.expiryDate}</td>
-                  <td className="p-6">
-                    <div className="flex gap-2">
-                       <button className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-blue-600 hover:text-white transition"><Settings size={18} /></button>
-                       <button className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-emerald-600 hover:text-white transition"><Globe size={18} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        )}
+
+        {activeTab === 'profile' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 max-w-2xl">
+             <div className="bg-white p-12 rounded-[3.5rem] shadow-sm border border-slate-200">
+                <div className="flex items-center gap-4 mb-10">
+                   <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
+                      <ShieldCheck size={32} />
+                   </div>
+                   <div>
+                      <h2 className="text-2xl font-black text-slate-900">إدارة حساب المشرف</h2>
+                      <p className="text-slate-500 font-medium">يمكنك تغيير بيانات الدخول للنظام من هنا</p>
+                   </div>
+                </div>
+
+                <form onSubmit={handleUpdateProfile} className="space-y-6">
+                   <div className="space-y-2">
+                      <label className="text-sm font-black text-slate-700 flex items-center gap-2 mr-2">
+                        <User size={16} className="text-blue-500" /> اسم المستخدم للمشرف
+                      </label>
+                      <input 
+                        type="text" 
+                        value={newUsername}
+                        onChange={(e) => setNewUsername(e.target.value)}
+                        className="w-full p-5 bg-slate-50 border-none rounded-3xl font-black text-lg outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                      />
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-sm font-black text-slate-700 flex items-center gap-2 mr-2">
+                        <Lock size={16} className="text-blue-500" /> كلمة المرور الجديدة
+                      </label>
+                      <input 
+                        type="password" 
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="w-full p-5 bg-slate-50 border-none rounded-3xl font-black text-lg outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                      />
+                   </div>
+
+                   <button 
+                    type="submit"
+                    className={`w-full py-6 rounded-[2rem] font-black text-xl transition-all flex items-center justify-center gap-3 ${saveSuccess ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white hover:bg-black'}`}
+                   >
+                     {saveSuccess ? <><Check /> تم حفظ التغييرات</> : <><Save /> حفظ البيانات الجديدة</>}
+                   </button>
+                </form>
+             </div>
+          </div>
+        )}
+
+        {(activeTab === 'home' || activeTab === 'schools') && (
+           <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden mt-8">
+            <div className="p-8 border-b bg-slate-50/50 flex justify-between items-center">
+              <h3 className="text-xl font-black text-slate-800">المدارس المسجلة فعلياً</h3>
+            </div>
+            {schools.length === 0 ? (
+               <div className="p-20 text-center text-slate-400 font-bold">لا يوجد مدارس مسجلة بعد.</div>
+            ) : (
+              <table className="w-full text-right">
+                <thead className="bg-slate-50/50 text-slate-400 text-xs font-black uppercase tracking-widest">
+                  <tr>
+                    <th className="p-6">المدرسة</th>
+                    <th className="p-6">Slug</th>
+                    <th className="p-6">الحالة</th>
+                    <th className="p-6">الإجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {schools.map(school => (
+                    <tr key={school.id} className="border-b last:border-0 hover:bg-slate-50 transition">
+                      <td className="p-6 font-black">{school.name}</td>
+                      <td className="p-6 font-mono text-blue-600">{school.slug}</td>
+                      <td className="p-6">
+                        <span className="bg-emerald-50 text-emerald-600 px-4 py-1 rounded-full text-xs font-black">نشط</span>
+                      </td>
+                      <td className="p-6">
+                        <button className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition"><XCircle size={18} /></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );
