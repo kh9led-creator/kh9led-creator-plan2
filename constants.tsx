@@ -1,5 +1,5 @@
 
-import { School, Teacher, Student, Subject } from './types';
+import { School, Teacher, Student, Subject } from './types.ts';
 
 // مفاتيح التخزين
 const STORAGE_KEYS = {

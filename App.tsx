@@ -1,15 +1,15 @@
 
 import React, { useState } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { School, UserRole, AppState } from './types';
-import LandingPage from './pages/LandingPage';
-import SchoolDashboard from './pages/SchoolDashboard';
-import TeacherDashboard from './pages/TeacherDashboard';
-import PublicPlanView from './pages/PublicPlanView';
-import SystemAdminDashboard from './pages/SystemAdminDashboard';
-import Login from './pages/Login';
-import TeacherLogin from './pages/TeacherLogin';
-import SchoolRegistration from './pages/SchoolRegistration';
+import { School, UserRole, AppState } from './types.ts';
+import LandingPage from './pages/LandingPage.tsx';
+import SchoolDashboard from './pages/SchoolDashboard.tsx';
+import TeacherDashboard from './pages/TeacherDashboard.tsx';
+import PublicPlanView from './pages/PublicPlanView.tsx';
+import SystemAdminDashboard from './pages/SystemAdminDashboard.tsx';
+import Login from './pages/Login.tsx';
+import TeacherLogin from './pages/TeacherLogin.tsx';
+import SchoolRegistration from './pages/SchoolRegistration.tsx';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>({
