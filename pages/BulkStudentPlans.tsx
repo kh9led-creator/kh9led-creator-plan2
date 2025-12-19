@@ -69,55 +69,54 @@ const BulkStudentPlans: React.FC = () => {
 
           return (
             <div key={student.id} className="student-page-container print:m-0 print:shadow-none">
-              <div className="a4-page bg-white shadow-2xl p-[10mm] relative flex flex-col overflow-hidden border border-slate-100" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
+              <div className="a4-page bg-white shadow-2xl p-[8mm] relative flex flex-col overflow-hidden border border-slate-100" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
                 
-                {/* العلامة المائية */}
+                {/* العلامة المائية - رفع الوضوح */}
                 {school.logoUrl && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.025] z-0 overflow-hidden">
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-0 overflow-hidden">
                     <img src={school.logoUrl} className="w-[500px] h-[500px] object-contain grayscale" alt="خلفية" />
                   </div>
                 )}
 
-                {/* الترويسة - مصغرة */}
+                {/* الترويسة - إزالة الألوان الزرقاء */}
                 <div className="relative z-10 grid grid-cols-3 gap-3 mb-4 border-b-2 border-slate-900 pb-3 items-center">
-                  <div className="text-right space-y-0.5 font-black text-[7.5pt] leading-tight text-slate-700">
+                  <div className="text-right space-y-0.5 font-black text-[7.5pt] leading-tight text-slate-800">
                     {headerLines.map((line, i) => <p key={i}>{line}</p>)}
-                    <p className="text-indigo-600 font-black pt-1">مدرسة: {school.name}</p>
                   </div>
 
                   <div className="flex flex-col items-center justify-center">
-                    {school.logoUrl ? <img src={school.logoUrl} className="w-16 h-16 object-contain" alt="شعار" /> : <div className="w-14 h-14 border rounded-lg flex items-center justify-center text-[7pt] text-slate-200">شعار</div>}
+                    {school.logoUrl ? <img src={school.logoUrl} className="w-16 h-16 object-contain" alt="شعار" /> : <div className="w-14 h-14 border rounded-lg flex items-center justify-center text-[7pt] text-slate-200 font-black">LOGO</div>}
                     <div className="mt-1 bg-slate-900 text-white px-3 py-0.5 rounded-full">
                       <span className="text-[6.5pt] font-black uppercase tracking-wider">الخطة الدراسية الأسبوعية</span>
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <div className="bg-slate-900 text-white p-2.5 rounded-2xl text-center shadow-lg border-t-2 border-indigo-500 relative overflow-hidden">
+                    <div className="bg-slate-900 text-white p-2.5 rounded-2xl text-center shadow-lg border-t-2 border-slate-500 relative overflow-hidden">
                       <p className="text-[6pt] font-black opacity-60 mb-0.5 flex items-center justify-center gap-1">
-                        <User size={8} className="text-indigo-300" /> الاسم الرباعي للطالب
+                        <User size={8} className="text-slate-300" /> الاسم الرباعي للطالب
                       </p>
-                      <h4 className="text-[11pt] font-black leading-none truncate px-1">
+                      <h4 className="text-[11.5pt] font-black leading-none truncate px-1">
                         {finalDisplayName}
                       </h4>
                     </div>
-                    <div className="text-[8.5pt] font-bold space-y-0.5 pr-2 border-r-2 border-indigo-100">
-                      <p className="flex items-center gap-1.5"><CalendarDays size={10} className="text-slate-400" /> الأسبوع: <span className="font-black text-indigo-700">{activeWeek?.name || "---"}</span></p>
-                      <p className="flex items-center gap-1.5"><Bookmark size={10} className="text-slate-400" /> الصف: <span className="font-black text-slate-800">{classTitle}</span></p>
+                    <div className="text-[8.5pt] font-bold space-y-0.5 pr-2 border-r-2 border-slate-300">
+                      <p className="flex items-center gap-1.5"><CalendarDays size={10} className="text-slate-500" /> الأسبوع: <span className="font-black text-slate-900">{activeWeek?.name || "---"}</span></p>
+                      <p className="flex items-center gap-1.5"><Bookmark size={10} className="text-slate-500" /> الصف: <span className="font-black text-slate-900">{classTitle}</span></p>
                     </div>
                   </div>
                 </div>
 
-                {/* الجدول - 7 حصص يومياً (35 حصة كاملة) */}
-                <div className="relative z-10 flex-1 overflow-hidden border-[2.5px] border-slate-900 rounded-sm mb-4 bg-white/50">
+                {/* الجدول - ضبط الارتفاع لظهور حصص الخميس كاملة */}
+                <div className="relative z-10 flex-1 overflow-hidden border-[2.5px] border-slate-900 rounded-sm mb-4">
                   <table className="w-full border-collapse table-fixed h-full text-center">
                     <thead className="bg-slate-50 border-b-[2.5px] border-slate-900 font-black text-slate-900">
-                      <tr className="h-9">
-                        <th className="border-l-[2px] border-slate-900 w-12 text-[9.5pt] bg-slate-100">اليوم</th>
-                        <th className="border-l-[1.5px] border-slate-900 w-8 text-[8.5pt]">م</th>
-                        <th className="border-l-[1.5px] border-slate-900 w-28 text-[9.5pt]">المادة</th>
-                        <th className="border-l-[1.5px] border-slate-900 text-[9.5pt]">الدرس المقرر</th>
-                        <th className="border-l-[1.5px] border-slate-900 text-[9.5pt]">الواجب المنزلي</th>
+                      <tr className="h-8">
+                        <th className="border-l-[1.5px] border-slate-900 w-12 text-[9pt] bg-slate-100">اليوم</th>
+                        <th className="border-l-[1.5px] border-slate-900 w-8 text-[8pt]">م</th>
+                        <th className="border-l-[1.5px] border-slate-900 w-28 text-[9pt]">المادة</th>
+                        <th className="border-l-[1.5px] border-slate-900 text-[9pt]">الدرس المقرر</th>
+                        <th className="border-l-[1.5px] border-slate-900 text-[9pt]">الواجب المنزلي</th>
                         <th className="w-24 text-[8pt] bg-slate-50">ملاحظات</th>
                       </tr>
                     </thead>
@@ -130,17 +129,17 @@ const BulkStudentPlans: React.FC = () => {
                             const plan = allPlans[planKey] || {};
                             const subject = subjects.find(s => s.id === sched.subjectId)?.name || '-';
                             return (
-                              <tr key={`${day.id}-${period}`} className={`h-[18.2px] border-b ${pIdx === 6 ? 'border-b-[2.5px] border-slate-900' : 'border-slate-200'}`}>
+                              <tr key={`${day.id}-${period}`} className={`h-[17.8px] border-b ${pIdx === 6 ? 'border-b-[2px] border-slate-900' : 'border-slate-200'}`}>
                                 {pIdx === 0 && (
-                                  <td rowSpan={7} className="border-l-[2.5px] border-slate-900 font-black rotate-180 [writing-mode:vertical-rl] bg-slate-100/30 text-[10pt] tracking-[0.1em] border-b-[2px] border-slate-900 leading-none">
+                                  <td rowSpan={7} className="border-l-[2.5px] border-slate-900 font-black rotate-180 [writing-mode:vertical-rl] bg-slate-50 text-[10pt] tracking-[0.1em] border-b-[2px] border-slate-900 leading-none">
                                     {day.label}
                                   </td>
                                 )}
-                                <td className="border-l-[1.2px] border-slate-200 text-[9pt] font-black bg-slate-50/50">{period}</td>
-                                <td className="border-l-[1.2px] border-slate-200 text-[9pt] font-black truncate px-1 text-indigo-900">{subject}</td>
-                                <td className="border-l-[1.2px] border-slate-200 text-[8.5pt] leading-tight px-2 truncate font-bold text-slate-700 italic">{plan.lesson || '-'}</td>
-                                <td className="border-l-[1.2px] border-slate-200 text-[8.5pt] leading-tight px-2 truncate font-bold text-slate-800">{plan.homework || '-'}</td>
-                                <td className="text-[7.5pt] px-1 text-slate-400 font-black truncate bg-slate-50/20 leading-none italic">{plan.enrichment || '-'}</td>
+                                <td className="border-l-[1.2px] border-slate-200 text-[8.5pt] font-black bg-slate-50/50">{period}</td>
+                                <td className="border-l-[1.2px] border-slate-200 text-[8.5pt] font-black truncate px-1">{subject}</td>
+                                <td className="border-l-[1.2px] border-slate-200 text-[8pt] leading-tight px-2 truncate font-bold text-slate-700 italic">{plan.lesson || '-'}</td>
+                                <td className="border-l-[1.2px] border-slate-200 text-[8pt] leading-tight px-2 truncate font-bold text-slate-800">{plan.homework || '-'}</td>
+                                <td className="text-[7pt] px-1 text-slate-400 font-black truncate bg-slate-50/20 leading-none italic">{plan.enrichment || '-'}</td>
                               </tr>
                             );
                           })}
@@ -150,26 +149,26 @@ const BulkStudentPlans: React.FC = () => {
                   </table>
                 </div>
 
-                {/* التذييل الإضافي - المعلومات الهامة */}
-                <div className="relative z-10 grid grid-cols-2 gap-6 h-[42mm]">
-                   <div className="border-[2px] border-slate-900 p-3.5 bg-white rounded-xl shadow-sm">
-                     <h3 className="text-[10pt] font-black mb-2 border-b-2 border-slate-900 pb-1 text-center bg-slate-100 rounded-md">توجيهات الشراكة الأسرية</h3>
-                     <p className="text-[9pt] font-bold leading-relaxed text-slate-700 whitespace-pre-wrap pr-2 h-[28mm] overflow-hidden">
+                {/* التذييل الإضافي */}
+                <div className="relative z-10 grid grid-cols-2 gap-6 h-[40mm]">
+                   <div className="border-[1.5px] border-slate-900 p-3.5 bg-white rounded-xl shadow-sm">
+                     <h3 className="text-[9.5pt] font-black mb-2 border-b border-slate-900 pb-1 text-center bg-slate-50 rounded-md">توجيهات الشراكة الأسرية</h3>
+                     <p className="text-[8.5pt] font-bold leading-relaxed text-slate-700 whitespace-pre-wrap pr-2 overflow-hidden">
                        {school.generalMessages || "١. المتابعة المستمرة لمنصة مدرستي لتعزيز التحصيل العلمي.\n٢. الالتزام بالحضور الصباحي.\n٣. إحضار الكتب المدرسية يومياً."}
                      </p>
                    </div>
-                   <div className="border-[2px] border-slate-900 p-3.5 bg-white rounded-xl shadow-sm">
-                     <h3 className="text-[10pt] font-black mb-2 border-b-2 border-slate-900 pb-1 text-center bg-indigo-50 text-indigo-900 rounded-md">القيمة التربوية</h3>
-                     <div className="flex flex-col items-center justify-center h-[28mm] overflow-hidden">
-                       {school.weeklyNotesImage && <img src={school.weeklyNotesImage} className="max-h-[16mm] object-contain mb-1" alt="قيمة" />}
-                       <p className="text-[10.5pt] font-black text-center text-indigo-800 leading-snug px-3">
+                   <div className="border-[1.5px] border-slate-900 p-3.5 bg-white rounded-xl shadow-sm">
+                     <h3 className="text-[9.5pt] font-black mb-2 border-b border-slate-900 pb-1 text-center bg-slate-50 rounded-md">القيمة التربوية</h3>
+                     <div className="flex flex-col items-center justify-center flex-1 pt-1">
+                       {school.weeklyNotesImage && <img src={school.weeklyNotesImage} className="max-h-[15mm] object-contain mb-1" alt="قيمة" />}
+                       <p className="text-[10pt] font-black text-center text-slate-800 leading-snug px-3">
                          {school.weeklyNotes || "البيئة المدرسية الآمنة هي منطلق الإبداع والتميز"}
                        </p>
                      </div>
                    </div>
                 </div>
                 
-                {/* سطر التذييل تم حذفه لضمان احتواء الورقة في صفحة واحدة وبقاء حصص الخميس كاملة */}
+                {/* تم حذف سطر التذييل النهائي لضمان بقاء حصص الخميس كاملة في صفحة واحدة */}
               </div>
             </div>
           );
