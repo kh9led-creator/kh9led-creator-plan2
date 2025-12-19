@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { School, Student } from '../../types.ts';
-import { Globe, Printer, Users, Sparkles, Camera, X, Save, CheckCircle2, Copy, ExternalLink, Link as LinkIcon, Image as ImageIcon, UserCircle } from 'lucide-react';
+// Fix: Added Calendar to imports
+import { Globe, Printer, Users, Sparkles, Camera, X, Save, CheckCircle2, Copy, ExternalLink, Link as LinkIcon, Image as ImageIcon, UserCircle, Archive, History, Trash2, Calendar } from 'lucide-react';
 import { db } from '../../constants.tsx';
 import { Link } from 'react-router-dom';
 
@@ -12,9 +13,11 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
   const [weeklyNotes, setWeeklyNotes] = useState(school.weeklyNotes || "");
   const [weeklyNotesImage, setWeeklyNotesImage] = useState<string | null>(school.weeklyNotesImage || null);
   const [logoUrl, setLogoUrl] = useState<string | null>(school.logoUrl || null);
-  const [activeTab, setActiveTab] = useState<'branding' | 'links' | 'students'>('links');
+  const [activeTab, setActiveTab] = useState<'branding' | 'links' | 'students' | 'archive'>('links');
   const [isSaved, setIsSaved] = useState(false);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
+  const [archivedPlans, setArchivedPlans] = useState<any[]>([]);
+  const [weekLabel, setWeekLabel] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -26,6 +29,7 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
     setWeeklyNotesImage(initialSchool.weeklyNotesImage || null);
     setLogoUrl(initialSchool.logoUrl || null);
     setSchool(initialSchool);
+    setArchivedPlans(db.getArchivedPlans(initialSchool.id));
   }, [initialSchool]);
 
   const handleSaveBranding = () => {
@@ -41,6 +45,26 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
     setSchool(updated);
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
+  };
+
+  const handleArchiveWeek = () => {
+    if (!weekLabel) {
+      alert('يرجى كتابة مسمى للأسبوع (مثلاً: الأسبوع الأول - الفصل الأول)');
+      return;
+    }
+    if (confirm('هل أنت متأكد من أرشفة الخطط الحالية؟ سيتم تصفير الجدول لبدء أسبوع جديد.')) {
+      db.archiveCurrentPlans(school.id, weekLabel);
+      setArchivedPlans(db.getArchivedPlans(school.id));
+      setWeekLabel('');
+      alert('تمت أرشفة الأسبوع بنجاح وتصفير الخطة الحالية.');
+    }
+  };
+
+  const handleDeleteArchive = (id: string) => {
+    if (confirm('هل أنت متأكد من حذف هذا الأرشيف نهائياً؟')) {
+      db.deleteArchivedPlan(school.id, id);
+      setArchivedPlans(db.getArchivedPlans(school.id));
+    }
   };
 
   const handleCopy = (text: string, id: string) => {
@@ -83,16 +107,36 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
 
   return (
     <div className="space-y-8 animate-in fade-in font-['Tajawal']">
-      <div>
-        <h2 className="text-3xl font-black text-slate-900">بوابة الخطط الأسبوعية</h2>
-        <p className="text-slate-500 font-bold mt-1">إدارة الرابط الموحد وهوية المطبوعات.</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-black text-slate-900">بوابة الخطط الأسبوعية</h2>
+          <p className="text-slate-500 font-bold mt-1">إدارة الرابط الموحد وهوية المطبوعات.</p>
+        </div>
+        {activeTab !== 'archive' && (
+          <div className="flex gap-3 bg-white p-2 rounded-2xl border shadow-sm items-center">
+            <input 
+              type="text" 
+              placeholder="مسمى الأسبوع للأرشفة..." 
+              className="px-4 py-2 bg-slate-50 rounded-xl font-bold text-sm outline-none border focus:border-indigo-200"
+              value={weekLabel}
+              onChange={e => setWeekLabel(e.target.value)}
+            />
+            <button 
+              onClick={handleArchiveWeek}
+              className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-black text-sm flex items-center gap-2 hover:bg-indigo-700 transition shadow-lg shadow-indigo-100"
+            >
+              <Archive size={16} /> أرشفة الأسبوع
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl w-fit">
         {[
           {id:'links', label:'روابط الوصول'}, 
           {id:'branding', label:'الهوية والترويسة'}, 
-          {id:'students', label:'الطباعة الفردية'}
+          {id:'students', label:'الطباعة الفردية'},
+          {id:'archive', label:'أرشيف الأسابيع'}
         ].map(tab => (
           <button 
             key={tab.id} 
@@ -106,7 +150,6 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
 
       {activeTab === 'links' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-           {/* Public Link Card */}
            <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-6 flex flex-col items-center text-center">
               <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-[1.5rem] flex items-center justify-center shadow-inner">
                  <Globe size={32} />
@@ -129,7 +172,6 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
               </Link>
            </div>
 
-           {/* Teacher Link Card */}
            <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-6 flex flex-col items-center text-center">
               <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-[1.5rem] flex items-center justify-center shadow-inner">
                  <UserCircle size={32} />
@@ -226,7 +268,7 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
 
               <div className="space-y-4">
                  <label className="text-sm font-black text-slate-700 mr-2">الرسائل العامة (تذييل الخطة)</label>
-                 <textarea rows={4} className="w-full p-6 bg-slate-50 rounded-[2rem] font-bold outline-none border-2 border-transparent focus:border-blue-100 transition shadow-inner" value={generalMessages} onChange={e => setGeneralMessages(e.target.value)} placeholder="عزيزي ولي الأمر.. نرجو التعاون في.." />
+                 <textarea rows={4} className="w-full p-6 bg-slate-50 rounded-[2rem] font-bold outline-none border-2 border-transparent focus:border-blue-100 transition shadow-inner" value={headerContent} onChange={e => setHeaderContent(e.target.value)} placeholder="عزيزي ولي الأمر.. نرجو التعاون في.." />
               </div>
 
               <div className="md:col-span-2 space-y-4">
@@ -282,6 +324,48 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
                ))}
             </div>
          </div>
+      )}
+
+      {activeTab === 'archive' && (
+        <div className="space-y-8 animate-in fade-in">
+           {archivedPlans.length === 0 ? (
+             <div className="bg-white p-32 rounded-[4rem] text-center text-slate-300 font-black border-4 border-dashed border-slate-100 flex flex-col items-center gap-6">
+                <History size={64} className="opacity-20" />
+                <p className="text-2xl">لا يوجد أرشيف للخطط الأسبوعية حتى الآن</p>
+             </div>
+           ) : (
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {archivedPlans.map((archive) => (
+                  <div key={archive.id} className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden">
+                     <div className="absolute top-0 right-0 w-2 h-full bg-indigo-500/20"></div>
+                     <div className="flex justify-between items-start mb-6">
+                        <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
+                           <Archive size={28} />
+                        </div>
+                        <button 
+                          onClick={() => handleDeleteArchive(archive.id)}
+                          className="p-3 text-rose-400 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition opacity-0 group-hover:opacity-100"
+                        >
+                           <Trash2 size={20} />
+                        </button>
+                     </div>
+                     <h3 className="text-xl font-black text-slate-900 mb-2">{archive.weekLabel}</h3>
+                     <div className="space-y-2">
+                        <p className="text-slate-400 font-bold text-sm flex items-center gap-2">
+                           <Calendar size={14} /> تمت الأرشفة في: {archive.date}
+                        </p>
+                        <p className="text-indigo-600 font-black text-sm flex items-center gap-2">
+                           <Save size={14} /> عدد العناصر المحفوظة: {Object.keys(archive.plans).length}
+                        </p>
+                     </div>
+                     <div className="mt-8 pt-6 border-t flex gap-4">
+                        <button className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-black text-sm hover:bg-black transition">استعراض البيانات</button>
+                     </div>
+                  </div>
+                ))}
+             </div>
+           )}
+        </div>
       )}
     </div>
   );

@@ -246,8 +246,8 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
                    </div>
 
                    <div className="p-10 lg:p-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {/* Fix: Added explicit typing to s and student to avoid unknown type errors in map and filter */}
-                      {db.getStudents(school.id)
+                      {/* Fix: Ensured explicit typing and array casting to fix unknown assignment error */}
+                      {(db.getStudents(school.id) as Student[])
                         .filter((s: Student) => `${s.grade} - فصل ${s.section}` === selectedClassForAttendance)
                         .map((student: Student) => {
                           const isAbsent = absentStudents.includes(student.name);

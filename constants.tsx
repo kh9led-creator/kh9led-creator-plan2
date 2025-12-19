@@ -8,7 +8,9 @@ const STORAGE_KEYS = {
   CLASSES: 'madrasati_classes',
   SCHEDULES: 'madrasati_schedules',
   PLANS: 'madrasati_plans',
+  ARCHIVED_PLANS: 'madrasati_archived_plans',
   ATTENDANCE: 'madrasati_attendance',
+  ARCHIVED_ATTENDANCE: 'madrasati_archived_attendance',
   SYSTEM_ADMIN: 'madrasati_sysadmin',
   SUBJECTS: 'madrasati_subjects'
 };
@@ -72,12 +74,9 @@ export const db = {
     localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(all));
   },
 
-  // إدارة الفصول
   getClasses: (schoolId: string): SchoolClass[] => {
     const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.CLASSES) || '[]');
     const schoolClasses = all.filter((c: any) => c.schoolId === schoolId);
-    
-    // إذا لم توجد فصول معرفة، نحاول استخراجها من الطلاب (للتوافق مع البيانات القديمة)
     if (schoolClasses.length === 0) {
       const students = db.getStudents(schoolId);
       const uniqueClasses = Array.from(new Set(students.map(s => `${s.grade}|${s.section}`)));
@@ -111,9 +110,10 @@ export const db = {
     else all.push(subject);
     localStorage.setItem(`${STORAGE_KEYS.SUBJECTS}_${schoolId}`, JSON.stringify(all));
   },
-  deleteSubject: (schoolId: string, subjectId: string) => {
+  // Fix: Added deleteSubject method which was missing but called in SchoolSettings
+  deleteSubject: (schoolId: string, id: string) => {
     const all = db.getSubjects(schoolId);
-    const filtered = all.filter(s => s.id !== subjectId);
+    const filtered = all.filter(s => s.id !== id);
     localStorage.setItem(`${STORAGE_KEYS.SUBJECTS}_${schoolId}`, JSON.stringify(filtered));
   },
 
@@ -133,13 +133,64 @@ export const db = {
     plans[planKey] = data;
     localStorage.setItem(`${STORAGE_KEYS.PLANS}_${schoolId}`, JSON.stringify(plans));
   },
+  archiveCurrentPlans: (schoolId: string, weekLabel: string) => {
+    const currentPlans = db.getPlans(schoolId);
+    const archived = JSON.parse(localStorage.getItem(`${STORAGE_KEYS.ARCHIVED_PLANS}_${schoolId}`) || '[]');
+    archived.unshift({
+      id: Date.now().toString(),
+      weekLabel,
+      date: new Date().toLocaleDateString('ar-SA'),
+      plans: currentPlans
+    });
+    localStorage.setItem(`${STORAGE_KEYS.ARCHIVED_PLANS}_${schoolId}`, JSON.stringify(archived));
+    // بعد الأرشفة، نقوم بتصفير الخطط الحالية لبدء أسبوع جديد
+    localStorage.setItem(`${STORAGE_KEYS.PLANS}_${schoolId}`, JSON.stringify({}));
+  },
+  getArchivedPlans: (schoolId: string) => JSON.parse(localStorage.getItem(`${STORAGE_KEYS.ARCHIVED_PLANS}_${schoolId}`) || '[]'),
+  deleteArchivedPlan: (schoolId: string, archiveId: string) => {
+    const all = db.getArchivedPlans(schoolId);
+    const filtered = all.filter((p: any) => p.id !== archiveId);
+    localStorage.setItem(`${STORAGE_KEYS.ARCHIVED_PLANS}_${schoolId}`, JSON.stringify(filtered));
+  },
 
   getAttendance: (schoolId: string) => JSON.parse(localStorage.getItem(`${STORAGE_KEYS.ATTENDANCE}_${schoolId}`) || '[]'),
   saveAttendance: (schoolId: string, report: any) => {
     const all = db.getAttendance(schoolId);
     all.unshift(report);
     localStorage.setItem(`${STORAGE_KEYS.ATTENDANCE}_${schoolId}`, JSON.stringify(all));
+  },
+  archiveAttendance: (schoolId: string, reportId: string) => {
+    const active = db.getAttendance(schoolId);
+    const report = active.find((r: any) => r.id === reportId);
+    if (!report) return;
+    
+    // إزالة من النشط
+    const filteredActive = active.filter((r: any) => r.id !== reportId);
+    localStorage.setItem(`${STORAGE_KEYS.ATTENDANCE}_${schoolId}`, JSON.stringify(filteredActive));
+    
+    // إضافة للأرشيف
+    const archived = JSON.parse(localStorage.getItem(`${STORAGE_KEYS.ARCHIVED_ATTENDANCE}_${schoolId}`) || '[]');
+    archived.unshift(report);
+    localStorage.setItem(`${STORAGE_KEYS.ARCHIVED_ATTENDANCE}_${schoolId}`, JSON.stringify(archived));
+  },
+  getArchivedAttendance: (schoolId: string) => JSON.parse(localStorage.getItem(`${STORAGE_KEYS.ARCHIVED_ATTENDANCE}_${schoolId}`) || '[]'),
+  restoreAttendance: (schoolId: string, reportId: string) => {
+    const archived = db.getArchivedAttendance(schoolId);
+    const report = archived.find((r: any) => r.id === reportId);
+    if (!report) return;
+
+    // إزالة من الأرشيف
+    const filteredArchived = archived.filter((r: any) => r.id !== reportId);
+    localStorage.setItem(`${STORAGE_KEYS.ARCHIVED_ATTENDANCE}_${schoolId}`, JSON.stringify(filteredArchived));
+
+    // إعادة للنشط
+    const active = db.getAttendance(schoolId);
+    active.unshift(report);
+    localStorage.setItem(`${STORAGE_KEYS.ATTENDANCE}_${schoolId}`, JSON.stringify(active));
+  },
+  deleteArchivedAttendance: (schoolId: string, reportId: string) => {
+    const archived = db.getArchivedAttendance(schoolId);
+    const filtered = archived.filter((r: any) => r.id !== reportId);
+    localStorage.setItem(`${STORAGE_KEYS.ARCHIVED_ATTENDANCE}_${schoolId}`, JSON.stringify(filtered));
   }
 };
-
-export const MOCK_SUBJECTS = DEFAULT_SUBJECTS;
