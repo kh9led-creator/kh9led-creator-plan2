@@ -6,7 +6,7 @@ import {
   Plus, Search, Trash2, CheckCircle2, 
   Upload, X, Sparkles, Loader2, User, 
   Eraser, Phone, GraduationCap, Layout, Edit2, 
-  Users, ChevronLeft, ArrowUpRight
+  Users
 } from 'lucide-react';
 
 const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
@@ -62,89 +62,77 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
   };
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700">
-      {/* Header Section */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
-        <div className="flex items-center gap-6">
-          <div className="w-20 h-20 bg-indigo-600 text-white rounded-[2rem] flex items-center justify-center shadow-xl shadow-indigo-100 transition-transform hover:scale-105 duration-500">
-            <Users size={36} strokeWidth={2.5} />
-          </div>
+    <div className="space-y-8 animate-in fade-in duration-500 max-w-full">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100"><Users size={28} /></div>
           <div>
-            <h2 className="text-4xl font-black text-slate-900 tracking-tight">إدارة شؤون الطلاب</h2>
-            <p className="text-slate-500 font-bold mt-1 text-lg">تحكم كامل في بيانات {students.length} طالب مسجل.</p>
+            <h2 className="text-2xl font-black text-slate-800 tracking-tight">شؤون الطلاب</h2>
+            <p className="text-slate-400 font-bold text-sm">إجمالي المسجلين: {students.length} طالب</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-4 w-full lg:w-auto">
-          <button onClick={() => setShowImport(true)} className="flex-1 lg:flex-none bg-slate-900 text-white px-10 py-5 rounded-[1.5rem] font-black flex items-center justify-center gap-3 transition-all hover:bg-black active:scale-95 text-lg btn-glow">
-            <Sparkles size={24} className="text-indigo-400" /> استيراد ذكي
+        <div className="flex gap-3 w-full md:w-auto">
+          <button onClick={() => setShowImport(true)} className="flex-1 md:flex-none bg-slate-900 text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-md text-sm">
+            <Sparkles size={18} className="text-blue-400" /> استيراد
           </button>
-          <button onClick={handleOpenAdd} className="flex-1 lg:flex-none bg-indigo-600 text-white px-10 py-5 rounded-[1.5rem] font-black flex items-center justify-center gap-3 transition-all hover:bg-indigo-700 active:scale-95 text-lg btn-glow">
-            <Plus size={24} /> إضافة طالب
+          <button onClick={handleOpenAdd} className="flex-1 md:flex-none bg-indigo-600 text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition shadow-md text-sm">
+            <Plus size={18} /> إضافة طالب
           </button>
         </div>
       </div>
 
-      {/* Search and Table Section */}
-      <div className="bg-white rounded-[3.5rem] border border-slate-100 shadow-sm overflow-hidden w-full">
-        <div className="p-10 border-b bg-slate-50/20">
-          <div className="relative w-full max-w-3xl mx-auto">
-            <Search size={22} className="absolute right-6 top-5.5 text-slate-300" />
+      <div className="card-neo overflow-hidden">
+        <div className="p-6 border-b bg-slate-50/20">
+          <div className="relative w-full max-w-md">
+            <Search size={18} className="absolute right-4 top-3.5 text-slate-400" />
             <input 
               type="text" 
-              placeholder="ابحث عن أي طالب بالاسم أو الصف..." 
+              placeholder="ابحث بالاسم أو الصف..." 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-[2rem] py-5 pr-16 pl-8 text-lg font-bold shadow-sm outline-none focus:ring-8 focus:ring-indigo-50 focus:border-indigo-200 transition-all placeholder:text-slate-300" 
+              className="w-full bg-white border border-slate-200 rounded-xl py-3 pr-11 pl-4 text-sm font-bold shadow-sm outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-100 transition-all" 
             />
           </div>
         </div>
         
-        <div className="overflow-x-auto w-full">
+        <div className="table-container">
           <table className="w-full text-right">
-            <thead className="bg-slate-50/50 text-slate-400 text-[11px] font-black uppercase tracking-[0.2em]">
+            <thead className="bg-slate-50/50 text-slate-400 text-[10px] font-black uppercase tracking-widest">
               <tr>
-                <th className="p-10 border-l border-slate-50/50">اسم الطالب</th>
-                <th className="p-10 border-l border-slate-50/50 text-center">المرحلة / الصف</th>
-                <th className="p-10 border-l border-slate-50/50 text-center">رقم الفصل</th>
-                <th className="p-10 border-l border-slate-50/50 text-center">رقم الجوال</th>
-                <th className="p-10 text-left">التحكم</th>
+                <th className="p-5 border-l border-slate-50">اسم الطالب</th>
+                <th className="p-5 border-l border-slate-50 text-center">الصف</th>
+                <th className="p-5 border-l border-slate-50 text-center">الفصل</th>
+                <th className="p-5 border-l border-slate-50 text-center">الجوال</th>
+                <th className="p-5 text-left">خيارات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {filteredStudents.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-40 text-center">
-                    <div className="flex flex-col items-center gap-6 opacity-20">
-                      <Users size={80} />
-                      <p className="text-2xl font-black">لا توجد بيانات مطابقة للبحث</p>
-                    </div>
-                  </td>
-                </tr>
+                <tr><td colSpan={5} className="p-20 text-center text-slate-300 font-bold">لا توجد بيانات.</td></tr>
               ) : (
                 filteredStudents.map(s => (
-                  <tr key={s.id} className="hover:bg-indigo-50/30 transition-all group">
-                    <td className="p-10 border-l border-slate-50/50">
-                      <div className="flex items-center gap-5">
-                        <div className="w-14 h-14 bg-white text-indigo-600 border border-slate-100 rounded-[1.2rem] flex items-center justify-center font-black shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-all text-xl">{s.name[0]}</div>
-                        <span className="font-black text-slate-800 text-xl tracking-tight">{s.name}</span>
+                  <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-5 border-l border-slate-50">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-bold text-sm">{s.name[0]}</div>
+                        <span className="font-bold text-slate-700 text-sm">{s.name}</span>
                       </div>
                     </td>
-                    <td className="p-10 border-l border-slate-50/50 text-center">
-                      <span className="bg-indigo-50 text-indigo-700 px-8 py-3 rounded-full text-sm font-black border border-indigo-100/50">
+                    <td className="p-5 border-l border-slate-50 text-center">
+                      <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-[11px] font-bold border border-blue-100">
                         {s.grade}
                       </span>
                     </td>
-                    <td className="p-10 border-l border-slate-50/50 text-center">
-                      <div className="inline-flex items-center gap-2 bg-slate-50 px-6 py-2 rounded-xl text-slate-600 font-black text-base border border-slate-100">
-                        <Layout size={16} className="text-slate-400" />
+                    <td className="p-5 border-l border-slate-50 text-center">
+                      <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[11px] font-bold">
                         فصل {s.section}
-                      </div>
+                      </span>
                     </td>
-                    <td className="p-10 border-l border-slate-50/50 text-center font-mono font-bold text-slate-400 text-lg tracking-widest">{s.phoneNumber || '---'}</td>
-                    <td className="p-10 text-left">
-                      <div className="flex justify-end gap-3">
-                        <button onClick={() => handleOpenEdit(s)} className="p-5 bg-white text-indigo-600 border border-slate-100 rounded-[1.2rem] shadow-sm hover:bg-indigo-600 hover:text-white transition-all active:scale-90" title="تعديل"><Edit2 size={24} /></button>
-                        <button onClick={() => deleteStudent(s.id)} className="p-5 bg-white text-rose-500 border border-slate-100 rounded-[1.2rem] shadow-sm hover:bg-rose-500 hover:text-white transition-all active:scale-90" title="حذف"><Trash2 size={24} /></button>
+                    <td className="p-5 border-l border-slate-50 text-center font-mono text-sm text-slate-500">{s.phoneNumber || '---'}</td>
+                    <td className="p-5 text-left">
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => handleOpenEdit(s)} className="p-2.5 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-600 hover:text-white transition-colors" title="تعديل"><Edit2 size={16} /></button>
+                        <button onClick={() => deleteStudent(s.id)} className="p-2.5 text-rose-500 bg-rose-50 rounded-lg hover:bg-rose-500 hover:text-white transition-colors" title="حذف"><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -157,68 +145,57 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
 
       {/* Add/Edit Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
-          <div className="bg-white p-12 rounded-[4rem] max-w-xl w-full shadow-2xl animate-in slide-in-from-bottom-12 duration-500 relative">
-             <button onClick={() => setShowForm(false)} className="absolute top-10 left-10 p-4 text-slate-300 hover:text-rose-500 transition-colors bg-slate-50 rounded-2xl"><X size={28} /></button>
-             
-             <div className="flex items-center gap-6 mb-12">
-                <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-[1.5rem] flex items-center justify-center shadow-inner">
-                   {editingStudent ? <Edit2 size={32} /> : <User size={32} />}
-                </div>
-                <div>
-                   <h3 className="text-3xl font-black text-slate-900">{editingStudent ? 'تعديل بيانات الطالب' : 'إضافة طالب جديد'}</h3>
-                   <p className="text-slate-400 font-bold">أدخل البيانات المطلوبة بدقة للحفاظ على جودة الجدول.</p>
-                </div>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white p-8 rounded-[2rem] max-w-md w-full shadow-2xl animate-in zoom-in-95">
+             <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-black text-slate-900">{editingStudent ? 'تعديل طالب' : 'إضافة طالب جديد'}</h3>
+                <button onClick={() => setShowForm(false)} className="p-2 text-slate-400"><X size={20} /></button>
              </div>
-
-             <div className="space-y-6">
-                <div className="space-y-3">
-                  <label className="text-xs font-black text-slate-400 mr-2 flex items-center gap-2"><User size={16}/> اسم الطالب الكامل</label>
+             <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black text-slate-400 mr-1">اسم الطالب الكامل</label>
                   <input 
-                    placeholder="الاسم الرباعي كما في نظام نور..." 
-                    className="w-full p-5 bg-slate-50/50 rounded-[1.5rem] border-2 border-transparent outline-none font-black text-xl focus:bg-white focus:border-indigo-100 transition-all shadow-inner" 
+                    placeholder="أدخل الاسم..." 
+                    className="w-full p-3.5 bg-slate-50 rounded-xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 transition-all" 
                     value={formData.name} 
                     onChange={e => setFormData({...formData, name: e.target.value})} 
                   />
                 </div>
-                
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <label className="text-xs font-black text-slate-400 mr-2 flex items-center gap-2"><GraduationCap size={16}/> الصف الدراسي</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-black text-slate-400 mr-1">الصف</label>
                     <select 
-                      className="w-full p-5 bg-slate-50/50 rounded-[1.5rem] border-2 border-transparent outline-none font-black text-lg focus:bg-white focus:border-indigo-100 transition-all shadow-inner cursor-pointer" 
+                      className="w-full p-3.5 bg-slate-50 rounded-xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 transition-all" 
                       value={formData.grade} 
                       onChange={e => setFormData({...formData, grade: e.target.value})}
                     >
                       {['الأول الابتدائي', 'الثاني الابتدائي', 'الثالث الابتدائي', 'الرابع الابتدائي', 'الخامس الابتدائي', 'السادس الابتدائي', 'الأول المتوسط', 'الثاني المتوسط', 'الثالث المتوسط'].map(g => <option key={g}>{g}</option>)}
                     </select>
                   </div>
-                  <div className="space-y-3">
-                    <label className="text-xs font-black text-slate-400 mr-2 flex items-center gap-2"><Layout size={16}/> رقم الفصل</label>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-black text-slate-400 mr-1">رقم الفصل</label>
                     <input 
-                      placeholder="رقم 1" 
-                      className="w-full p-5 bg-slate-50/50 rounded-[1.5rem] border-2 border-transparent outline-none font-black text-lg focus:bg-white focus:border-indigo-100 transition-all shadow-inner" 
+                      placeholder="مثال: 1" 
+                      className="w-full p-3.5 bg-slate-50 rounded-xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 transition-all" 
                       value={formData.section} 
                       onChange={e => setFormData({...formData, section: e.target.value})} 
                     />
                   </div>
                 </div>
-
-                <div className="space-y-3">
-                  <label className="text-xs font-black text-slate-400 mr-2 flex items-center gap-2"><Phone size={16}/> رقم الجوال للتواصل</label>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black text-slate-400 mr-1">رقم الجوال</label>
                   <input 
                     placeholder="05xxxxxxxx" 
-                    className="w-full p-5 bg-slate-50/50 rounded-[1.5rem] border-2 border-transparent outline-none font-black text-xl focus:bg-white focus:border-indigo-100 transition-all shadow-inner text-left" 
+                    className="w-full p-3.5 bg-slate-50 rounded-xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 transition-all text-left" 
                     value={formData.phoneNumber} 
                     onChange={e => setFormData({...formData, phoneNumber: e.target.value})} 
                   />
                 </div>
-
                 <button 
                   onClick={handleSave} 
-                  className="w-full bg-indigo-600 text-white py-6 rounded-[2rem] font-black text-2xl shadow-2xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 mt-10"
+                  className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black text-base shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all mt-4"
                 >
-                  {editingStudent ? 'تحديث البيانات' : 'حفظ بيانات الطالب'}
+                  {editingStudent ? 'تحديث البيانات' : 'حفظ الطالب'}
                 </button>
              </div>
           </div>
