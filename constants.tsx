@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   CLASSES: 'madrasati_classes',
   SCHEDULES: 'madrasati_schedules',
   PLANS: 'madrasati_plans',
+  ARCHIVED_PLANS: 'madrasati_archived_plans',
   WEEKS: 'madrasati_academic_weeks',
   ATTENDANCE: 'madrasati_attendance',
   ARCHIVED_ATTENDANCE: 'madrasati_archived_attendance',
@@ -46,11 +47,8 @@ export const db = {
   getSchoolBySlug: (slug: string) => db.getSchools().find(s => s.slug === slug),
 
   getSystemAdmin: () => JSON.parse(localStorage.getItem(STORAGE_KEYS.SYSTEM_ADMIN) || '{"username":"admin","password":"123"}'),
-  
-  // تحديث بيانات المشرف العام
   updateSystemAdmin: (admin: any) => localStorage.setItem(STORAGE_KEYS.SYSTEM_ADMIN, JSON.stringify(admin)),
-  
-  // إدارة الأسابيع
+
   getWeeks: (schoolId: string): AcademicWeek[] => JSON.parse(localStorage.getItem(`${STORAGE_KEYS.WEEKS}_${schoolId}`) || '[]'),
   saveWeek: (schoolId: string, week: AcademicWeek) => {
     const weeks = db.getWeeks(schoolId);
@@ -95,20 +93,39 @@ export const db = {
     localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(all));
   },
 
+  // إدارة الفصول تلقائياً بناءً على الطلاب
   getClasses: (schoolId: string): SchoolClass[] => {
-    const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.CLASSES) || '[]');
-    return all.filter((c: any) => c.schoolId === schoolId);
+    const manualClasses = JSON.parse(localStorage.getItem(`${STORAGE_KEYS.CLASSES}_${schoolId}`) || '[]');
+    if (manualClasses.length > 0) return manualClasses;
+
+    // إذا لم تكن هناك فصول يدوية، استخرجها من الطلاب
+    const students = db.getStudents(schoolId);
+    const uniqueClasses = Array.from(new Set(students.map(s => `${s.grade}|${s.section}`)));
+    return uniqueClasses.map(str => {
+      const [grade, section] = str.split('|');
+      return { id: Math.random().toString(36).substr(2, 9), grade, section, schoolId };
+    });
   },
   saveClass: (schoolClass: SchoolClass) => {
-    const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.CLASSES) || '[]');
-    const index = all.findIndex((c: any) => c.id === schoolClass.id);
+    const all = db.getClasses(schoolClass.schoolId);
+    const index = all.findIndex(c => c.id === schoolClass.id);
     if (index > -1) all[index] = schoolClass;
     else all.push(schoolClass);
-    localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(all));
+    localStorage.setItem(`${STORAGE_KEYS.CLASSES}_${schoolClass.schoolId}`, JSON.stringify(all));
   },
-  deleteClass: (id: string) => {
-    const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.CLASSES) || '[]');
-    localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(all.filter((c: any) => c.id !== id)));
+  deleteClass: (schoolId: string, id: string) => {
+    const all = db.getClasses(schoolId);
+    const filtered = all.filter(c => c.id !== id);
+    localStorage.setItem(`${STORAGE_KEYS.CLASSES}_${schoolId}`, JSON.stringify(filtered));
+  },
+  syncClassesFromStudents: (schoolId: string) => {
+    const students = db.getStudents(schoolId);
+    const uniqueClasses = Array.from(new Set(students.map(s => `${s.grade}|${s.section}`)));
+    const classes = uniqueClasses.map(str => {
+      const [grade, section] = str.split('|');
+      return { id: Math.random().toString(36).substr(2, 9), grade, section, schoolId };
+    });
+    localStorage.setItem(`${STORAGE_KEYS.CLASSES}_${schoolId}`, JSON.stringify(classes));
   },
 
   getSubjects: (schoolId: string): Subject[] => {
@@ -138,13 +155,28 @@ export const db = {
     localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(all));
   },
 
-  // تعديل الخطط لتعتمد على معرف الأسبوع
   getPlans: (schoolId: string, weekId: string) => JSON.parse(localStorage.getItem(`${STORAGE_KEYS.PLANS}_${schoolId}_${weekId}`) || '{}'),
   savePlan: (schoolId: string, weekId: string, planKey: string, data: any) => {
     const plans = db.getPlans(schoolId, weekId);
     plans[planKey] = data;
     localStorage.setItem(`${STORAGE_KEYS.PLANS}_${schoolId}_${weekId}`, JSON.stringify(plans));
   },
+  
+  // أرشفة الخطط
+  archiveWeekPlans: (schoolId: string, week: AcademicWeek) => {
+    const currentPlans = db.getPlans(schoolId, week.id);
+    const archives = JSON.parse(localStorage.getItem(`${STORAGE_KEYS.ARCHIVED_PLANS}_${schoolId}`) || '[]');
+    archives.unshift({
+      id: Date.now().toString(),
+      weekName: week.name,
+      startDate: week.startDate,
+      endDate: week.endDate,
+      plans: currentPlans,
+      archivedAt: new Date().toISOString()
+    });
+    localStorage.setItem(`${STORAGE_KEYS.ARCHIVED_PLANS}_${schoolId}`, JSON.stringify(archives));
+  },
+  getArchivedPlans: (schoolId: string) => JSON.parse(localStorage.getItem(`${STORAGE_KEYS.ARCHIVED_PLANS}_${schoolId}`) || '[]'),
 
   getAttendance: (schoolId: string) => JSON.parse(localStorage.getItem(`${STORAGE_KEYS.ATTENDANCE}_${schoolId}`) || '[]'),
   saveAttendance: (schoolId: string, report: any) => {
@@ -172,10 +204,5 @@ export const db = {
     const active = db.getAttendance(schoolId);
     active.unshift(report);
     localStorage.setItem(`${STORAGE_KEYS.ATTENDANCE}_${schoolId}`, JSON.stringify(active));
-  },
-  deleteArchivedAttendance: (schoolId: string, reportId: string) => {
-    const archived = db.getArchivedAttendance(schoolId);
-    const filtered = archived.filter((r: any) => r.id !== reportId);
-    localStorage.setItem(`${STORAGE_KEYS.ARCHIVED_ATTENDANCE}_${schoolId}`, JSON.stringify(filtered));
   }
 };
