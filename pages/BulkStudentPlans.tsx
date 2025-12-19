@@ -54,7 +54,7 @@ const BulkStudentPlans: React.FC = () => {
 
   return (
     <div className="bg-slate-200 min-h-screen font-['Tajawal'] pb-20 no-print-bg">
-      {/* Control Bar */}
+      {/* شريط التحكم العلوي */}
       <div className="max-w-[1100px] mx-auto p-6 no-print flex justify-between items-center sticky top-0 bg-white/90 backdrop-blur-xl z-50 border-b shadow-2xl rounded-b-3xl mb-10">
         <div className="flex items-center gap-5">
            <div className="bg-indigo-600 p-4 rounded-2xl text-white shadow-lg shadow-indigo-200 animate-bounce">
@@ -78,7 +78,7 @@ const BulkStudentPlans: React.FC = () => {
           const classTitle = `${student.grade} - فصل ${student.section}`;
           const schedule = allSchedules[classTitle] || {};
 
-          // الذكاء الاصطناعي لتصحيح الاسم المعكوس
+          // معالجة عرض اسم الطالب
           const isNameActuallyPhone = /^[0-9+ ]+$/.test(student.name);
           const isPhoneActuallyName = student.phoneNumber && !/^[0-9+ ]+$/.test(student.phoneNumber);
           const finalDisplayName = (isNameActuallyPhone && isPhoneActuallyName) ? student.phoneNumber : student.name;
@@ -87,14 +87,14 @@ const BulkStudentPlans: React.FC = () => {
             <div key={student.id} className="student-page-container print:m-0 print:shadow-none transition-transform hover:scale-[1.01] duration-500">
               <div className="a4-page bg-white shadow-[0_0_50px_rgba(0,0,0,0.1)] p-[12mm] relative flex flex-col overflow-hidden border border-slate-100" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
                 
-                {/* Watermark Logo - العلامة المائية الشفافة */}
+                {/* العلامة المائية الشفافة - Watermark */}
                 {school.logoUrl && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.035] z-0 overflow-hidden">
-                    <img src={school.logoUrl} className="w-[480px] h-[480px] object-contain grayscale" alt="Watermark" />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] z-0 overflow-hidden">
+                    <img src={school.logoUrl} className="w-[500px] h-[500px] object-contain grayscale" alt="شعار الخلفية" />
                   </div>
                 )}
 
-                {/* Header Section - Optimized Height */}
+                {/* ترويسة الخطة - معربة بالكامل */}
                 <div className="relative z-10 grid grid-cols-3 gap-4 mb-5 border-b-4 border-double border-slate-900 pb-5 items-center">
                   <div className="text-right space-y-1 font-black text-[9.5pt] leading-tight text-slate-800">
                     {headerLines.map((line, i) => <p key={i}>{line}</p>)}
@@ -103,17 +103,17 @@ const BulkStudentPlans: React.FC = () => {
 
                   <div className="flex flex-col items-center justify-center scale-110">
                     {school.logoUrl ? (
-                      <img src={school.logoUrl} className="w-22 h-22 object-contain drop-shadow-md" alt="Logo" />
+                      <img src={school.logoUrl} className="w-22 h-22 object-contain drop-shadow-md" alt="شعار المدرسة" />
                     ) : (
-                      <div className="w-18 h-18 border-4 border-double rounded-2xl flex items-center justify-center text-slate-300 font-black">LOGO</div>
+                      <div className="w-18 h-18 border-4 border-double rounded-2xl flex items-center justify-center text-slate-300 font-black">شعار</div>
                     )}
                     <div className="mt-2 bg-slate-900 text-white px-5 py-0.5 rounded-full">
-                      <span className="text-[7.5pt] font-black tracking-widest uppercase">Weekly Academic Plan</span>
+                      <span className="text-[7.5pt] font-black tracking-widest uppercase">الخطة الدراسية الأسبوعية</span>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <div className="bg-slate-900 text-white p-3.5 rounded-[1.5rem] text-center shadow-xl border-t-4 border-indigo-500 relative overflow-hidden group">
+                    <div className="bg-slate-900 text-white p-3.5 rounded-[1.5rem] text-center shadow-xl border-t-4 border-indigo-500 relative overflow-hidden">
                       <p className="text-[7pt] font-black opacity-60 mb-1 relative z-10 flex items-center justify-center gap-1.5">
                         <User size={10} className="text-indigo-300" /> الاسم الرباعي للطالب
                       </p>
@@ -123,15 +123,15 @@ const BulkStudentPlans: React.FC = () => {
                     </div>
                     
                     <div className="text-[9pt] font-bold space-y-1 pr-2 border-r-4 border-indigo-100 mr-2">
-                      <p className="flex items-center gap-2"><CalendarDays size={12} className="text-slate-400" /> الأسبوع: <span className="font-black text-indigo-700 underline underline-offset-4">{activeWeek?.name || "---"}</span></p>
-                      <p className="flex items-center gap-2"><Bookmark size={12} className="text-slate-400" /> الصف: <span className="font-black text-slate-800">{classTitle}</span></p>
+                      <p className="flex items-center gap-2"><CalendarDays size={12} className="text-slate-400" /> الأسبوع الدراسي: <span className="font-black text-indigo-700 underline underline-offset-4">{activeWeek?.name || "---"}</span></p>
+                      <p className="flex items-center gap-2"><Bookmark size={12} className="text-slate-400" /> الصف والفصل: <span className="font-black text-slate-800">{classTitle}</span></p>
                       <p className="text-[7.5pt] text-slate-400 font-black pr-4">الفترة: {activeWeek ? `${formatToHijri(activeWeek.startDate)} - ${formatToHijri(activeWeek.endDate)}` : '--'}</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Main Schedule Table - Optimized Row Height for A4 */}
-                <div className="relative z-10 flex-1 overflow-hidden border-[2.5px] border-slate-900 rounded-lg mb-5 shadow-sm">
+                {/* جدول الحصص الأسبوعي - 7 حصص يومياً */}
+                <div className="relative z-10 flex-1 overflow-hidden border-[2.5px] border-slate-900 rounded-lg mb-5 shadow-sm bg-white/50">
                   <table className="w-full border-collapse table-fixed h-full text-center">
                     <thead className="bg-slate-100 border-b-[2.5px] border-slate-900 font-black">
                       <tr className="h-10">
@@ -173,7 +173,7 @@ const BulkStudentPlans: React.FC = () => {
                   </table>
                 </div>
 
-                {/* Bottom Information Boxes - Optimized Height */}
+                {/* تذييل الصفحة - معلومات إضافية */}
                 <div className="relative z-10 grid grid-cols-2 gap-8 h-[45mm]">
                    <div className="border-[2px] border-slate-900 p-4 bg-white flex flex-col shadow-sm rounded-2xl relative overflow-hidden">
                      <h3 className="text-[11pt] font-black mb-3 border-b-2 border-slate-900 pb-1 text-center bg-slate-100 flex items-center justify-center gap-2 rounded-lg relative z-10">
@@ -190,7 +190,7 @@ const BulkStudentPlans: React.FC = () => {
                      </h3>
                      <div className="flex-1 flex flex-col items-center justify-center overflow-hidden relative z-10">
                        {school.weeklyNotesImage && (
-                          <img src={school.weeklyNotesImage} className="max-h-[18mm] object-contain mb-2 drop-shadow-sm" alt="Weekly Value" />
+                          <img src={school.weeklyNotesImage} className="max-h-[18mm] object-contain mb-2 drop-shadow-sm" alt="النشاط الأسبوعي" />
                        )}
                        <p className="text-[11pt] font-black text-center text-indigo-800 leading-snug px-4">
                          {school.weeklyNotes || "البيئة المدرسية الآمنة هي منطلق الإبداع والتميز"}
@@ -199,13 +199,13 @@ const BulkStudentPlans: React.FC = () => {
                    </div>
                 </div>
                 
-                {/* Official Footer Branding */}
+                {/* حقوق الحقوق والتذييل الفني */}
                 <div className="relative z-10 mt-auto text-center opacity-40 pt-4 flex justify-between items-center px-4 border-t border-slate-100">
                    <p className="text-[7.5pt] font-black text-slate-500 uppercase tracking-tighter">
                      خطة الطالب: <span className="text-slate-900">{finalDisplayName}</span>
                    </p>
                    <div className="flex items-center gap-2 text-[7pt] font-black text-indigo-600">
-                      <MapPin size={8} /> بوابة مدرستي الرقمية - {new Date().getFullYear()}
+                      نظام الخطط المدرسية الرقمي - {new Date().getFullYear()}
                    </div>
                 </div>
               </div>

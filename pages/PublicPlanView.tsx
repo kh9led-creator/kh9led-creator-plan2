@@ -47,13 +47,13 @@ const PublicPlanView: React.FC = () => {
 
   return (
     <div className="bg-[#F8FAFC] min-h-screen font-['Tajawal'] pb-10 md:pb-20 overflow-x-hidden">
-      {/* Header Navigation */}
+      {/* الترويسة العلوية للموقع */}
       <header className="glass border-b border-slate-100 px-4 md:px-8 py-4 md:py-5 no-print sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6">
           <div className="flex items-center gap-3 md:gap-5">
             <div className="bg-white p-2 md:p-3 rounded-xl md:rounded-2xl shadow-sm border border-slate-100">
                {school.logoUrl ? (
-                <img src={school.logoUrl} className="w-10 h-10 md:w-14 md:h-14 object-contain" alt="school-logo" />
+                <img src={school.logoUrl} className="w-10 h-10 md:w-14 md:h-14 object-contain" alt="شعار المدرسة" />
                ) : (
                 <SchoolIcon className="text-indigo-600" size={32} />
                )}
@@ -62,7 +62,7 @@ const PublicPlanView: React.FC = () => {
               <h1 className="text-lg md:text-2xl font-black text-slate-900 tracking-tight">{school.name}</h1>
               <div className="flex items-center gap-2 mt-0.5 md:mt-1">
                  <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                 <p className="text-[8px] md:text-[10px] text-indigo-600 font-black uppercase tracking-widest">بوابة الخطط الأسبوعية المحدثة</p>
+                 <p className="text-[8px] md:text-[10px] text-indigo-600 font-black uppercase tracking-widest">بوابة الخطط الدراسية الأسبوعية</p>
               </div>
             </div>
           </div>
@@ -119,18 +119,17 @@ const PublicPlanView: React.FC = () => {
           </div>
         ) : (
           <div className="w-full flex justify-center overflow-x-auto py-4">
-            {/* Scaling container for mobile */}
             <div className="origin-top scale-[0.45] sm:scale-[0.7] md:scale-100 mb-[-450px] sm:mb-[-150px] md:mb-0">
                <div className="a4-page bg-white shadow-2xl border p-[10mm] relative flex flex-col overflow-hidden animate-in zoom-in-95 duration-700" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
                 
-                {/* Watermark Logo - العلامة المائية الشفافة */}
+                {/* العلامة المائية - Watermark */}
                 {school.logoUrl && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.035] z-0 overflow-hidden">
-                    <img src={school.logoUrl} className="w-[450px] h-[450px] object-contain grayscale" alt="Watermark" />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] z-0 overflow-hidden">
+                    <img src={school.logoUrl} className="w-[500px] h-[500px] object-contain grayscale" alt="شعار الخلفية" />
                   </div>
                 )}
 
-                {/* Header Section */}
+                {/* ترويسة الصفحة الرسمية */}
                 <div className="relative z-10 grid grid-cols-3 gap-2 mb-4 border-b-4 border-double border-slate-900 pb-4 items-center">
                   <div className="text-right space-y-1 font-black text-[9.5pt] leading-tight text-slate-800">
                     {headerLines.map((line, i) => <p key={i}>{line}</p>)}
@@ -141,22 +140,22 @@ const PublicPlanView: React.FC = () => {
                     {school.logoUrl ? (
                       <img src={school.logoUrl} className="w-20 h-20 object-contain drop-shadow-md" alt="Logo" />
                     ) : (
-                      <div className="w-16 h-16 border-4 border-double rounded-2xl flex items-center justify-center text-slate-300 font-black">LOGO</div>
+                      <div className="w-16 h-16 border-4 border-double rounded-2xl flex items-center justify-center text-slate-300 font-black">شعار</div>
                     )}
                     <div className="mt-2 bg-slate-900 text-white px-4 py-0.5 rounded-full">
-                      <span className="text-[7.5pt] font-black tracking-widest uppercase">Academic Weekly Plan</span>
+                      <span className="text-[7.5pt] font-black tracking-widest uppercase">الخطة الدراسية الأسبوعية</span>
                     </div>
                   </div>
 
                   <div className="text-left space-y-1.5 font-bold text-[9pt]">
                     <p className="flex items-center justify-end gap-2">الأسبوع الدراسي: <span className="font-black text-indigo-700 underline underline-offset-4">{activeWeek?.name || "---"}</span></p>
-                    <p className="flex items-center justify-end gap-2">الفصل الدراسي: <span className="font-black underline">{selectedClass}</span></p>
+                    <p className="flex items-center justify-end gap-2">الصف الدراسي: <span className="font-black underline">{selectedClass}</span></p>
                     <p className="text-[7.5pt] text-slate-400 font-black text-left">الفترة: {activeWeek ? `${formatToHijri(activeWeek.startDate)} - ${formatToHijri(activeWeek.endDate)}` : '--'}</p>
                   </div>
                 </div>
 
-                {/* Table Section - Optimized Height */}
-                <div className="relative z-10 flex-1 overflow-hidden border-[2.5px] border-slate-900 rounded-sm mb-4">
+                {/* جدول الحصص الأسبوعي - 7 حصص لكل يوم */}
+                <div className="relative z-10 flex-1 overflow-hidden border-[2.5px] border-slate-900 rounded-sm mb-4 bg-white/50">
                   <table className="w-full border-collapse table-fixed h-full text-center">
                     <thead className="bg-slate-100 border-b-[2.5px] border-slate-900 font-black">
                       <tr className="h-10">
@@ -198,7 +197,7 @@ const PublicPlanView: React.FC = () => {
                   </table>
                 </div>
 
-                {/* Footer Boxes - Side-by-side to save height */}
+                {/* تذييل الصفحة - التوجيهات والقيمة */}
                 <div className="relative z-10 grid grid-cols-2 gap-4 h-[42mm]">
                    <div className="border-[2px] border-slate-900 p-4 bg-white flex flex-col shadow-sm rounded-xl">
                       <h3 className="text-[10.5pt] font-black mb-3 border-b-2 border-slate-900 pb-1 text-center bg-slate-100 rounded-md">توجيهات لولي الأمر</h3>
@@ -211,7 +210,7 @@ const PublicPlanView: React.FC = () => {
                       <h3 className="text-[10.5pt] font-black mb-3 border-b-2 border-slate-900 pb-1 text-center bg-indigo-50 text-indigo-900 rounded-md">القيمة التربوية للأسبوع</h3>
                       <div className="flex-1 flex flex-col items-center justify-center overflow-hidden">
                         {school.weeklyNotesImage && (
-                           <img src={school.weeklyNotesImage} className="max-h-[20mm] object-contain mb-2" alt="Weekly Value" />
+                           <img src={school.weeklyNotesImage} className="max-h-[20mm] object-contain mb-2" alt="قيمة الأسبوع" />
                         )}
                         <p className="text-[10pt] font-black text-center text-indigo-800 leading-snug">
                           {school.weeklyNotes || "البيئة المدرسية الآمنة هي منطلق الإبداع والتميز"}
@@ -220,13 +219,13 @@ const PublicPlanView: React.FC = () => {
                    </div>
                 </div>
                 
-                {/* Official Branding Footer */}
+                {/* حقوق الحقوق والتذييل الفني */}
                 <div className="relative z-10 mt-auto pt-4 flex justify-between items-center px-4 border-t border-slate-100 opacity-60">
                    <p className="text-[7pt] font-black text-slate-500 uppercase tracking-tighter">
                      خطة الأسبوع الموحدة - {school.name}
                    </p>
                    <div className="flex items-center gap-2 text-[7pt] font-black text-indigo-600">
-                      بوابة مدرستي الرقمية - {new Date().getFullYear()}
+                      نظام الخطط المدرسية الرقمي - {new Date().getFullYear()}
                    </div>
                 </div>
               </div>
