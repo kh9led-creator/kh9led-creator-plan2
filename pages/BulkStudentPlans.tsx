@@ -6,15 +6,17 @@ import {
   Printer, User, Bookmark, CalendarDays, 
   Backpack, Compass, Calculator, Library, 
   NotebookPen, Shapes, Telescope, GraduationCap, 
-  School as SchoolIcon, BookOpen, Microscope
+  School as SchoolIcon, BookOpen, Microscope,
+  Layers, Palette, Binary, Atom, Globe
 } from 'lucide-react';
 import { School, Subject, Student, AcademicWeek } from '../types.ts';
 
-// مصفوفة الأيقونات المتاحة للفصول
+// قائمة الأيقونات المتاحة للفصول لتنويع المظهر البصري
 const CLASS_ICONS = [
   Backpack, Compass, Calculator, Library, 
   NotebookPen, Shapes, Telescope, GraduationCap, 
-  SchoolIcon, BookOpen, Microscope
+  SchoolIcon, BookOpen, Microscope, Palette,
+  Binary, Atom, Globe
 ];
 
 const BulkStudentPlans: React.FC = () => {
@@ -52,7 +54,7 @@ const BulkStudentPlans: React.FC = () => {
     }
   }, [schoolSlug, filterClass]);
 
-  // دالة للحصول على أيقونة ثابتة للفصل بناءً على اسمه
+  // دالة ذكية لاختيار أيقونة ثابتة للفصل بناءً على اسمه
   const getClassIcon = (classTitle: string) => {
     let hash = 0;
     for (let i = 0; i < classTitle.length; i++) {
@@ -79,6 +81,7 @@ const BulkStudentPlans: React.FC = () => {
 
   return (
     <div className="bg-slate-200 min-h-screen font-['Tajawal'] pb-20 no-print-bg">
+      {/* شريط التحكم العلوي */}
       <div className="max-w-[1100px] mx-auto p-6 no-print flex justify-between items-center sticky top-0 bg-white/90 backdrop-blur-xl z-50 border-b shadow-2xl rounded-b-3xl mb-10">
         <div className="flex items-center gap-5">
            <div className="bg-slate-900 p-4 rounded-2xl text-white shadow-lg animate-bounce">
@@ -97,22 +100,21 @@ const BulkStudentPlans: React.FC = () => {
           const ClassIcon = getClassIcon(classTitle);
           return (
             <div key={classTitle} className="w-full flex flex-col items-center gap-16">
-              {/* عنوان الفصل في المعاينة بأيقونة خاصة */}
+              {/* عنوان الفصل في المعاينة (يظهر في المتصفح فقط) */}
               <div className="no-print w-full max-w-[210mm] bg-white p-6 rounded-[2.5rem] border-2 border-indigo-100 flex items-center justify-between shadow-sm">
                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
-                        <ClassIcon size={28} />
+                    <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
+                       <ClassIcon size={32} />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-black text-slate-800">{classTitle}</h2>
-                        <p className="text-xs text-indigo-400 font-bold">مجموعة الطباعة الخاصة بالفصل</p>
+                       <h2 className="text-2xl font-black text-slate-800">{classTitle}</h2>
+                       <p className="text-xs text-indigo-400 font-bold uppercase tracking-widest">أيقونة الفصل المخصصة</p>
                     </div>
                  </div>
-                 <div className="flex flex-col items-end">
-                    <span className="bg-slate-100 px-4 py-2 rounded-xl text-slate-600 font-black text-sm">الطلاب: {students.length}</span>
-                 </div>
+                 <div className="bg-slate-100 px-6 py-3 rounded-2xl text-slate-600 font-black text-sm">عدد الطلاب: {students.length}</div>
               </div>
 
+              {/* صفحات الطلاب الفردية */}
               {students.map((student) => {
                 const schedule = allSchedules[classTitle] || {};
                 const isNameActuallyPhone = /^[0-9+ ]+$/.test(student.name);
@@ -130,7 +132,7 @@ const BulkStudentPlans: React.FC = () => {
                         </div>
                       )}
 
-                      {/* الترويسة */}
+                      {/* الترويسة - تم إضافة أيقونة الفصل هنا */}
                       <div className="relative z-10 grid grid-cols-3 gap-3 mb-2.5 border-b-2 border-slate-900 pb-2.5 items-center">
                         <div className="text-right space-y-0.5 font-black text-[7.5pt] leading-tight text-slate-800">
                           {headerLines.map((line, i) => <p key={i}>{line}</p>)}
@@ -158,7 +160,7 @@ const BulkStudentPlans: React.FC = () => {
                               <span className="text-[6.8pt] text-slate-400 font-bold mr-0.5">({activeWeek ? formatToHijri(activeWeek.startDate) : '--'})</span>
                             </p>
                             <p className="flex items-center gap-1.5">
-                                <ClassIcon size={10} className="text-slate-500" /> الصف: <span className="font-black">{classTitle}</span>
+                               <ClassIcon size={12} className="text-slate-900" /> الصف: <span className="font-black">{classTitle}</span>
                             </p>
                           </div>
                         </div>
