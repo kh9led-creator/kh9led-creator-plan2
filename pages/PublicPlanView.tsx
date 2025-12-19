@@ -50,7 +50,7 @@ const PublicPlanView: React.FC = () => {
             )}
             <div className="text-right">
               <h1 className="text-xl font-black text-slate-900">{school.name}</h1>
-              <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest">بوابة الخطط الأسبوعية المعتمدة</p>
+              <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest leading-none">بوابة الخطط الأسبوعية الموحدة</p>
             </div>
           </div>
           
@@ -72,6 +72,7 @@ const PublicPlanView: React.FC = () => {
           <div className="w-full animate-in fade-in slide-in-from-bottom-6 duration-700">
             <div className="text-center mb-10">
                <h2 className="text-4xl font-black text-slate-800 mb-3">اختر الفصل الدراسي</h2>
+               <p className="text-slate-500 font-bold">يرجى اختيار الفصل لعرض الخطة الأسبوعية المحدثة</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {availableClasses.map((cls) => (
@@ -85,41 +86,38 @@ const PublicPlanView: React.FC = () => {
             </div>
           </div>
         ) : (
-          /* A4 Report Simulation - Exact Copy of Attachment */
-          <div className="a4-page bg-white shadow-2xl border p-[8mm] relative flex flex-col text-[10pt] overflow-hidden" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
+          /* A4 Report Simulation */
+          <div className="a4-page bg-white shadow-2xl border p-[10mm] relative flex flex-col text-[10pt] overflow-hidden" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
             
-            {/* Header Branding (3 Columns) */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {/* Left Info Column */}
-              <div className="text-right space-y-0.5 font-bold text-[9pt]">
-                <p>من:</p>
-                <p>إلى:</p>
+            {/* Header Branding */}
+            <div className="grid grid-cols-3 gap-2 mb-4 border-b-2 border-black pb-3">
+              <div className="text-right space-y-0.5 font-bold text-[8.5pt]">
+                <p>من: ....................</p>
+                <p>إلى: ....................</p>
                 <p>الأسبوع: الأسبوع الأول</p>
-                <p>الصف: {selectedClass}</p>
+                <p>الصف: <span className="font-black underline">{selectedClass}</span></p>
                 <p>الفصل الدراسي الأول</p>
               </div>
 
-              {/* Center Logo Column */}
               <div className="flex flex-col items-center justify-center">
                 {school.logoUrl ? (
-                  <img src={school.logoUrl} alt="Ministry Logo" className="w-20 h-20 object-contain" />
+                  <img src={school.logoUrl} alt="Logo" className="w-20 h-20 object-contain" />
                 ) : (
-                  <div className="w-20 h-20 border-2 border-dashed rounded-xl flex items-center justify-center text-slate-200">Logo</div>
+                  <div className="w-20 h-20 border-2 border-dashed rounded-xl flex items-center justify-center text-slate-300">LOGO</div>
                 )}
               </div>
 
-              {/* Right School Info Column */}
               <div className="text-right space-y-0.5 font-black text-[9pt] leading-tight">
                 {headerLines.map((line, i) => <p key={i}>{line}</p>)}
               </div>
             </div>
 
-            {/* Plan Table - Exact Structure */}
+            {/* Table Area - Optimized for one page */}
             <div className="flex-1 overflow-hidden border-2 border-black">
               <table className="w-full border-collapse table-fixed h-full text-center">
                 <thead className="border-b-2 border-black font-black bg-slate-50">
-                  <tr className="h-10">
-                    <th className="border-l-2 border-black w-10 text-[9pt]">اليوم</th>
+                  <tr className="h-9">
+                    <th className="border-l-2 border-black w-12 text-[9pt]">اليوم</th>
                     <th className="border-l-2 border-black w-8 text-[8pt]">م</th>
                     <th className="border-l-2 border-black w-24 text-[9pt]">المادة</th>
                     <th className="border-l-2 border-black text-[9pt]">الدرس المقرر</th>
@@ -136,17 +134,17 @@ const PublicPlanView: React.FC = () => {
                         const subject = subjects.find(s => s.id === sched.subjectId)?.name || '-';
                         
                         return (
-                          <tr key={`${day.id}-${period}`} className={`h-[32px] border-b ${pIdx === PERIODS.length - 1 ? 'border-b-2 border-black' : 'border-slate-200'}`}>
+                          <tr key={`${day.id}-${period}`} className={`h-[22px] border-b ${pIdx === PERIODS.length - 1 ? 'border-b-2 border-black' : 'border-slate-300'}`}>
                             {pIdx === 0 && (
                               <td rowSpan={PERIODS.length} className="border-l-2 border-black font-black rotate-180 [writing-mode:vertical-rl] bg-white text-[9pt] tracking-widest leading-none border-b-2 border-black">
                                 {day.label}
                               </td>
                             )}
                             <td className="border-l-2 border-black text-[8pt] font-black">{period}</td>
-                            <td className="border-l-2 border-black text-[9pt] font-bold px-1">{subject}</td>
-                            <td className="border-l-2 border-black text-[9pt] px-1">{plan.lesson || '-'}</td>
-                            <td className="border-l-2 border-black text-[9pt] px-1">{plan.homework || '-'}</td>
-                            <td className="text-[9pt] px-1 text-slate-400 italic">{plan.enrichment || '-'}</td>
+                            <td className="border-l-2 border-black text-[8.5pt] font-bold px-1">{subject}</td>
+                            <td className="border-l-2 border-black text-[8pt] px-1 truncate leading-tight">{plan.lesson || '-'}</td>
+                            <td className="border-l-2 border-black text-[8pt] px-1 truncate leading-tight">{plan.homework || '-'}</td>
+                            <td className="text-[7.5pt] px-1 text-slate-400 italic leading-tight truncate">{plan.enrichment || '-'}</td>
                           </tr>
                         );
                       })}
@@ -156,32 +154,29 @@ const PublicPlanView: React.FC = () => {
               </table>
             </div>
 
-            {/* Footer boxes - Exactly like attachment */}
-            <div className="grid grid-cols-2 gap-4 mt-4 h-[55mm]">
-               {/* Messages Box (Right) */}
+            {/* Footer boxes */}
+            <div className="grid grid-cols-2 gap-4 mt-4 h-[45mm]">
                <div className="border-2 border-black p-3 bg-white flex flex-col">
                   <h3 className="text-[10pt] font-black border-b border-black pb-1 mb-2 text-center">رسائل وتوجيهات عامة</h3>
-                  <div className="text-[9pt] font-bold leading-relaxed text-slate-700 whitespace-pre-wrap">
-                    {school.generalMessages || "( رسالة عامة )\n- عزيزي ولي أمر الطالب احرص على عدم غياب ابنك\n- عزيزي الطالب احرص على دخولك لمنصة مدرستي يوميا"}
+                  <div className="text-[8.5pt] font-bold leading-relaxed text-slate-700 whitespace-pre-wrap">
+                    {school.generalMessages || "- عزيزي ولي أمر الطالب احرص على عدم غياب ابنك\n- عزيزي الطالب احرص على دخولك لمنصة مدرستي يوميا"}
                   </div>
                </div>
-
-               {/* Activity Box (Left) */}
                <div className="border-2 border-black p-3 bg-white flex flex-col">
                   <h3 className="text-[10pt] font-black border-b border-black pb-1 mb-2 text-center">ملاحظات / نشاط أسبوعي</h3>
-                  <div className="flex-1 overflow-hidden relative">
+                  <div className="flex-1 flex flex-col items-center justify-center overflow-hidden">
                     {school.weeklyNotesImage && (
-                       <img src={school.weeklyNotesImage} className="max-h-[25mm] w-full object-contain mb-2 opacity-50" />
+                       <img src={school.weeklyNotesImage} className="max-h-[18mm] w-full object-contain mb-1 opacity-60" />
                     )}
-                    <div className="text-[9pt] font-bold text-slate-600 leading-tight">
-                       {school.weeklyNotes || "- الاهتمام بالحضور وعدم الغياب\n- إحضار الكتب والأدوات المدرسية\n- اجعل حقيبة الطالب مثالية"}
+                    <div className="text-[8.5pt] font-bold text-slate-600 text-center leading-tight">
+                       {school.weeklyNotes || "- الاهتمام بالحضور وعدم الغياب\n- إحضار الكتب والأدوات المدرسية"}
                     </div>
                   </div>
                </div>
             </div>
 
-            <p className="mt-4 text-[7pt] text-center text-slate-400 font-bold border-t border-slate-100 pt-1 italic no-print">
-               تم التوليد آلياً عبر نظام الخطط الأسبوعية - مدرسة {school.name}
+            <p className="mt-3 text-[7pt] text-center text-slate-400 font-bold border-t border-slate-100 pt-1 italic no-print">
+               تم التوليد آلياً عبر نظام "مدرستي" لإدارة الخطط المدرسية - {school.name}
             </p>
           </div>
         )}
@@ -196,17 +191,16 @@ const PublicPlanView: React.FC = () => {
             box-shadow: none !important; 
             border: none !important; 
             margin: 0 auto !important; 
-            padding: 8mm !important;
+            padding: 10mm !important;
             width: 210mm !important;
             height: 297mm !important;
             page-break-after: always;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
             -webkit-print-color-adjust: exact;
           }
           table { border-collapse: collapse !important; border: 2px solid black !important; }
-          th, td { border: 1px solid #ccc !important; }
           .border-black { border-color: black !important; }
           .border-l-2 { border-left-width: 2px !important; }
           .border-b-2 { border-bottom-width: 2px !important; }
