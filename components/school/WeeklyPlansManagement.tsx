@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { School, Student } from '../../types.ts';
-import { Globe, Printer, Users, Sparkles, Camera, X, Save, CheckCircle2, Copy, ExternalLink, Link as LinkIcon, Image as ImageIcon } from 'lucide-react';
+import { Globe, Printer, Users, Sparkles, Camera, X, Save, CheckCircle2, Copy, ExternalLink, Link as LinkIcon, Image as ImageIcon, UserCircle } from 'lucide-react';
 import { db } from '../../constants.tsx';
 import { Link } from 'react-router-dom';
 
@@ -14,12 +14,11 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
   const [logoUrl, setLogoUrl] = useState<string | null>(school.logoUrl || null);
   const [activeTab, setActiveTab] = useState<'branding' | 'links' | 'students'>('links');
   const [isSaved, setIsSaved] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
-  // تحديث القيم عند تغير المدرسة
   useEffect(() => {
     setHeaderContent(initialSchool.headerContent || "");
     setGeneralMessages(initialSchool.generalMessages || "");
@@ -44,11 +43,10 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
     setTimeout(() => setIsSaved(false), 3000);
   };
 
-  const handleCopyLink = () => {
-    const link = `${window.location.origin}/#/p/${school.slug}`;
-    navigator.clipboard.writeText(link);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedLink(id);
+    setTimeout(() => setCopiedLink(null), 2000);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,6 +78,9 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
     return groups;
   }, [students]);
 
+  const publicLink = `${window.location.origin}/#/p/${school.slug}`;
+  const teacherLink = `${window.location.origin}/#/school/${school.slug}/teacher-login`;
+
   return (
     <div className="space-y-8 animate-in fade-in font-['Tajawal']">
       <div>
@@ -89,7 +90,7 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
 
       <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl w-fit">
         {[
-          {id:'links', label:'الرابط العام'}, 
+          {id:'links', label:'روابط الوصول'}, 
           {id:'branding', label:'الهوية والترويسة'}, 
           {id:'students', label:'الطباعة الفردية'}
         ].map(tab => (
@@ -104,32 +105,50 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
       </div>
 
       {activeTab === 'links' && (
-        <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm text-center space-y-8">
-           <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-[2rem] flex items-center justify-center mx-auto shadow-inner">
-              <Globe size={40} />
-           </div>
-           <div>
-              <h3 className="text-2xl font-black text-slate-800">الرابط الموحد للمدرسة</h3>
-              <p className="text-slate-500 font-bold mt-2">رابط واحد يحتوي على كافة خطط الفصول المتاحة في مدرستك.</p>
-           </div>
-           
-           <div className="max-w-xl mx-auto flex items-center gap-3 bg-slate-50 p-3 rounded-[2rem] border-2 border-slate-100">
-              <div className="flex-1 text-left px-4 font-mono text-blue-600 font-bold overflow-hidden truncate">
-                 {window.location.origin}/#/p/{school.slug}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+           {/* Public Link Card */}
+           <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-6 flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-[1.5rem] flex items-center justify-center shadow-inner">
+                 <Globe size={32} />
               </div>
-              <button 
-                onClick={handleCopyLink}
-                className={`px-6 py-3 rounded-2xl font-black transition-all flex items-center gap-2 ${copied ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white hover:bg-black'}`}
-              >
-                 {copied ? <CheckCircle2 size={18} /> : <Copy size={18} />}
-                 {copied ? 'تم النسخ' : 'نسخ الرابط'}
-              </button>
+              <div>
+                 <h3 className="text-xl font-black text-slate-800">رابط أولياء الأمور</h3>
+                 <p className="text-slate-500 font-bold text-sm mt-1 leading-relaxed">الرابط العام الذي يتم نشره للأهالي لمتابعة خطط أبنائهم.</p>
+              </div>
+              <div className="w-full bg-slate-50 p-3 rounded-2xl border-2 border-slate-100 flex items-center gap-3">
+                 <div className="flex-1 text-left px-2 font-mono text-blue-600 font-bold text-xs truncate" dir="ltr">{publicLink}</div>
+                 <button 
+                  onClick={() => handleCopy(publicLink, 'public')}
+                  className={`p-3 rounded-xl transition-all ${copiedLink === 'public' ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white hover:bg-black'}`}
+                 >
+                    {copiedLink === 'public' ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+                 </button>
+              </div>
+              <Link to={`/p/${school.slug}`} target="_blank" className="flex items-center gap-2 text-blue-600 font-black hover:underline underline-offset-8 text-sm">
+                 <ExternalLink size={16} /> معاينة كولي أمر
+              </Link>
            </div>
 
-           <div className="flex justify-center gap-4">
-              <Link to={`/p/${school.slug}`} target="_blank" className="flex items-center gap-2 text-blue-600 font-black hover:underline underline-offset-8">
-                 <ExternalLink size={18} />
-                 فتح الرابط كولي أمر
+           {/* Teacher Link Card */}
+           <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-6 flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-[1.5rem] flex items-center justify-center shadow-inner">
+                 <UserCircle size={32} />
+              </div>
+              <div>
+                 <h3 className="text-xl font-black text-slate-800">رابط المعلمين</h3>
+                 <p className="text-slate-500 font-bold text-sm mt-1 leading-relaxed">بوابة الدخول الخاصة بالمعلمين لرصد الخطط الأسبوعية والغياب.</p>
+              </div>
+              <div className="w-full bg-slate-50 p-3 rounded-2xl border-2 border-slate-100 flex items-center gap-3">
+                 <div className="flex-1 text-left px-2 font-mono text-indigo-600 font-bold text-xs truncate" dir="ltr">{teacherLink}</div>
+                 <button 
+                  onClick={() => handleCopy(teacherLink, 'teacher')}
+                  className={`p-3 rounded-xl transition-all ${copiedLink === 'teacher' ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white hover:bg-black'}`}
+                 >
+                    {copiedLink === 'teacher' ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+                 </button>
+              </div>
+              <Link to={`/school/${school.slug}/teacher-login`} target="_blank" className="flex items-center gap-2 text-indigo-600 font-black hover:underline underline-offset-8 text-sm">
+                 <ExternalLink size={16} /> فتح بوابة المعلمين
               </Link>
            </div>
         </div>

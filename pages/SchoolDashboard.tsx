@@ -7,7 +7,8 @@ import {
   LayoutDashboard, GraduationCap, Calendar, 
   Settings, LogOut, Link as LinkIcon, 
   BookOpenCheck, MessageSquare, ClipboardCheck, Users,
-  CheckCircle, AlertCircle, ArrowRight, Copy, Check, Zap, ChevronRight
+  CheckCircle, AlertCircle, ArrowRight, Copy, Check, Zap, ChevronRight,
+  UserCircle, ExternalLink
 } from 'lucide-react';
 import StudentsManagement from '../components/school/StudentsManagement.tsx';
 import SchoolSettings from '../components/school/SchoolSettings.tsx';
@@ -103,6 +104,15 @@ const SchoolDashboard: React.FC<Props> = ({ school, onLogout }) => {
 const SchoolOverview: React.FC<{ school: School }> = ({ school }) => {
   const teachersCount = db.getTeachers(school.id).length;
   const studentsCount = db.getStudents(school.id).length;
+  const [copied, setCopied] = useState(false);
+
+  const teacherLoginLink = `${window.location.origin}/#/school/${school.slug}/teacher-login`;
+
+  const copyTeacherLink = () => {
+    navigator.clipboard.writeText(teacherLoginLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="space-y-12 animate-in fade-in duration-700">
@@ -116,6 +126,30 @@ const SchoolOverview: React.FC<{ school: School }> = ({ school }) => {
            <div className="text-lg font-black text-slate-700">{new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
         </div>
       </header>
+
+      {/* Quick Links Section */}
+      <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-indigo-100 flex flex-col md:flex-row items-center gap-8 animate-in slide-in-from-top-4">
+         <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
+            <LinkIcon size={32} />
+         </div>
+         <div className="flex-1 text-center md:text-right">
+            <h3 className="text-xl font-black text-slate-800">رابط دخول المعلمين</h3>
+            <p className="text-slate-500 font-bold text-sm">أرسل هذا الرابط للمعلمين ليتمكنوا من رصد الخطط والغياب.</p>
+            <div className="mt-3 flex items-center gap-3 bg-slate-50 p-2 pr-4 rounded-xl border border-slate-100">
+               <span className="flex-1 text-left font-mono text-xs text-indigo-600 font-bold truncate" dir="ltr">{teacherLoginLink}</span>
+               <button 
+                onClick={copyTeacherLink}
+                className={`px-4 py-2 rounded-lg font-black text-xs transition-all flex items-center gap-2 ${copied ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white hover:bg-black'}`}
+               >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                  {copied ? 'تم النسخ' : 'نسخ الرابط'}
+               </button>
+            </div>
+         </div>
+         <Link to={`/school/${school.slug}/teacher-login`} target="_blank" className="p-4 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all">
+            <ExternalLink size={20} />
+         </Link>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {[
