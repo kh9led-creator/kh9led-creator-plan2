@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { DAYS, PERIODS, db, formatToHijri } from '../constants.tsx';
-import { Printer, Book, LayoutGrid, School as SchoolIcon, ArrowLeft, ArrowRight, GraduationCap, Calendar } from 'lucide-react';
+import { Printer, Book, LayoutGrid, School as SchoolIcon, ArrowLeft, ArrowRight, GraduationCap, Calendar, QrCode } from 'lucide-react';
 import { School, Subject, AcademicWeek } from '../types.ts';
 
 const PublicPlanView: React.FC = () => {
@@ -47,7 +47,7 @@ const PublicPlanView: React.FC = () => {
 
   return (
     <div className="bg-[#F8FAFC] min-h-screen font-['Tajawal'] pb-10 md:pb-20 overflow-x-hidden">
-      {/* Header */}
+      {/* Header Navigation */}
       <header className="glass border-b border-slate-100 px-4 md:px-8 py-4 md:py-5 no-print sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6">
           <div className="flex items-center gap-3 md:gap-5">
@@ -79,7 +79,7 @@ const PublicPlanView: React.FC = () => {
                 onClick={() => window.print()} 
                 className="flex-1 md:flex-none bg-slate-900 text-white px-4 md:px-8 py-2.5 md:py-3 rounded-xl md:rounded-2xl font-black shadow-xl shadow-slate-200 flex items-center justify-center gap-2 hover:bg-black transition-all text-xs md:text-sm"
               >
-                <Printer size={16} /> طباعة
+                <Printer size={16} /> طباعة الخطة
               </button>
             </div>
           )}
@@ -120,41 +120,52 @@ const PublicPlanView: React.FC = () => {
         ) : (
           <div className="w-full flex justify-center overflow-x-auto py-4">
             {/* Scaling container for mobile */}
-            <div className="origin-top scale-[0.45] sm:scale-[0.7] md:scale-100 mb-[-400px] sm:mb-[-150px] md:mb-0">
-               <div className="a4-page bg-white shadow-2xl border p-[8mm] relative flex flex-col overflow-hidden animate-in zoom-in-95 duration-700" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
+            <div className="origin-top scale-[0.45] sm:scale-[0.7] md:scale-100 mb-[-450px] sm:mb-[-150px] md:mb-0">
+               <div className="a4-page bg-white shadow-2xl border p-[10mm] relative flex flex-col overflow-hidden animate-in zoom-in-95 duration-700" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
                 
-                {/* Header Branding */}
-                <div className="grid grid-cols-3 gap-2 mb-2 border-b-2 border-black pb-2">
-                  <div className="text-right space-y-0 text-[8.5pt] font-black leading-tight">
+                {/* Watermark Logo - العلامة المائية الشفافة */}
+                {school.logoUrl && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.035] z-0 overflow-hidden">
+                    <img src={school.logoUrl} className="w-[450px] h-[450px] object-contain grayscale" alt="Watermark" />
+                  </div>
+                )}
+
+                {/* Header Section */}
+                <div className="relative z-10 grid grid-cols-3 gap-2 mb-4 border-b-4 border-double border-slate-900 pb-4 items-center">
+                  <div className="text-right space-y-1 font-black text-[9.5pt] leading-tight text-slate-800">
                     {headerLines.map((line, i) => <p key={i}>{line}</p>)}
-                    <p>{school.name}</p>
+                    <p className="text-indigo-600 pt-1">مدرسة: {school.name}</p>
                   </div>
 
-                  <div className="flex flex-col items-center justify-center">
+                  <div className="flex flex-col items-center justify-center scale-110">
                     {school.logoUrl ? (
-                      <img src={school.logoUrl} alt="Logo" className="w-16 h-16 object-contain" />
+                      <img src={school.logoUrl} className="w-20 h-20 object-contain drop-shadow-md" alt="Logo" />
                     ) : (
-                      <div className="w-16 h-16 border-2 border-dashed rounded-xl flex items-center justify-center text-slate-300 text-xs">LOGO</div>
+                      <div className="w-16 h-16 border-4 border-double rounded-2xl flex items-center justify-center text-slate-300 font-black">LOGO</div>
                     )}
+                    <div className="mt-2 bg-slate-900 text-white px-4 py-0.5 rounded-full">
+                      <span className="text-[7.5pt] font-black tracking-widest uppercase">Academic Weekly Plan</span>
+                    </div>
                   </div>
 
-                  <div className="text-right space-y-0.5 font-bold text-[8pt]">
-                    <p>الأسبوع: <span className="font-black">{activeWeek?.name || "---"}</span></p>
-                    <p>الفترة: {activeWeek ? `${formatToHijri(activeWeek.startDate)} إلى ${formatToHijri(activeWeek.endDate)}` : "---"}</p>
-                    <p>الصف: <span className="font-black underline">{selectedClass}</span></p>
+                  <div className="text-left space-y-1.5 font-bold text-[9pt]">
+                    <p className="flex items-center justify-end gap-2">الأسبوع الدراسي: <span className="font-black text-indigo-700 underline underline-offset-4">{activeWeek?.name || "---"}</span></p>
+                    <p className="flex items-center justify-end gap-2">الفصل الدراسي: <span className="font-black underline">{selectedClass}</span></p>
+                    <p className="text-[7.5pt] text-slate-400 font-black text-left">الفترة: {activeWeek ? `${formatToHijri(activeWeek.startDate)} - ${formatToHijri(activeWeek.endDate)}` : '--'}</p>
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-hidden border-2 border-black rounded-sm">
+                {/* Table Section - Optimized Height */}
+                <div className="relative z-10 flex-1 overflow-hidden border-[2.5px] border-slate-900 rounded-sm mb-4">
                   <table className="w-full border-collapse table-fixed h-full text-center">
-                    <thead className="border-b-2 border-black font-black bg-slate-50">
-                      <tr className="h-8">
-                        <th className="border-l-2 border-black w-12 text-[9pt]">اليوم</th>
-                        <th className="border-l-2 border-black w-7 text-[8pt]">م</th>
-                        <th className="border-l-2 border-black w-24 text-[9pt]">المادة</th>
-                        <th className="border-l-2 border-black text-[9pt]">الدرس المقرر</th>
-                        <th className="border-l-2 border-black text-[9pt]">الواجب</th>
-                        <th className="w-28 text-[8pt]">ملاحظات</th>
+                    <thead className="bg-slate-100 border-b-[2.5px] border-slate-900 font-black">
+                      <tr className="h-10">
+                        <th className="border-l-[2px] border-slate-900 w-14 text-[10pt] bg-slate-200">اليوم</th>
+                        <th className="border-l-[1.5px] border-slate-900 w-8 text-[9pt]">م</th>
+                        <th className="border-l-[1.5px] border-slate-900 w-28 text-[10pt]">المادة</th>
+                        <th className="border-l-[1.5px] border-slate-900 text-[10pt]">الدرس المقرر</th>
+                        <th className="border-l-[1.5px] border-slate-900 text-[10pt]">الواجب المنزلي</th>
+                        <th className="w-28 text-[9pt] bg-slate-50">ملاحظات</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -167,17 +178,17 @@ const PublicPlanView: React.FC = () => {
                             const subject = subjects.find(s => s.id === sched.subjectId)?.name || '-';
                             
                             return (
-                              <tr key={`${day.id}-${period}`} className={`h-[18.5px] border-b ${pIdx === PERIODS.length - 1 ? 'border-b-2 border-black' : 'border-slate-200'}`}>
+                              <tr key={`${day.id}-${period}`} className={`h-[18.2px] border-b ${pIdx === PERIODS.length - 1 ? 'border-b-[2px] border-slate-900' : 'border-slate-300'}`}>
                                 {pIdx === 0 && (
-                                  <td rowSpan={PERIODS.length} className="border-l-2 border-black font-black rotate-180 [writing-mode:vertical-rl] bg-white text-[8.5pt] tracking-widest leading-none border-b-2 border-black">
+                                  <td rowSpan={PERIODS.length} className="border-l-[2.5px] border-slate-900 font-black rotate-180 [writing-mode:vertical-rl] bg-slate-50 text-[10.5pt] tracking-[0.2em] leading-none border-b-[2px] border-slate-900">
                                     {day.label}
                                   </td>
                                 )}
-                                <td className="border-l-2 border-black text-[7.5pt] font-black">{period}</td>
-                                <td className="border-l-2 border-black text-[8pt] font-black px-1">{subject}</td>
-                                <td className="border-l-2 border-black text-[7.5pt] px-1 truncate leading-tight font-medium">{plan.lesson || '-'}</td>
-                                <td className="border-l-2 border-black text-[7.5pt] px-1 truncate leading-tight font-medium">{plan.homework || '-'}</td>
-                                <td className="text-[7pt] px-1 text-slate-400 italic leading-tight truncate">{plan.enrichment || '-'}</td>
+                                <td className="border-l-[1.5px] border-slate-900 text-[9.5pt] font-black bg-slate-50/50">{period}</td>
+                                <td className="border-l-[1.5px] border-slate-900 text-[9.5pt] font-black truncate px-1 text-indigo-900">{subject}</td>
+                                <td className="border-l-[1.5px] border-slate-900 text-[9pt] leading-snug px-2 truncate font-bold text-slate-700 italic">{plan.lesson || '-'}</td>
+                                <td className="border-l-[1.5px] border-slate-900 text-[9pt] leading-snug px-2 truncate font-bold text-slate-800">{plan.homework || '-'}</td>
+                                <td className="text-[8pt] leading-tight px-1 text-slate-400 font-black italic truncate bg-slate-50/30">{plan.enrichment || '-'}</td>
                               </tr>
                             );
                           })}
@@ -187,29 +198,37 @@ const PublicPlanView: React.FC = () => {
                   </table>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mt-3 h-[42mm]">
-                   <div className="border-2 border-black p-3 bg-white flex flex-col">
-                      <h3 className="text-[9pt] font-black border-b border-black pb-1 mb-2 text-center bg-slate-50">توجيهات لولي الأمر</h3>
-                      <div className="text-[8pt] font-bold leading-relaxed text-slate-700 whitespace-pre-wrap overflow-hidden">
-                        {school.generalMessages || "١. متابعة منصة مدرستي يومياً\n٢. الاهتمام بحل الواجبات\n٣. إحضار الأدوات المدرسية"}
-                      </div>
+                {/* Footer Boxes - Side-by-side to save height */}
+                <div className="relative z-10 grid grid-cols-2 gap-4 h-[42mm]">
+                   <div className="border-[2px] border-slate-900 p-4 bg-white flex flex-col shadow-sm rounded-xl">
+                      <h3 className="text-[10.5pt] font-black mb-3 border-b-2 border-slate-900 pb-1 text-center bg-slate-100 rounded-md">توجيهات لولي الأمر</h3>
+                      <p className="text-[9pt] font-bold leading-relaxed text-slate-700 whitespace-pre-wrap flex-1 overflow-hidden pr-2">
+                        {school.generalMessages || "١. المتابعة المستمرة لمنصة مدرستي.\n٢. الالتزام بالحضور الصباحي المبكر.\n٣. التأكد من إحضار كافة الكتب يومياً."}
+                      </p>
                    </div>
-                   <div className="border-2 border-black p-3 bg-white flex flex-col">
-                      <h3 className="text-[9pt] font-black border-b border-black pb-1 mb-2 text-center bg-slate-50">نشاط الأسبوع</h3>
+                   
+                   <div className="border-[2px] border-slate-900 p-4 bg-white flex flex-col shadow-sm rounded-xl">
+                      <h3 className="text-[10.5pt] font-black mb-3 border-b-2 border-slate-900 pb-1 text-center bg-indigo-50 text-indigo-900 rounded-md">القيمة التربوية للأسبوع</h3>
                       <div className="flex-1 flex flex-col items-center justify-center overflow-hidden">
                         {school.weeklyNotesImage && (
-                           <img src={school.weeklyNotesImage} className="max-h-[15mm] w-full object-contain mb-1" />
+                           <img src={school.weeklyNotesImage} className="max-h-[20mm] object-contain mb-2" alt="Weekly Value" />
                         )}
-                        <div className="text-[8.5pt] font-black text-indigo-700 text-center leading-tight">
-                           {school.weeklyNotes || "مدرستنا بيئة آمنة للتعلم"}
-                        </div>
+                        <p className="text-[10pt] font-black text-center text-indigo-800 leading-snug">
+                          {school.weeklyNotes || "البيئة المدرسية الآمنة هي منطلق الإبداع والتميز"}
+                        </p>
                       </div>
                    </div>
                 </div>
-
-                <p className="mt-2 text-[6.5pt] text-center text-slate-400 font-black border-t border-slate-100 pt-1 italic no-print">
-                   بوابة الخطط الأسبوعية الموحدة - {school.name} - {new Date().getFullYear()}
-                </p>
+                
+                {/* Official Branding Footer */}
+                <div className="relative z-10 mt-auto pt-4 flex justify-between items-center px-4 border-t border-slate-100 opacity-60">
+                   <p className="text-[7pt] font-black text-slate-500 uppercase tracking-tighter">
+                     خطة الأسبوع الموحدة - {school.name}
+                   </p>
+                   <div className="flex items-center gap-2 text-[7pt] font-black text-indigo-600">
+                      بوابة مدرستي الرقمية - {new Date().getFullYear()}
+                   </div>
+                </div>
               </div>
             </div>
           </div>
