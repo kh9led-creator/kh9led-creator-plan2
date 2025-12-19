@@ -45,7 +45,7 @@ const BulkStudentPlans: React.FC = () => {
   if (isLoading) return <div className="p-24 text-center font-black animate-pulse text-slate-400 text-2xl">جاري تحضير ملفات الطباعة...</div>;
   if (!school) return <div className="p-24 text-center font-black text-rose-500 text-2xl">المدرسة غير موجودة.</div>;
 
-  const headerLines = (school.headerContent || "المملكة العربية السعودية\nوزارة التعليم\nالإدارة العامة للتعليم\nمدرسة أحد الابتدائية").split('\n');
+  const headerLines = (school.headerContent || "المملكة العربية السعودية\nوزارة التعليم\nالإدارة العامة للتعليم").split('\n');
 
   return (
     <div className="bg-slate-100 min-h-screen font-['Tajawal'] pb-10">
@@ -69,43 +69,37 @@ const BulkStudentPlans: React.FC = () => {
 
           return (
             <div key={student.id} className="student-page-container flex justify-center">
-              {/* Single Page A4 Frame */}
-              <div className="a4-page bg-white shadow-2xl p-[10mm] relative flex flex-col overflow-hidden" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
+              <div className="a4-page bg-white shadow-2xl p-[8mm] relative flex flex-col overflow-hidden" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
                 
-                {/* Header Section - Order Adjusted */}
-                <div className="grid grid-cols-3 gap-2 mb-3 border-b-2 border-black pb-3">
-                  {/* Right: School Info */}
-                  <div className="text-right space-y-0.5 font-black text-[9pt] leading-tight">
+                {/* Header */}
+                <div className="grid grid-cols-3 gap-2 mb-2 border-b-2 border-black pb-2">
+                  <div className="text-right space-y-0 font-black text-[8pt] leading-tight">
                     {headerLines.map((line, i) => <p key={i}>{line}</p>)}
+                    <p>{school.name}</p>
                   </div>
 
-                  {/* Center: Logo */}
                   <div className="flex flex-col items-center justify-center">
-                    {school.logoUrl && <img src={school.logoUrl} className="w-16 h-16 object-contain" />}
+                    {school.logoUrl && <img src={school.logoUrl} className="w-14 h-14 object-contain" />}
                   </div>
 
-                  {/* Left: Student Info */}
-                  <div className="text-right space-y-0.5 font-bold text-[8.5pt]">
+                  <div className="text-right space-y-0.5 font-bold text-[8pt]">
                     <p>الصف: <span className="font-black underline">{classTitle}</span></p>
-                    <p>الأسبوع: الأسبوع الأول</p>
-                    <p>الفصل الدراسي الأول</p>
-                    <p className="mt-1 text-slate-900 bg-slate-50 p-1 px-2 border-r-4 border-blue-600 inline-block text-[10pt] font-black">
-                      اسم الطالب: {student.name}
-                    </p>
+                    <p className="text-blue-600 font-black">الطالب: {student.name}</p>
+                    <p>الأسبوع الدراسي الأول</p>
                   </div>
                 </div>
 
-                {/* Table - Optimized row height to fit all days */}
-                <div className="flex-1 overflow-hidden border-2 border-black rounded-sm mb-4">
+                {/* Table - 35 Rows Logic */}
+                <div className="flex-1 overflow-hidden border-2 border-black rounded-sm mb-2">
                   <table className="w-full border-collapse table-fixed h-full text-center">
                     <thead className="bg-slate-100 border-b-2 border-black font-black">
-                      <tr className="h-9">
-                        <th className="border-l-2 border-black w-12 text-[9pt]">اليوم</th>
-                        <th className="border-l-2 border-black w-8 text-[8pt]">م</th>
-                        <th className="border-l-2 border-black w-24 text-[9pt]">المادة</th>
-                        <th className="border-l-2 border-black text-[9pt]">الدرس المقرر</th>
-                        <th className="border-l-2 border-black text-[9pt]">الواجب</th>
-                        <th className="w-28 text-[9pt]">ملاحظات</th>
+                      <tr className="h-8">
+                        <th className="border-l-2 border-black w-10 text-[8pt]">اليوم</th>
+                        <th className="border-l-2 border-black w-7 text-[7pt]">م</th>
+                        <th className="border-l-2 border-black w-24 text-[8pt]">المادة</th>
+                        <th className="border-l-2 border-black text-[8pt]">الدرس المقرر</th>
+                        <th className="border-l-2 border-black text-[8pt]">الواجب</th>
+                        <th className="w-24 text-[8pt]">ملاحظات</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -118,17 +112,17 @@ const BulkStudentPlans: React.FC = () => {
                             const subject = subjects.find(s => s.id === sched.subjectId)?.name || '-';
                             
                             return (
-                              <tr key={`${day.id}-${period}`} className={`h-[21px] border-b ${pIdx === PERIODS.length - 1 ? 'border-b-2 border-black' : 'border-slate-300'}`}>
+                              <tr key={`${day.id}-${period}`} className={`h-[18.5px] border-b ${pIdx === PERIODS.length - 1 ? 'border-b-2 border-black' : 'border-slate-200'}`}>
                                 {pIdx === 0 && (
-                                  <td rowSpan={PERIODS.length} className="border-l-2 border-black font-black rotate-180 [writing-mode:vertical-rl] bg-white text-[8.5pt] tracking-widest leading-none border-b-2 border-black">
+                                  <td rowSpan={PERIODS.length} className="border-l-2 border-black font-black rotate-180 [writing-mode:vertical-rl] bg-white text-[8pt] tracking-widest leading-none border-b-2 border-black">
                                     {day.label}
                                   </td>
                                 )}
-                                <td className="border-l-2 border-black text-[7.5pt] font-black">{period}</td>
-                                <td className="border-l-2 border-black text-[8.5pt] font-black truncate px-1">{subject}</td>
-                                <td className="border-l-2 border-black text-[8pt] leading-tight px-1 truncate">{plan.lesson || '-'}</td>
-                                <td className="border-l-2 border-black text-[8pt] leading-tight px-1 truncate">{plan.homework || '-'}</td>
-                                <td className="text-[7.5pt] leading-tight px-1 text-slate-400 truncate">{plan.enrichment || '-'}</td>
+                                <td className="border-l-2 border-black text-[7pt] font-black">{period}</td>
+                                <td className="border-l-2 border-black text-[8pt] font-black truncate px-1">{subject}</td>
+                                <td className="border-l-2 border-black text-[7.5pt] leading-tight px-1 truncate font-medium">{plan.lesson || '-'}</td>
+                                <td className="border-l-2 border-black text-[7.5pt] leading-tight px-1 truncate font-medium">{plan.homework || '-'}</td>
+                                <td className="text-[7pt] leading-tight px-1 text-slate-400 truncate">{plan.enrichment || '-'}</td>
                               </tr>
                             );
                           })}
@@ -138,23 +132,23 @@ const BulkStudentPlans: React.FC = () => {
                   </table>
                 </div>
 
-                {/* Footer Sections */}
-                <div className="grid grid-cols-2 gap-4 h-[42mm]">
-                   <div className="border-2 border-black p-3 bg-white">
-                     <h3 className="text-[9.5pt] font-black mb-1 border-b border-black pb-0.5 text-center">رسائل وتوجيهات ولي الأمر</h3>
-                     <p className="text-[8.5pt] font-bold leading-snug text-slate-700 whitespace-pre-wrap">{school.generalMessages || "- نرجو المتابعة المستمرة لمستوى الطالب\n- الحرص على الحضور المبكر"}</p>
+                {/* Footer */}
+                <div className="grid grid-cols-2 gap-4 h-[38mm]">
+                   <div className="border-2 border-black p-2 bg-white">
+                     <h3 className="text-[8.5pt] font-black mb-1 border-b border-black pb-0.5 text-center bg-slate-50">توجيهات ولي الأمر</h3>
+                     <p className="text-[8pt] font-bold leading-snug text-slate-700 whitespace-pre-wrap">{school.generalMessages || "- نرجو المتابعة المستمرة لمستوى الطالب\n- الحرص على الحضور المبكر"}</p>
                    </div>
-                   <div className="border-2 border-black p-3 bg-white flex flex-col">
-                     <h3 className="text-[9.5pt] font-black mb-1 border-b border-black pb-0.5 text-center">ملاحظات / نشاط أسبوعي</h3>
+                   <div className="border-2 border-black p-2 bg-white flex flex-col">
+                     <h3 className="text-[8.5pt] font-black mb-1 border-b border-black pb-0.5 text-center bg-slate-50">نشاط الأسبوع</h3>
                      <div className="flex-1 flex flex-col items-center justify-center">
-                       {school.weeklyNotesImage && <img src={school.weeklyNotesImage} className="max-h-[16mm] object-contain mb-1 opacity-50" />}
-                       <p className="text-[8.5pt] font-bold text-center text-slate-600 leading-none">{school.weeklyNotes || "مدرستنا بيئة آمنة للتعلم"}</p>
+                       {school.weeklyNotesImage && <img src={school.weeklyNotesImage} className="max-h-[14mm] object-contain mb-1" />}
+                       <p className="text-[8.5pt] font-black text-center text-indigo-700 leading-tight">{school.weeklyNotes || "مدرستنا بيئة آمنة للتعلم"}</p>
                      </div>
                    </div>
                 </div>
                 
-                <div className="mt-2 text-center border-t border-slate-100 pt-1 opacity-50">
-                   <p className="text-[6.5pt] font-black text-slate-400">سجل متابعة الطالب: {student.name} - حقوق النشر محفوظة لمدرسة {school.name}</p>
+                <div className="mt-1 text-center border-t border-slate-100 pt-1 opacity-50">
+                   <p className="text-[6pt] font-black text-slate-400 uppercase tracking-tighter">سجل الطالب: {student.name} - مدرسة {school.name}</p>
                 </div>
               </div>
             </div>
@@ -178,7 +172,7 @@ const BulkStudentPlans: React.FC = () => {
             box-shadow: none !important; 
             border: none !important; 
             margin: 0 auto !important; 
-            padding: 10mm !important;
+            padding: 8mm !important;
             width: 210mm !important;
             height: 297mm !important;
             display: flex !important;
@@ -186,8 +180,9 @@ const BulkStudentPlans: React.FC = () => {
             overflow: hidden !important;
             -webkit-print-color-adjust: exact;
           }
-          table { border: 2px solid black !important; border-collapse: collapse !important; }
+          table { border: 2px solid black !important; border-collapse: collapse !important; height: auto !important; }
           .border-black { border-color: black !important; }
+          tr { page-break-inside: avoid; }
         }
       `}</style>
     </div>
