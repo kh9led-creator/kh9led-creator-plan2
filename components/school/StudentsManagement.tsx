@@ -6,7 +6,7 @@ import {
   Plus, Search, Trash2, CheckCircle2, 
   X, Sparkles, Loader2, User, 
   Eraser, Phone, GraduationCap, Layout, Edit2, 
-  Users, FileSpreadsheet, AlertCircle, Wand2
+  Users, AlertCircle, Wand2
 } from 'lucide-react';
 
 const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
@@ -32,18 +32,6 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     );
   }, [students, searchTerm]);
 
-  const handleOpenAdd = () => {
-    setEditingStudent(null);
-    setFormData({ name: '', grade: 'الأول الابتدائي', section: '1', phoneNumber: '' });
-    setShowForm(true);
-  };
-
-  const handleOpenEdit = (student: Student) => {
-    setEditingStudent(student);
-    setFormData({ name: student.name, grade: student.grade, section: student.section, phoneNumber: student.phoneNumber });
-    setShowForm(true);
-  };
-
   const handleSave = () => {
     if (!formData.name) return;
     const studentData = { ...formData, id: editingStudent ? editingStudent.id : Date.now().toString(), schoolId };
@@ -51,26 +39,6 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     setStudents(db.getStudents(schoolId));
     setShowForm(false);
     db.syncClassesFromStudents(schoolId);
-  };
-
-  const deleteStudent = (id: string) => {
-    if (confirm('هل أنت متأكد من حذف هذا الطالب؟')) {
-      const all = JSON.parse(localStorage.getItem('madrasati_students') || '[]');
-      const filtered = all.filter((s: any) => s.id !== id);
-      localStorage.setItem('madrasati_students', JSON.stringify(filtered));
-      setStudents(db.getStudents(schoolId));
-      db.syncClassesFromStudents(schoolId);
-    }
-  };
-
-  const handleDeleteAll = () => {
-    if (confirm('تنبيه: سيتم حذف كافة الطلاب المسجلين حالياً لهذه المدرسة. هل أنت متأكد؟')) {
-      const all = JSON.parse(localStorage.getItem('madrasati_students') || '[]');
-      const filtered = all.filter((s: any) => s.schoolId !== schoolId);
-      localStorage.setItem('madrasati_students', JSON.stringify(filtered));
-      setStudents([]);
-      db.syncClassesFromStudents(schoolId);
-    }
   };
 
   const processImport = () => {
@@ -86,68 +54,56 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
       const lines = importText.split(/\r?\n/).filter(line => line.trim() !== "");
       const newStudents: any[] = [];
       
-      const gradeKeywords = ['ابتدائي', 'متوسط', 'ثانوي', 'روضة', 'تمهيدي', 'عام', 'تحفيظ'];
-      const skipKeywords = ['اسم', 'طالب', 'جوال', 'هاتف', 'فصل', 'صف', 'رقم'];
+      const gradeKeywords = ['ابتدائي', 'متوسط', 'ثانوي', 'أول', 'ثاني', 'ثالث', 'رابع', 'خامس', 'سادس', 'عام', 'تحفيظ'];
+      const headerKeywords = ['الجوال', 'الفصل', 'رقم الصف', 'اسم الطالب', 'الهاتف', 'المدرسة'];
 
       lines.forEach((line) => {
-        // فحص ما إذا كان السطر هو سطر ترويسة/عناوين
-        const isHeader = skipKeywords.some(k => line.includes(k)) && line.length < 100;
-        if (isHeader && newStudents.length === 0) return; // تخطي الترويسة في البداية
+        // 1. تجاهل أسطر الترويسة (العناوين)
+        const isHeader = headerKeywords.some(k => line.includes(k));
+        if (isHeader) return;
 
-        // تفكيك السطر بذكاء (دعم التاب، الفواصل، أو المسافات المتعددة)
-        let parts = line.split(/\t|,|\s{2,}/).map(p => p.trim()).filter(p => p !== "");
+        // 2. استخراج رقم الجوال (أي رقم يبدأ بـ 966 أو 05 أو 5 وطوله أكثر من 8)
+        const phoneMatch = line.match(/(966[0-9]{9}|05[0-9]{8}|5[0-9]{8})/);
+        const phone = phoneMatch ? phoneMatch[0] : '';
+
+        // 3. استخراج مسمى الصف (تجميع الكلمات الدالة)
+        const gradeParts: string[] = [];
+        const words = line.split(/\s+/);
         
-        // إذا لم ينجح التفكيك بالمسافات الكبيرة، نجرب المسافات العادية ونحاول تجميع الكلمات
-        if (parts.length <= 1) {
-          parts = line.split(/\s+/).map(p => p.trim()).filter(p => p !== "");
+        words.forEach(word => {
+          if (gradeKeywords.some(k => word.includes(k))) {
+            gradeParts.push(word);
+          }
+        });
+        const grade = gradeParts.join(' ') || 'الأول الابتدائي';
+
+        // 4. استخراج رقم الفصل (رقم منفرد ليس جزءاً من الجوال)
+        // نبحث عن رقم وحيد يتكون من خانة أو خانتين
+        let section = '1';
+        const sectionMatch = line.match(/\s(\d{1,2})\s/);
+        if (sectionMatch) {
+            section = sectionMatch[1];
         }
 
-        let phone = '';
-        let gradeParts: string[] = [];
-        let section = '1';
-        let nameParts: string[] = [];
-
-        parts.forEach(part => {
-          const cleanPart = part.replace(/[\s\-\(\)\+]/g, '');
-          
-          // 1. التعرف على الجوال
-          if (/^(966|05|5|00966)[0-9]{8,12}$/.test(cleanPart)) {
-            phone = cleanPart;
-          }
-          // 2. التعرف على الصف الدراسي (كلمات دالة)
-          else if (gradeKeywords.some(k => part.includes(k))) {
-            gradeParts.push(part);
-          }
-          // 3. التعرف على الفصل (رقم مجرد)
-          else if (/^[0-9]$/.test(part) && section === '1') {
-            section = part;
-          }
-          // 4. ما تبقى هو اسم الطالب
-          else {
-            nameParts.push(part);
-          }
+        // 5. استخراج الاسم (كل ما تبقى بعد حذف الجوال والصف والفصل)
+        let nameCleaning = line;
+        if (phone) nameCleaning = nameCleaning.replace(phone, '');
+        gradeParts.forEach(gp => {
+            nameCleaning = nameCleaning.replace(gp, '');
         });
+        if (sectionMatch) nameCleaning = nameCleaning.replace(sectionMatch[0], ' ');
 
-        // تحسين مسمى الصف: إذا كان هناك كلمات صف مثل "الأول" لم تُصنف، نسحبها من الاسم
-        const nameFinal: string[] = [];
-        const extraGradeWords = ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'];
-        
-        nameParts.forEach(p => {
-          if (extraGradeWords.includes(p) && gradeParts.length > 0) {
-            gradeParts.unshift(p);
-          } else {
-            nameFinal.push(p);
-          }
-        });
+        // تنظيف الاسم النهائي من الرموز والمسافات الزائدة
+        const fullName = nameCleaning
+          .replace(/[0-9\-_]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
 
-        const fullName = nameFinal.join(' ').trim();
-        const fullGrade = gradeParts.join(' ').trim() || 'الأول الابتدائي';
-
-        if (fullName && fullName.length > 3 && !skipKeywords.some(k => fullName === k)) {
+        if (fullName && fullName.length > 5) {
           newStudents.push({
             id: (Date.now() + Math.random()).toString(),
             name: fullName,
-            grade: fullGrade,
+            grade: grade,
             section: section,
             phoneNumber: phone,
             schoolId: schoolId
@@ -162,13 +118,12 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         db.syncClassesFromStudents(schoolId);
         setShowImport(false);
         setImportText('');
-        alert(`تم استيراد ${newStudents.length} طالب بنجاح!`);
+        alert(`تم بنجاح! استيراد ${newStudents.length} طالب بنظام المعالجة الذكية.`);
       } else {
-        setImportError('لم نتمكن من تحليل البيانات. تأكد من نسخ الجدول كاملاً من الإكسل.');
+        setImportError('لم نتمكن من تحليل البيانات. تأكد من أن الأسماء واضحة في النص الملصق.');
       }
     } catch (err) {
-      console.error(err);
-      setImportError('حدث خطأ أثناء المعالجة. يرجى التأكد من أن البيانات ملصقة بشكل صحيح.');
+      setImportError('حدث خطأ أثناء المعالجة. يرجى محاولة نسخ الأعمدة من الإكسل فقط.');
     } finally {
       setIsProcessing(false);
     }
@@ -186,16 +141,23 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         </div>
         <div className="flex flex-wrap gap-3 w-full md:w-auto">
           <button 
-            onClick={handleDeleteAll} 
+            onClick={() => {
+              if (confirm('تنبيه: سيتم حذف كافة الطلاب المسجلين حالياً لهذه المدرسة. هل أنت متأكد؟')) {
+                const all = JSON.parse(localStorage.getItem('madrasati_students') || '[]');
+                const filtered = all.filter((s: any) => s.schoolId !== schoolId);
+                localStorage.setItem('madrasati_students', JSON.stringify(filtered));
+                setStudents([]);
+                db.syncClassesFromStudents(schoolId);
+              }
+            }} 
             className="p-3.5 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all border border-rose-100 flex items-center justify-center gap-2 font-bold text-sm"
-            title="حذف كافة الطلاب"
           >
             <Trash2 size={18} />
           </button>
           <button onClick={() => setShowImport(true)} className="flex-1 md:flex-none bg-slate-900 text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-md text-sm border border-slate-700">
-            <Wand2 size={18} className="text-blue-400" /> استيراد ذكي من Excel
+            <Wand2 size={18} className="text-blue-400" /> استيراد ذكي (إكسل)
           </button>
-          <button onClick={handleOpenAdd} className="flex-1 md:flex-none bg-indigo-600 text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition shadow-md text-sm">
+          <button onClick={() => { setEditingStudent(null); setFormData({ name: '', grade: 'الأول الابتدائي', section: '1', phoneNumber: '' }); setShowForm(true); }} className="flex-1 md:flex-none bg-indigo-600 text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition shadow-md text-sm">
             <Plus size={18} /> إضافة طالب
           </button>
         </div>
@@ -210,7 +172,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
               placeholder="ابحث بالاسم أو الصف..." 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl py-3 pr-11 pl-4 text-sm font-bold shadow-sm outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-100 transition-all" 
+              className="w-full bg-white border border-slate-200 rounded-xl py-3 pr-11 pl-4 text-sm font-bold shadow-sm outline-none focus:ring-4 focus:ring-indigo-50 transition-all" 
             />
           </div>
         </div>
@@ -239,20 +201,16 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                       </div>
                     </td>
                     <td className="p-5 border-l border-slate-50 text-center">
-                      <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-[11px] font-bold border border-blue-100">
-                        {s.grade}
-                      </span>
+                      <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-[11px] font-bold border border-blue-100">{s.grade}</span>
                     </td>
                     <td className="p-5 border-l border-slate-50 text-center">
-                      <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[11px] font-bold">
-                        فصل {s.section}
-                      </span>
+                      <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[11px] font-bold">فصل {s.section}</span>
                     </td>
                     <td className="p-5 border-l border-slate-50 text-center font-mono text-sm text-slate-500">{s.phoneNumber || '---'}</td>
                     <td className="p-5 text-left">
                       <div className="flex justify-end gap-2">
-                        <button onClick={() => handleOpenEdit(s)} className="p-2.5 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-600 hover:text-white transition-colors" title="تعديل"><Edit2 size={16} /></button>
-                        <button onClick={() => deleteStudent(s.id)} className="p-2.5 text-rose-500 bg-rose-50 rounded-lg hover:bg-rose-500 hover:text-white transition-colors" title="حذف"><Trash2 size={16} /></button>
+                        <button onClick={() => { setEditingStudent(s); setFormData({ name: s.name, grade: s.grade, section: s.section, phoneNumber: s.phoneNumber }); setShowForm(true); }} className="p-2.5 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-600 hover:text-white transition-colors"><Edit2 size={16} /></button>
+                        <button onClick={() => { if (confirm('حذف؟')) { const all = JSON.parse(localStorage.getItem('madrasati_students') || '[]'); localStorage.setItem('madrasati_students', JSON.stringify(all.filter((st: any) => st.id !== s.id))); setStudents(db.getStudents(schoolId)); db.syncClassesFromStudents(schoolId); } }} className="p-2.5 text-rose-500 bg-rose-50 rounded-lg hover:bg-rose-500 hover:text-white transition-colors"><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -263,7 +221,6 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         </div>
       </div>
 
-      {/* Import Modal - Professional Version */}
       {showImport && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] flex items-center justify-center p-4">
           <div className="bg-white p-8 md:p-10 rounded-[3rem] max-w-2xl w-full shadow-2xl animate-in zoom-in-95">
@@ -271,8 +228,8 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                 <div className="flex items-center gap-4">
                    <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100"><Wand2 size={28} /></div>
                    <div>
-                      <h3 className="text-xl font-black text-slate-900">المعالج الذكي للبيانات</h3>
-                      <p className="text-xs text-slate-400 font-bold mt-1">يدعم النسخ المباشر من Excel (يدعم الأعمدة والترويسة).</p>
+                      <h3 className="text-xl font-black text-slate-900">المعالج الذكي (النسخة النهائية)</h3>
+                      <p className="text-xs text-slate-400 font-bold mt-1">الآن يدعم النسخ المباشر من الإكسل مهما كان ترتيب الأعمدة.</p>
                    </div>
                 </div>
                 <button onClick={() => setShowImport(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:text-rose-500 transition-colors"><X size={24} /></button>
@@ -280,14 +237,11 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
 
              <div className="space-y-6">
                 <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100">
-                   <h4 className="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2">
-                     <Sparkles size={14} /> مميزات الاستيراد الذكي:
-                   </h4>
+                   <h4 className="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2"><Sparkles size={14} /> ملاحظات المعالج الجديد:</h4>
                    <ul className="text-[11px] text-blue-900/70 font-bold space-y-1 list-disc list-inside">
-                     <li>تخطي عناوين الأعمدة تلقائياً.</li>
-                     <li>التعرف على رقم الجوال (05xxxx أو 966xxx).</li>
-                     <li>دمج مسميات الصفوف (مثال: الأول الابتدائي).</li>
-                     <li>لا يشترط ترتيب معين للأعمدة.</li>
+                     <li>سيقوم النظام بالبحث عن رقم الجوال تلقائياً في أي مكان بالسطر.</li>
+                     <li>سيتم تمييز الأسماء والصفوف بناءً على الكلمات المفتاحية.</li>
+                     <li>تستطيع نسخ الجدول كاملاً مع العناوين، سيقوم النظام بتجاهلها.</li>
                    </ul>
                 </div>
 
@@ -298,36 +252,19 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                     value={importText}
                     onChange={e => setImportText(e.target.value)}
                   />
-                  {importText && (
-                    <button 
-                      onClick={() => setImportText('')} 
-                      className="absolute left-6 bottom-6 p-2 bg-white text-rose-500 rounded-full shadow-md hover:bg-rose-500 hover:text-white transition-all"
-                      title="مسح النص"
-                    >
-                      <Eraser size={18} />
-                    </button>
-                  )}
+                  {importText && <button onClick={() => setImportText('')} className="absolute left-6 bottom-6 p-2 bg-white text-rose-500 rounded-full shadow-md hover:bg-rose-500 hover:text-white transition-all"><Eraser size={18} /></button>}
                 </div>
 
-                {importError && (
-                  <div className="flex items-center gap-2 p-4 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 text-xs font-black animate-in shake">
-                    <AlertCircle size={16} /> {importError}
-                  </div>
-                )}
+                {importError && <div className="flex items-center gap-2 p-4 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 text-xs font-black animate-in shake"><AlertCircle size={16} /> {importError}</div>}
 
                 <div className="flex gap-4">
-                   <button 
-                    onClick={() => setShowImport(false)} 
-                    className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black transition-all hover:bg-slate-200"
-                   >
-                     إلغاء
-                   </button>
+                   <button onClick={() => setShowImport(false)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black transition-all hover:bg-slate-200">إلغاء</button>
                    <button 
                     onClick={processImport}
                     disabled={isProcessing || !importText.trim()}
                     className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                    >
-                     {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <><CheckCircle2 size={20} /> معالجة ذكية واستيراد</>}
+                     {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <><CheckCircle2 size={20} /> بدء المعالجة والاستيراد</>}
                    </button>
                 </div>
              </div>
@@ -335,7 +272,6 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         </div>
       )}
 
-      {/* Add/Edit Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white p-8 rounded-[2.5rem] max-w-md w-full shadow-2xl animate-in zoom-in-95 border border-slate-50">
@@ -349,48 +285,25 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
              <div className="space-y-5">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-black text-slate-400 mr-1">اسم الطالب الكامل</label>
-                  <input 
-                    placeholder="أدخل الاسم..." 
-                    className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 focus:bg-white transition-all shadow-sm" 
-                    value={formData.name} 
-                    onChange={e => setFormData({...formData, name: e.target.value})} 
-                  />
+                  <input placeholder="أدخل الاسم..." className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 focus:bg-white transition-all shadow-sm" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-black text-slate-400 mr-1">الصف</label>
-                    <select 
-                      className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 focus:bg-white transition-all shadow-sm cursor-pointer" 
-                      value={formData.grade} 
-                      onChange={e => setFormData({...formData, grade: e.target.value})}
-                    >
+                    <select className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 focus:bg-white transition-all shadow-sm cursor-pointer" value={formData.grade} onChange={e => setFormData({...formData, grade: e.target.value})}>
                       {['الأول الابتدائي', 'الثاني الابتدائي', 'الثالث الابتدائي', 'الرابع الابتدائي', 'الخامس الابتدائي', 'السادس الابتدائي', 'الأول المتوسط', 'الثاني المتوسط', 'الثالث المتوسط'].map(g => <option key={g}>{g}</option>)}
                     </select>
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-black text-slate-400 mr-1">رقم الفصل</label>
-                    <input 
-                      placeholder="مثال: 1" 
-                      className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 focus:bg-white transition-all shadow-sm" 
-                      value={formData.section} 
-                      onChange={e => setFormData({...formData, section: e.target.value})} 
-                    />
+                    <input placeholder="مثال: 1" className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 focus:bg-white transition-all shadow-sm" value={formData.section} onChange={e => setFormData({...formData, section: e.target.value})} />
                   </div>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-black text-slate-400 mr-1">رقم الجوال</label>
-                  <input 
-                    placeholder="05xxxxxxxx" 
-                    className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 focus:bg-white transition-all text-left shadow-sm" 
-                    value={formData.phoneNumber} 
-                    dir="ltr"
-                    onChange={e => setFormData({...formData, phoneNumber: e.target.value})} 
-                  />
+                  <input placeholder="05xxxxxxxx" className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 focus:bg-white transition-all text-left shadow-sm" value={formData.phoneNumber} dir="ltr" onChange={e => setFormData({...formData, phoneNumber: e.target.value})} />
                 </div>
-                <button 
-                  onClick={handleSave} 
-                  className="w-full bg-indigo-600 text-white py-5 rounded-[1.5rem] font-black text-lg shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all mt-4 flex items-center justify-center gap-2"
-                >
+                <button onClick={handleSave} className="w-full bg-indigo-600 text-white py-5 rounded-[1.5rem] font-black text-lg shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all mt-4 flex items-center justify-center gap-2">
                   <CheckCircle2 size={22} />
                   {editingStudent ? 'تحديث البيانات' : 'حفظ الطالب'}
                 </button>
