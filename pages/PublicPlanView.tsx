@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { DAYS, PERIODS, db } from '../constants.tsx';
-import { Printer, Book, LayoutGrid, School as SchoolIcon } from 'lucide-react';
+import { Printer, Book, LayoutGrid, School as SchoolIcon, ArrowLeft, ArrowRight, GraduationCap } from 'lucide-react';
 import { School, Subject } from '../types.ts';
 
 const PublicPlanView: React.FC = () => {
@@ -34,98 +34,127 @@ const PublicPlanView: React.FC = () => {
     }
   }, [school, selectedClass]);
 
-  if (!school) return <div className="p-24 text-center font-black animate-pulse text-slate-400 text-2xl">جاري تحميل البوابة التعليمية...</div>;
+  if (!school) return <div className="p-24 text-center font-black animate-pulse text-indigo-400 text-2xl">جاري تهيئة البوابة التعليمية...</div>;
 
-  const headerLines = (school.headerContent || "المملكة العربية السعودية\nوزارة التعليم\nالإدارة العامة للتعليم\nمدرسة أحد الابتدائية").split('\n');
+  const headerLines = (school.headerContent || "المملكة العربية السعودية\nوزارة التعليم\nالإدارة العامة للتعليم").split('\n');
 
   return (
-    <div className="bg-slate-50 min-h-screen font-['Tajawal'] pb-20">
-      <header className="bg-white border-b px-6 py-4 no-print sticky top-0 z-50 shadow-sm">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-4">
-            {school.logoUrl ? (
-              <img src={school.logoUrl} className="w-12 h-12 object-contain" />
-            ) : (
-              <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white"><SchoolIcon size={24} /></div>
-            )}
+    <div className="bg-[#F8FAFC] min-h-screen font-['Tajawal'] pb-20 overflow-x-hidden">
+      {/* Dynamic Header */}
+      <header className="glass border-b border-slate-100 px-8 py-5 no-print sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-5">
+            <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
+               {school.logoUrl ? (
+                <img src={school.logoUrl} className="w-14 h-14 object-contain" alt="school-logo" />
+               ) : (
+                <SchoolIcon className="text-indigo-600" size={40} />
+               )}
+            </div>
             <div className="text-right">
-              <h1 className="text-xl font-black text-slate-900">{school.name}</h1>
-              <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest leading-none">بوابة الخطط الأسبوعية الموحدة</p>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">{school.name}</h1>
+              <div className="flex items-center gap-2 mt-1">
+                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                 <p className="text-xs text-indigo-600 font-black uppercase tracking-widest">بوابة الخطط الأسبوعية المحدثة</p>
+              </div>
             </div>
           </div>
           
           {selectedClass && (
-            <div className="flex items-center gap-2">
-              <button onClick={() => setSelectedClass("")} className="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-200 transition text-sm">
-                <LayoutGrid size={16} /> تغيير الفصل
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setSelectedClass("")} 
+                className="bg-white text-slate-600 px-6 py-3 rounded-2xl font-black flex items-center gap-2 hover:bg-slate-50 border border-slate-200 transition-all text-sm"
+              >
+                <ArrowRight size={18} /> تغيير الفصل
               </button>
-              <button onClick={() => window.print()} className="bg-slate-900 text-white px-6 py-2 rounded-xl font-black shadow-lg flex items-center gap-2 hover:bg-black transition text-sm">
-                <Printer size={16} /> طباعة الخطة
+              <button 
+                onClick={() => window.print()} 
+                className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black shadow-2xl shadow-slate-200 flex items-center gap-2 hover:bg-black transition-all text-sm"
+              >
+                <Printer size={18} /> طباعة الخطة
               </button>
             </div>
           )}
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto p-4 md:p-10 flex justify-center">
+      <main className="max-w-7xl mx-auto p-6 md:p-16 flex flex-col items-center">
         {!selectedClass ? (
-          <div className="w-full animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <div className="text-center mb-10">
-               <h2 className="text-4xl font-black text-slate-800 mb-3">اختر الفصل الدراسي</h2>
-               <p className="text-slate-500 font-bold">يرجى اختيار الفصل لعرض الخطة الأسبوعية المحدثة</p>
+          <div className="w-full animate-in fade-in slide-in-from-bottom-10 duration-1000">
+            <div className="text-center mb-16 space-y-4">
+               <h2 className="text-5xl font-black text-slate-900">أهلاً بكم في فصولنا</h2>
+               <p className="text-slate-400 font-bold text-xl max-w-xl mx-auto leading-relaxed">يرجى اختيار الفصل الدراسي لعرض وتحميل الخطة الأسبوعية المعتمدة.</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {availableClasses.map((cls) => (
-                <button key={cls} onClick={() => setSelectedClass(cls)} className="group bg-white p-12 rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:border-blue-200 transition-all text-center flex flex-col items-center gap-5">
-                  <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all">
-                     <Book size={44} />
-                  </div>
-                  <h3 className="text-2xl font-black text-slate-800">{cls}</h3>
-                </button>
-              ))}
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+              {availableClasses.length === 0 ? (
+                <div className="col-span-full py-32 text-center">
+                   <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300">
+                      <Book size={48} />
+                   </div>
+                   <p className="text-slate-400 font-black text-2xl">لا توجد خطط منشورة حالياً لهذه المدرسة</p>
+                </div>
+              ) : (
+                availableClasses.map((cls) => (
+                  <button 
+                    key={cls} 
+                    onClick={() => setSelectedClass(cls)} 
+                    className="group bg-white p-16 rounded-[4rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:border-indigo-100 hover:-translate-y-2 transition-all duration-700 text-center flex flex-col items-center gap-8 relative overflow-hidden"
+                  >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-full -mr-16 -mt-16 group-hover:bg-indigo-600 transition-colors duration-700"></div>
+                    <div className="w-24 h-24 bg-indigo-50 text-indigo-600 rounded-[2.5rem] flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 relative z-10 shadow-inner">
+                       <GraduationCap size={48} />
+                    </div>
+                    <div className="relative z-10">
+                       <h3 className="text-3xl font-black text-slate-800 mb-2">{cls}</h3>
+                       <p className="text-slate-400 font-bold flex items-center justify-center gap-2">
+                          عرض الخطة <ArrowLeft size={16} className="group-hover:-translate-x-2 transition-transform" />
+                       </p>
+                    </div>
+                  </button>
+                ))
+              )}
             </div>
           </div>
         ) : (
-          /* A4 Report Simulation - Exact Order of Header */
-          <div className="a4-page bg-white shadow-2xl border p-[10mm] relative flex flex-col text-[10pt] overflow-hidden" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
+          /* A4 Report Simulation */
+          <div className="a4-page bg-white shadow-2xl border p-[10mm] relative flex flex-col text-[10pt] overflow-hidden animate-in zoom-in-95 duration-700" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
             
-            {/* Header Branding - Kingdom on the RIGHT */}
-            <div className="grid grid-cols-3 gap-2 mb-4 border-b-2 border-black pb-3">
-              {/* Right Side (Index 0 in RTL is Right): School Info */}
+            {/* Header Branding */}
+            <div className="grid grid-cols-3 gap-2 mb-4 border-b-2 border-black pb-4">
               <div className="text-right space-y-0.5 font-black text-[9pt] leading-tight">
                 {headerLines.map((line, i) => <p key={i}>{line}</p>)}
+                <p>{school.name}</p>
               </div>
 
-              {/* Center Side: Logo */}
               <div className="flex flex-col items-center justify-center">
                 {school.logoUrl ? (
-                  <img src={school.logoUrl} alt="Logo" className="w-20 h-20 object-contain" />
+                  <img src={school.logoUrl} alt="Logo" className="w-24 h-24 object-contain" />
                 ) : (
-                  <div className="w-20 h-20 border-2 border-dashed rounded-xl flex items-center justify-center text-slate-300">LOGO</div>
+                  <div className="w-24 h-24 border-2 border-dashed rounded-xl flex items-center justify-center text-slate-300">LOGO</div>
                 )}
               </div>
 
-              {/* Left Side (Index 2 in RTL is Left): Class Info */}
               <div className="text-right space-y-0.5 font-bold text-[8.5pt]">
-                <p>من: ....................</p>
-                <p>إلى: ....................</p>
                 <p>الأسبوع: الأسبوع الأول</p>
                 <p>الصف: <span className="font-black underline">{selectedClass}</span></p>
-                <p>الفصل الدراسي الأول</p>
+                <p>العام الدراسي: ١٤٤٥ هـ</p>
+                <p>الفصل الدراسي: الأول</p>
               </div>
             </div>
 
-            {/* Table Area - Optimized for one page */}
-            <div className="flex-1 overflow-hidden border-2 border-black">
+            {/* Table Area */}
+            <div className="flex-1 overflow-hidden border-2 border-black rounded-sm">
               <table className="w-full border-collapse table-fixed h-full text-center">
                 <thead className="border-b-2 border-black font-black bg-slate-50">
-                  <tr className="h-9">
-                    <th className="border-l-2 border-black w-12 text-[9pt]">اليوم</th>
-                    <th className="border-l-2 border-black w-8 text-[8pt]">م</th>
-                    <th className="border-l-2 border-black w-24 text-[9pt]">المادة</th>
-                    <th className="border-l-2 border-black text-[9pt]">الدرس المقرر</th>
-                    <th className="border-l-2 border-black text-[9pt]">الواجب</th>
-                    <th className="w-28 text-[9pt]">ملاحظات</th>
+                  <tr className="h-10">
+                    <th className="border-l-2 border-black w-14 text-[9.5pt]">اليوم</th>
+                    <th className="border-l-2 border-black w-8 text-[8.5pt]">م</th>
+                    <th className="border-l-2 border-black w-28 text-[9.5pt]">المادة</th>
+                    <th className="border-l-2 border-black text-[9.5pt]">الدرس المقرر</th>
+                    <th className="border-l-2 border-black text-[9.5pt]">الواجب</th>
+                    <th className="w-32 text-[9.5pt]">ملاحظات</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -139,14 +168,14 @@ const PublicPlanView: React.FC = () => {
                         return (
                           <tr key={`${day.id}-${period}`} className={`h-[22px] border-b ${pIdx === PERIODS.length - 1 ? 'border-b-2 border-black' : 'border-slate-300'}`}>
                             {pIdx === 0 && (
-                              <td rowSpan={PERIODS.length} className="border-l-2 border-black font-black rotate-180 [writing-mode:vertical-rl] bg-white text-[9pt] tracking-widest leading-none border-b-2 border-black">
+                              <td rowSpan={PERIODS.length} className="border-l-2 border-black font-black rotate-180 [writing-mode:vertical-rl] bg-white text-[9.5pt] tracking-widest leading-none border-b-2 border-black">
                                 {day.label}
                               </td>
                             )}
                             <td className="border-l-2 border-black text-[8pt] font-black">{period}</td>
-                            <td className="border-l-2 border-black text-[8.5pt] font-bold px-1">{subject}</td>
-                            <td className="border-l-2 border-black text-[8pt] px-1 truncate leading-tight">{plan.lesson || '-'}</td>
-                            <td className="border-l-2 border-black text-[8pt] px-1 truncate leading-tight">{plan.homework || '-'}</td>
+                            <td className="border-l-2 border-black text-[9pt] font-bold px-1">{subject}</td>
+                            <td className="border-l-2 border-black text-[8.5pt] px-1 truncate leading-tight">{plan.lesson || '-'}</td>
+                            <td className="border-l-2 border-black text-[8.5pt] px-1 truncate leading-tight">{plan.homework || '-'}</td>
                             <td className="text-[7.5pt] px-1 text-slate-400 italic leading-tight truncate">{plan.enrichment || '-'}</td>
                           </tr>
                         );
@@ -158,28 +187,28 @@ const PublicPlanView: React.FC = () => {
             </div>
 
             {/* Footer boxes */}
-            <div className="grid grid-cols-2 gap-4 mt-4 h-[45mm]">
-               <div className="border-2 border-black p-3 bg-white flex flex-col">
-                  <h3 className="text-[10pt] font-black border-b border-black pb-1 mb-2 text-center">رسائل وتوجيهات عامة</h3>
-                  <div className="text-[8.5pt] font-bold leading-relaxed text-slate-700 whitespace-pre-wrap">
-                    {school.generalMessages || "- عزيزي ولي أمر الطالب احرص على عدم غياب ابنك\n- عزيزي الطالب احرص على دخولك لمنصة مدرستي يوميا"}
+            <div className="grid grid-cols-2 gap-5 mt-5 h-[48mm]">
+               <div className="border-2 border-black p-4 bg-white flex flex-col">
+                  <h3 className="text-[10pt] font-black border-b border-black pb-2 mb-3 text-center bg-slate-50">توجيهات لولي الأمر</h3>
+                  <div className="text-[9pt] font-bold leading-relaxed text-slate-700 whitespace-pre-wrap">
+                    {school.generalMessages || "١. متابعة منصة مدرستي يومياً\n٢. الاهتمام بحل الواجبات\n٣. إحضار الأدوات المدرسية"}
                   </div>
                </div>
-               <div className="border-2 border-black p-3 bg-white flex flex-col">
-                  <h3 className="text-[10pt] font-black border-b border-black pb-1 mb-2 text-center">ملاحظات / نشاط أسبوعي</h3>
+               <div className="border-2 border-black p-4 bg-white flex flex-col">
+                  <h3 className="text-[10pt] font-black border-b border-black pb-2 mb-3 text-center bg-slate-50">نشاط الأسبوع</h3>
                   <div className="flex-1 flex flex-col items-center justify-center overflow-hidden">
                     {school.weeklyNotesImage && (
-                       <img src={school.weeklyNotesImage} className="max-h-[18mm] w-full object-contain mb-1 opacity-60" />
+                       <img src={school.weeklyNotesImage} className="max-h-[22mm] w-full object-contain mb-2 opacity-80" />
                     )}
-                    <div className="text-[8.5pt] font-bold text-slate-600 text-center leading-tight">
-                       {school.weeklyNotes || "- الاهتمام بالحضور وعدم الغياب\n- إحضار الكتب والأدوات المدرسية"}
+                    <div className="text-[9.5pt] font-black text-indigo-700 text-center leading-tight">
+                       {school.weeklyNotes || "مدرستنا بيئة آمنة للتعلم"}
                     </div>
                   </div>
                </div>
             </div>
 
-            <p className="mt-3 text-[7pt] text-center text-slate-400 font-bold border-t border-slate-100 pt-1 italic no-print">
-               تم التوليد آلياً عبر نظام "مدرستي" لإدارة الخطط المدرسية - {school.name}
+            <p className="mt-4 text-[7.5pt] text-center text-slate-400 font-black border-t border-slate-100 pt-2 italic no-print">
+               بوابة الخطط الأسبوعية الموحدة - {school.name} - حقوق الطبع محفوظة © {new Date().getFullYear()}
             </p>
           </div>
         )}
