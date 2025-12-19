@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>مدرستي - نظام الخطط الذكي</title>
+    <title>خططي - نظام الخطط الأسبوعية الذكي</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,16 +14,14 @@
         font-family: 'Tajawal', sans-serif;
         background-color: #f8fafc;
         color: #1e293b;
-        overflow-x: hidden; /* منع التمرير العرضي نهائياً */
+        overflow-x: hidden;
         -webkit-font-smoothing: antialiased;
       }
-      /* تحسين عرض الجداول */
       .table-container {
         width: 100%;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
       }
-      /* تحسين مظهر السكرول بار */
       ::-webkit-scrollbar {
         width: 6px;
         height: 6px;
@@ -35,14 +33,14 @@
         background: #cbd5e1;
         border-radius: 10px;
       }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-      }
       .card-neo {
         background: white;
         border: 1px solid #f1f5f9;
         border-radius: 1.5rem;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+      }
+      input, select, textarea {
+        font-family: 'Tajawal', sans-serif !important;
       }
     </style>
     <script type="importmap">

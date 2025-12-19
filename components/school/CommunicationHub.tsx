@@ -1,113 +1,129 @@
 
-import React, { useState, useMemo } from 'react';
-import { MessageSquare, Send, User, Bell, Search } from 'lucide-react';
-// Fix: Removed missing MOCK_TEACHERS import and added db for data fetching
+import React, { useState, useMemo, useEffect } from 'react';
+import { MessageSquare, Send, User, Bell, Search, Users } from 'lucide-react';
 import { db } from '../../constants.tsx';
 
-// Fix: Updated component to accept schoolId as a prop to fetch current school teachers
 const CommunicationHub: React.FC<{ schoolId: string }> = ({ schoolId }) => {
   const [messages, setMessages] = useState([
     { id: '1', sender: 'الإدارة', content: 'نرجو من الجميع إنهاء رصد الخطط قبل يوم الخميس الساعة ١٢ ظهراً.', time: 'منذ ساعتين', isOwn: false },
-    { id: '2', sender: 'الإدارة', content: 'تم تحديث نظام طباعة الطلاب، يمكنكم الآن معاينة النسخة النهائية.', time: 'أمس', isOwn: false }
+    { id: '2', sender: 'الإدارة', content: 'تم تفعيل ميزة رصد الغياب اليومي، نرجو الالتزام.', time: 'أمس', isOwn: false }
   ]);
   const [newMessage, setNewMessage] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Fetch actual teachers for this school
   const teachers = useMemo(() => db.getTeachers(schoolId), [schoolId]);
 
+  const filteredTeachers = useMemo(() => {
+    return teachers.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [teachers, searchTerm]);
+
   const handleSend = () => {
-    if(!newMessage) return;
-    setMessages([...messages, { id: Date.now().toString(), sender: 'الإدارة', content: newMessage, time: 'الآن', isOwn: true }]);
+    if(!newMessage.trim()) return;
+    setMessages([...messages, { 
+      id: Date.now().toString(), 
+      sender: 'الإدارة', 
+      content: newMessage, 
+      time: 'الآن', 
+      isOwn: true 
+    }]);
     setNewMessage('');
   };
 
   return (
-    <div className="h-[calc(100vh-160px)] flex flex-col space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 animate-in fade-in duration-700">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-black text-slate-900">مركز التواصل الداخلي</h2>
-          <p className="text-slate-500">أرسل التعاميم والتوجيهات لجميع المعلمين أو تواصل بشكل خاص.</p>
+          <h2 className="text-2xl font-black text-slate-900">مركز التواصل الداخلي</h2>
+          <p className="text-slate-500 font-bold text-sm mt-1">تواصل مباشر وتعاميم رسمية لمدرستك.</p>
         </div>
-        <div className="flex gap-2">
-           <button className="bg-blue-50 text-blue-600 px-6 py-3 rounded-2xl font-bold flex items-center gap-2 border border-blue-100">
-             <Bell size={20} />
-             إرسال تعميم عام
-           </button>
-        </div>
+        <button className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-100 transition-transform active:scale-95">
+          <Bell size={18} /> إرسال تعميم عاجل
+        </button>
       </div>
 
-      <div className="flex-1 bg-white rounded-[2.5rem] border shadow-sm flex overflow-hidden">
-        {/* Contacts Sidebar */}
-        <div className="w-80 border-l bg-slate-50/50 flex flex-col">
-          <div className="p-6 border-b bg-white">
-             <div className="relative">
-                <Search size={16} className="absolute right-4 top-3 text-slate-400" />
-                <input 
-                  type="text" 
-                  placeholder="ابحث عن معلم..." 
-                  className="w-full bg-slate-50 border-none rounded-xl py-2 pr-10 pl-4 text-sm font-bold"
-                />
-             </div>
+      <div className="card-neo h-[550px] flex overflow-hidden border border-slate-100">
+        {/* Sidebar */}
+        <div className="w-1/3 border-l bg-slate-50/30 flex flex-col hidden md:flex">
+          <div className="p-4 border-b bg-white">
+            <div className="relative">
+              <Search size={16} className="absolute right-3 top-3 text-slate-400" />
+              <input 
+                type="text" 
+                placeholder="ابحث عن معلم..." 
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full bg-slate-50 border-none rounded-xl py-2.5 pr-10 pl-4 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-2">
-             <button className="w-full p-4 rounded-2xl bg-blue-600 text-white flex items-center gap-3 shadow-lg shadow-blue-100 text-right">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center font-black">ج</div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+            <button className="w-full p-4 rounded-xl bg-indigo-600 text-white flex items-center gap-3 shadow-lg shadow-indigo-100 transition-all">
+              <div className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center font-black">
+                <Users size={18} />
+              </div>
+              <div className="text-right">
+                <div className="font-black text-sm">غرفة التعميمات العامة</div>
+                <div className="text-[10px] opacity-70">المعلمون: {teachers.length}</div>
+              </div>
+            </button>
+            <div className="h-px bg-slate-100 my-2 mx-2"></div>
+            {filteredTeachers.map(t => (
+              <button key={t.id} className="w-full p-3.5 rounded-xl hover:bg-white transition flex items-center gap-3 text-right group">
+                <div className="w-9 h-9 bg-slate-100 text-slate-500 rounded-lg flex items-center justify-center font-bold text-sm group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">{t.name[0]}</div>
                 <div>
-                   <div className="font-bold">الجميع (غرفة عامة)</div>
-                   <div className="text-xs opacity-70">{teachers.length} معلم متصل</div>
+                  <div className="font-bold text-slate-700 text-sm">{t.name}</div>
+                  <div className="text-[10px] text-slate-400">آخر ظهور: اليوم</div>
                 </div>
-             </button>
-             {/* Fix: Using actual teachers fetched from db instead of MOCK_TEACHERS */}
-             {teachers.map(t => (
-               <button key={t.id} className="w-full p-4 rounded-2xl hover:bg-white transition flex items-center gap-3 text-right">
-                  <div className="w-10 h-10 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center font-bold">{t.name[0]}</div>
-                  <div>
-                    <div className="font-bold">{t.name}</div>
-                    <div className="text-xs text-slate-400">نشط منذ قليل</div>
-                  </div>
-               </button>
-             ))}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col">
-          <div className="p-6 border-b flex justify-between items-center bg-white">
-             <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center font-black text-xl">ج</div>
+        <div className="flex-1 flex flex-col bg-white">
+          <div className="p-5 border-b flex justify-between items-center shrink-0">
+             <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black"><Users size={20} /></div>
                 <div>
-                   <h3 className="font-black text-slate-800">غرفة تعميمات المعلمين</h3>
-                   <p className="text-xs text-emerald-500 font-bold">قناة إرسال رسمية</p>
+                   <h3 className="font-black text-slate-800 text-base">غرفة التعميمات العامة</h3>
+                   <div className="flex items-center gap-1.5 text-[10px] text-emerald-500 font-bold uppercase tracking-widest">
+                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                      قناة رسمية نشطة
+                   </div>
                 </div>
              </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-slate-50/30">
+          <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-slate-50/10">
             {messages.map(msg => (
               <div key={msg.id} className={`flex flex-col ${msg.isOwn ? 'items-start' : 'items-end'}`}>
-                 <div className={`max-w-md p-5 rounded-[1.5rem] font-bold shadow-sm ${msg.isOwn ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white border rounded-tl-none'}`}>
+                 <div className={`max-w-[85%] p-4 rounded-2xl font-bold shadow-sm text-sm leading-relaxed ${msg.isOwn ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white border border-slate-100 rounded-tl-none text-slate-700'}`}>
                     {msg.content}
                  </div>
-                 <span className="text-[10px] text-slate-400 font-black mt-2 uppercase tracking-widest">{msg.time} - {msg.sender}</span>
+                 <div className="flex items-center gap-2 mt-1.5">
+                    <span className="text-[10px] text-slate-400 font-black">{msg.sender}</span>
+                    <span className="text-[10px] text-slate-300">•</span>
+                    <span className="text-[10px] text-slate-400 font-bold">{msg.time}</span>
+                 </div>
               </div>
             ))}
           </div>
 
-          <div className="p-6 bg-white border-t">
-             <div className="flex gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-100">
+          <div className="p-4 border-t shrink-0">
+             <div className="flex gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-200">
                 <input 
                   type="text" 
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder="اكتب رسالتك أو تعميمك هنا..."
-                  className="flex-1 bg-transparent border-none outline-none p-4 font-bold"
+                  placeholder="اكتب رسالتك أو التعميم هنا..."
+                  className="flex-1 bg-transparent border-none outline-none p-3 font-bold text-sm"
                 />
                 <button 
                   onClick={handleSend}
-                  className="bg-blue-600 text-white p-4 rounded-xl shadow-lg shadow-blue-100 hover:scale-105 transition"
+                  className="bg-indigo-600 text-white p-3 rounded-xl shadow-lg shadow-indigo-100 hover:scale-105 active:scale-95 transition-all"
                 >
-                  <Send size={24} />
+                  <Send size={20} />
                 </button>
              </div>
           </div>
