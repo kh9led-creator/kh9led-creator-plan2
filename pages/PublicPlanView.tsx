@@ -6,7 +6,7 @@ import {
   Printer, School as SchoolIcon, ArrowRight, GraduationCap,
   Backpack, Compass, Calculator, Library, 
   NotebookPen, Shapes, Telescope, BookOpen, Microscope,
-  CalendarDays
+  CalendarDays, ChevronRight
 } from 'lucide-react';
 import { School, Subject, AcademicWeek } from '../types.ts';
 
@@ -25,6 +25,7 @@ const PublicPlanView: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [schedule, setSchedule] = useState<any>({});
   const [activeWeek, setActiveWeek] = useState<AcademicWeek | undefined>(undefined);
+  const [scale, setScale] = useState(1);
 
   useEffect(() => {
     if (schoolSlug) {
@@ -40,6 +41,17 @@ const PublicPlanView: React.FC = () => {
         setAvailableClasses(classes);
       }
     }
+
+    const handleResize = () => {
+      const width = window.innerWidth;
+      if (width < 640) setScale((width - 40) / 794); // 794px is 210mm in pixels approx
+      else if (width < 1024) setScale((width - 80) / 794);
+      else setScale(1);
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize();
+    return () => window.removeEventListener('resize', handleResize);
   }, [schoolSlug]);
 
   useEffect(() => {
@@ -62,54 +74,55 @@ const PublicPlanView: React.FC = () => {
   return (
     <div className="bg-[#F8FAFC] min-h-screen font-['Tajawal'] pb-10 overflow-x-hidden">
       <header className="glass border-b border-slate-100 px-4 md:px-8 py-3 no-print sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="max-w-7xl mx-auto flex justify-between items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="bg-white p-2 rounded-xl shadow-sm border">
+            <div className="bg-white p-2 rounded-xl shadow-sm border hidden sm:block">
                {school.logoUrl ? <img src={school.logoUrl} className="w-10 h-10 object-contain" alt="شعار" /> : <SchoolIcon className="text-indigo-600" size={24} />}
             </div>
             <div className="text-right">
-              <h1 className="text-lg font-black text-slate-900">{school.name}</h1>
-              <p className="text-[10px] text-indigo-600 font-black uppercase tracking-widest">بوابة الخطط الأسبوعية</p>
+              <h1 className="text-sm sm:text-lg font-black text-slate-900 truncate max-w-[150px] sm:max-w-none">{school.name}</h1>
+              <p className="text-[9px] sm:text-[10px] text-indigo-600 font-black uppercase tracking-widest">بوابة الخطط الأسبوعية</p>
             </div>
           </div>
           
-          {selectedClass && (
-            <div className="flex items-center gap-2">
-              <button onClick={() => setSelectedClass("")} className="bg-white text-slate-600 px-4 py-2 rounded-xl font-black flex items-center gap-2 hover:bg-slate-50 border text-xs">
-                <ArrowRight size={14} /> تغيير الفصل
+          <div className="flex items-center gap-2">
+            {selectedClass && (
+              <button onClick={() => setSelectedClass("")} className="bg-white text-slate-600 p-2 sm:px-4 sm:py-2 rounded-xl font-black flex items-center gap-2 hover:bg-slate-50 border text-[10px] sm:text-xs transition-all">
+                <ArrowRight size={14} className="hidden sm:block" /> تغيير الفصل
               </button>
-              <button onClick={() => window.print()} className="bg-slate-900 text-white px-6 py-2 rounded-xl font-black shadow-xl flex items-center gap-2 hover:bg-black text-xs">
-                <Printer size={14} /> طباعة الخطة
-              </button>
-            </div>
-          )}
+            )}
+            <button onClick={() => window.print()} className="bg-slate-900 text-white p-2 sm:px-6 sm:py-2 rounded-xl font-black shadow-xl flex items-center gap-2 hover:bg-black text-[10px] sm:text-xs">
+              <Printer size={14} /> <span className="hidden sm:block">طباعة الخطة</span>
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto p-4 flex flex-col items-center">
         {!selectedClass ? (
           <div className="w-full animate-in fade-in slide-in-from-bottom-5">
-            <div className="text-center mb-10 space-y-2">
-               <h2 className="text-3xl font-black text-slate-900">أهلاً بكم في فصولنا</h2>
-               <p className="text-slate-400 font-bold">يرجى اختيار الفصل الدراسي لعرض الخطة المعتمدة</p>
+            <div className="text-center mb-10 space-y-2 mt-10">
+               <h2 className="text-2xl sm:text-3xl font-black text-slate-900">أهلاً بكم في فصولنا</h2>
+               <p className="text-slate-400 font-bold text-sm">يرجى اختيار الفصل الدراسي لعرض الخطة المعتمدة</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {availableClasses.map((cls) => {
                 const ClassIcon = getClassIcon(cls);
                 return (
-                  <button key={cls} onClick={() => setSelectedClass(cls)} className="group bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all text-center flex flex-col items-center gap-4">
-                    <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                       <ClassIcon size={28} />
+                  <button key={cls} onClick={() => setSelectedClass(cls)} className="group bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all text-center flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                       <ClassIcon size={24} />
                     </div>
-                    <h3 className="text-xl font-black text-slate-800">{cls}</h3>
+                    <h3 className="text-lg sm:text-xl font-black text-slate-800">{cls}</h3>
+                    <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-600 transition-colors" />
                   </button>
                 );
               })}
             </div>
           </div>
         ) : (
-          <div className="w-full flex justify-center py-4">
-            <div className="origin-top scale-[0.45] sm:scale-[0.7] md:scale-100 mb-[-550px] sm:mb-[-150px] md:mb-0">
+          <div className="w-full flex justify-center py-4 sm:py-10">
+            <div className="origin-top transition-transform duration-500" style={{ transform: `scale(${scale})` }}>
                <div className="a4-page bg-white shadow-2xl border p-[8mm] relative flex flex-col overflow-hidden" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
                 
                 {school.logoUrl && (
@@ -205,6 +218,8 @@ const PublicPlanView: React.FC = () => {
           </div>
         )}
       </main>
+
+      {selectedClass && <div className="h-[550px] sm:hidden no-print"></div>}
     </div>
   );
 };
