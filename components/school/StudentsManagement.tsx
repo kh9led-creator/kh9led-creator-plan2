@@ -51,61 +51,83 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     setImportError('');
 
     try {
+      // تفكيك الأسطر
       const lines = importText.split(/\r?\n/).filter(line => line.trim() !== "");
       const newStudents: any[] = [];
       
-      const gradeKeywords = ['ابتدائي', 'متوسط', 'ثانوي', 'أول', 'ثاني', 'ثالث', 'رابع', 'خامس', 'سادس', 'عام', 'تحفيظ'];
-      const headerKeywords = ['الجوال', 'الفصل', 'رقم الصف', 'اسم الطالب', 'الهاتف', 'المدرسة'];
+      const gradeKeywords = ['ابتدائي', 'متوسط', 'ثانوي', 'أول', 'ثاني', 'ثالث', 'رابع', 'خامس', 'سادس', 'عام', 'تحفيظ', 'روضة'];
+      const headerKeywords = ['الجوال', 'الفصل', 'رقم الصف', 'اسم الطالب', 'student', 'table', 'info'];
 
       lines.forEach((line) => {
-        // 1. تجاهل أسطر الترويسة (العناوين)
-        const isHeader = headerKeywords.some(k => line.includes(k));
-        if (isHeader) return;
+        // 1. تجاهل الترويسة
+        if (headerKeywords.some(k => line.includes(k))) return;
 
-        // 2. استخراج رقم الجوال (أي رقم يبدأ بـ 966 أو 05 أو 5 وطوله أكثر من 8)
-        const phoneMatch = line.match(/(966[0-9]{9}|05[0-9]{8}|5[0-9]{8})/);
-        const phone = phoneMatch ? phoneMatch[0] : '';
-
-        // 3. استخراج مسمى الصف (تجميع الكلمات الدالة)
-        const gradeParts: string[] = [];
-        const words = line.split(/\s+/);
+        // 2. تقسيم السطر بذكاء (التاب هو الفاصل الأساسي في الإكسل)
+        // نستخدم regex يدعم التاب \t والمسافات المتعددة
+        let parts = line.split(/\t/).map(p => p.trim()).filter(p => p !== "");
         
-        words.forEach(word => {
-          if (gradeKeywords.some(k => word.includes(k))) {
-            gradeParts.push(word);
-          }
-        });
-        const grade = gradeParts.join(' ') || 'الأول الابتدائي';
-
-        // 4. استخراج رقم الفصل (رقم منفرد ليس جزءاً من الجوال)
-        // نبحث عن رقم وحيد يتكون من خانة أو خانتين
-        let section = '1';
-        const sectionMatch = line.match(/\s(\d{1,2})\s/);
-        if (sectionMatch) {
-            section = sectionMatch[1];
+        // إذا لم ينجح التقسيم بالتاب، نجرب المسافات المتعددة (2 أو أكثر)
+        if (parts.length <= 1) {
+          parts = line.split(/\s{2,}/).map(p => p.trim()).filter(p => p !== "");
         }
 
-        // 5. استخراج الاسم (كل ما تبقى بعد حذف الجوال والصف والفصل)
-        let nameCleaning = line;
-        if (phone) nameCleaning = nameCleaning.replace(phone, '');
-        gradeParts.forEach(gp => {
-            nameCleaning = nameCleaning.replace(gp, '');
-        });
-        if (sectionMatch) nameCleaning = nameCleaning.replace(sectionMatch[0], ' ');
+        // متغيرات البيانات المكتشفة
+        let detectedPhone = '';
+        let detectedGrade = '';
+        let detectedSection = '1';
+        let detectedName = '';
 
-        // تنظيف الاسم النهائي من الرموز والمسافات الزائدة
-        const fullName = nameCleaning
-          .replace(/[0-9\-_]/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
+        // إذا كان لدينا هيكل واضح (مثل الصورة: 4 أعمدة)
+        if (parts.length >= 3) {
+          parts.forEach(part => {
+             // فحص الجوال
+             const cleanPhone = part.replace(/[\s\-\(\)\+]/g, '');
+             if (/^(966|05|5|00966)[0-9]{8,12}$/.test(cleanPhone)) {
+                detectedPhone = cleanPhone;
+             }
+             // فحص الصف (كلمات دالة أو وجود _)
+             else if (gradeKeywords.some(k => part.includes(k)) || part.includes('_')) {
+                detectedGrade = part.replace(/_/g, ' '); // تنظيف الشرطة السفلية
+             }
+             // فحص الفصل (رقم صغير)
+             else if (/^[0-9]{1,2}$/.test(part) && !detectedPhone) {
+                detectedSection = part;
+             }
+             // فحص الاسم (أي نص طويل يحتوي على مسافات وليس صفاً)
+             else if (part.length > 2) {
+                detectedName = part;
+             }
+          });
+        } else {
+          // محاولة استخراج حر للبيانات في حال كان السطر غير مقسم بوضوح
+          const phoneMatch = line.match(/(966[0-9]{9}|05[0-9]{8}|5[0-9]{8})/);
+          detectedPhone = phoneMatch ? phoneMatch[0] : '';
+          
+          const words = line.split(/\s+/);
+          const nameParts: string[] = [];
+          const gradeParts: string[] = [];
 
-        if (fullName && fullName.length > 5) {
+          words.forEach(word => {
+            if (gradeKeywords.some(k => word.includes(k)) || word.includes('_')) {
+              gradeParts.push(word.replace(/_/g, ' '));
+            } else if (!detectedPhone.includes(word) && !/^[0-9]$/.test(word)) {
+              nameParts.push(word);
+            } else if (/^[0-9]$/.test(word)) {
+              detectedSection = word;
+            }
+          });
+          detectedName = nameParts.join(' ').trim();
+          detectedGrade = gradeParts.join(' ').trim();
+        }
+
+        // التحقق النهائي قبل الإضافة
+        if (detectedName && detectedName.length > 3) {
           newStudents.push({
             id: (Date.now() + Math.random()).toString(),
-            name: fullName,
-            grade: grade,
-            section: section,
-            phoneNumber: phone,
+            name: detectedName,
+            grade: detectedGrade || 'الأول الابتدائي',
+            section: detectedSection,
+            phoneNumber: detectedPhone,
             schoolId: schoolId
           });
         }
@@ -118,12 +140,12 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         db.syncClassesFromStudents(schoolId);
         setShowImport(false);
         setImportText('');
-        alert(`تم بنجاح! استيراد ${newStudents.length} طالب بنظام المعالجة الذكية.`);
+        alert(`بنجاح! تم استيراد ${newStudents.length} طالب بنظام التحليل الهيكلي.`);
       } else {
-        setImportError('لم نتمكن من تحليل البيانات. تأكد من أن الأسماء واضحة في النص الملصق.');
+        setImportError('لم يتم العثور على بيانات صالحة. تأكد من نسخ الجدول كاملاً من الإكسل.');
       }
     } catch (err) {
-      setImportError('حدث خطأ أثناء المعالجة. يرجى محاولة نسخ الأعمدة من الإكسل فقط.');
+      setImportError('حدث خطأ أثناء تحليل البيانات. حاول لصق النص مرة أخرى.');
     } finally {
       setIsProcessing(false);
     }
@@ -151,11 +173,12 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
               }
             }} 
             className="p-3.5 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all border border-rose-100 flex items-center justify-center gap-2 font-bold text-sm"
+            title="حذف الكل"
           >
             <Trash2 size={18} />
           </button>
           <button onClick={() => setShowImport(true)} className="flex-1 md:flex-none bg-slate-900 text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-md text-sm border border-slate-700">
-            <Wand2 size={18} className="text-blue-400" /> استيراد ذكي (إكسل)
+            <Wand2 size={18} className="text-blue-400" /> استيراد من Excel
           </button>
           <button onClick={() => { setEditingStudent(null); setFormData({ name: '', grade: 'الأول الابتدائي', section: '1', phoneNumber: '' }); setShowForm(true); }} className="flex-1 md:flex-none bg-indigo-600 text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition shadow-md text-sm">
             <Plus size={18} /> إضافة طالب
@@ -210,7 +233,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                     <td className="p-5 text-left">
                       <div className="flex justify-end gap-2">
                         <button onClick={() => { setEditingStudent(s); setFormData({ name: s.name, grade: s.grade, section: s.section, phoneNumber: s.phoneNumber }); setShowForm(true); }} className="p-2.5 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-600 hover:text-white transition-colors"><Edit2 size={16} /></button>
-                        <button onClick={() => { if (confirm('حذف؟')) { const all = JSON.parse(localStorage.getItem('madrasati_students') || '[]'); localStorage.setItem('madrasati_students', JSON.stringify(all.filter((st: any) => st.id !== s.id))); setStudents(db.getStudents(schoolId)); db.syncClassesFromStudents(schoolId); } }} className="p-2.5 text-rose-500 bg-rose-50 rounded-lg hover:bg-rose-500 hover:text-white transition-colors"><Trash2 size={16} /></button>
+                        <button onClick={() => { if (confirm('حذف الطالب؟')) { const all = JSON.parse(localStorage.getItem('madrasati_students') || '[]'); localStorage.setItem('madrasati_students', JSON.stringify(all.filter((st: any) => st.id !== s.id))); setStudents(db.getStudents(schoolId)); db.syncClassesFromStudents(schoolId); } }} className="p-2.5 text-rose-500 bg-rose-50 rounded-lg hover:bg-rose-500 hover:text-white transition-colors"><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -228,8 +251,8 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                 <div className="flex items-center gap-4">
                    <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100"><Wand2 size={28} /></div>
                    <div>
-                      <h3 className="text-xl font-black text-slate-900">المعالج الذكي (النسخة النهائية)</h3>
-                      <p className="text-xs text-slate-400 font-bold mt-1">الآن يدعم النسخ المباشر من الإكسل مهما كان ترتيب الأعمدة.</p>
+                      <h3 className="text-xl font-black text-slate-900">استيراد ذكي من Excel</h3>
+                      <p className="text-xs text-slate-400 font-bold mt-1">متوافق مع جداول "نور" وملفات الإكسل الرسمية.</p>
                    </div>
                 </div>
                 <button onClick={() => setShowImport(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:text-rose-500 transition-colors"><X size={24} /></button>
@@ -237,18 +260,18 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
 
              <div className="space-y-6">
                 <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100">
-                   <h4 className="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2"><Sparkles size={14} /> ملاحظات المعالج الجديد:</h4>
+                   <h4 className="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2"><Sparkles size={14} /> ملاحظات التحليل الهيكلي:</h4>
                    <ul className="text-[11px] text-blue-900/70 font-bold space-y-1 list-disc list-inside">
-                     <li>سيقوم النظام بالبحث عن رقم الجوال تلقائياً في أي مكان بالسطر.</li>
-                     <li>سيتم تمييز الأسماء والصفوف بناءً على الكلمات المفتاحية.</li>
-                     <li>تستطيع نسخ الجدول كاملاً مع العناوين، سيقوم النظام بتجاهلها.</li>
+                     <li>انسخ الجدول كاملاً من الإكسل وقم بلصقه هنا.</li>
+                     <li>يدعم الرموز الخاصة مثل (_) الموجودة في أسماء الصفوف.</li>
+                     <li>لا يهم ترتيب الأعمدة، سيقوم النظام بالتعرف عليها تلقائياً.</li>
                    </ul>
                 </div>
 
                 <div className="relative">
                   <textarea 
                     className="w-full h-72 p-6 bg-slate-50 rounded-[2rem] border-2 border-slate-100 focus:border-blue-400 outline-none font-bold text-sm leading-relaxed shadow-inner transition-all"
-                    placeholder="الصق بيانات الطلاب من الإكسل هنا..."
+                    placeholder="الصق بيانات الجدول هنا..."
                     value={importText}
                     onChange={e => setImportText(e.target.value)}
                   />
@@ -264,7 +287,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                     disabled={isProcessing || !importText.trim()}
                     className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                    >
-                     {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <><CheckCircle2 size={20} /> بدء المعالجة والاستيراد</>}
+                     {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <><CheckCircle2 size={20} /> بدء الاستيراد</>}
                    </button>
                 </div>
              </div>
@@ -278,25 +301,23 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
              <div className="flex justify-between items-center mb-8">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center"><User size={20} /></div>
-                  <h3 className="text-xl font-black text-slate-900">{editingStudent ? 'تعديل بيانات طالب' : 'إضافة طالب جديد'}</h3>
+                  <h3 className="text-xl font-black text-slate-900">{editingStudent ? 'تعديل طالب' : 'إضافة طالب'}</h3>
                 </div>
                 <button onClick={() => setShowForm(false)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors"><X size={22} /></button>
              </div>
              <div className="space-y-5">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-black text-slate-400 mr-1">اسم الطالب الكامل</label>
+                  <label className="text-[11px] font-black text-slate-400 mr-1">الاسم الكامل</label>
                   <input placeholder="أدخل الاسم..." className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 focus:bg-white transition-all shadow-sm" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-black text-slate-400 mr-1">الصف</label>
-                    <select className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 focus:bg-white transition-all shadow-sm cursor-pointer" value={formData.grade} onChange={e => setFormData({...formData, grade: e.target.value})}>
-                      {['الأول الابتدائي', 'الثاني الابتدائي', 'الثالث الابتدائي', 'الرابع الابتدائي', 'الخامس الابتدائي', 'السادس الابتدائي', 'الأول المتوسط', 'الثاني المتوسط', 'الثالث المتوسط'].map(g => <option key={g}>{g}</option>)}
-                    </select>
+                    <input placeholder="مثال: الأول الابتدائي" className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 focus:bg-white transition-all shadow-sm" value={formData.grade} onChange={e => setFormData({...formData, grade: e.target.value})} />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-black text-slate-400 mr-1">رقم الفصل</label>
-                    <input placeholder="مثال: 1" className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 focus:bg-white transition-all shadow-sm" value={formData.section} onChange={e => setFormData({...formData, section: e.target.value})} />
+                    <label className="text-[11px] font-black text-slate-400 mr-1">الفصل</label>
+                    <input placeholder="1" className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 focus:bg-white transition-all shadow-sm" value={formData.section} onChange={e => setFormData({...formData, section: e.target.value})} />
                   </div>
                 </div>
                 <div className="space-y-1.5">
@@ -305,7 +326,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                 </div>
                 <button onClick={handleSave} className="w-full bg-indigo-600 text-white py-5 rounded-[1.5rem] font-black text-lg shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all mt-4 flex items-center justify-center gap-2">
                   <CheckCircle2 size={22} />
-                  {editingStudent ? 'تحديث البيانات' : 'حفظ الطالب'}
+                  {editingStudent ? 'تعديل' : 'حفظ'}
                 </button>
              </div>
           </div>
