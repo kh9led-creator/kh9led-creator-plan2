@@ -32,14 +32,12 @@ const SchoolDashboard: React.FC<Props> = ({ school, onLogout }) => {
     { path: '/school/settings', icon: <Settings size={22} />, label: 'إعدادات النظام' },
   ];
 
-  // إغلاق القائمة تلقائياً عند تغيير المسار في الجوال
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [location.pathname]);
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-['Tajawal'] relative" dir="rtl">
-      {/* Mobile Overlay */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[90] lg:hidden animate-in fade-in duration-300" 
@@ -47,7 +45,6 @@ const SchoolDashboard: React.FC<Props> = ({ school, onLogout }) => {
         ></div>
       )}
 
-      {/* Sidebar - تم إصلاح منطق Translate ليتوافق مع RTL */}
       <aside className={`
         fixed lg:static inset-y-0 right-0 w-72 bg-white border-l border-slate-100 flex flex-col no-print shrink-0 z-[100] shadow-2xl lg:shadow-none transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
@@ -105,9 +102,7 @@ const SchoolDashboard: React.FC<Props> = ({ school, onLogout }) => {
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile Navbar */}
         <header className="lg:hidden bg-white border-b px-6 py-4 flex justify-between items-center shrink-0 z-50">
            <div className="flex items-center gap-3">
               <div className="bg-indigo-600 p-2 rounded-lg text-white shadow-md"><Zap size={16} /></div>
@@ -122,7 +117,7 @@ const SchoolDashboard: React.FC<Props> = ({ school, onLogout }) => {
         </header>
 
         <main className="flex-1 overflow-y-auto bg-[#F8FAFC]">
-          <div className="p-6 md:p-10 lg:p-14 max-w-7xl mx-auto">
+          <div className="p-6 md:p-10 lg:p-14 w-full"> {/* تم إزالة max-w-7xl ليكون الجدول بعرض الشاشة بالكامل */}
             <Routes>
               <Route path="/" element={<SchoolOverview school={school} />} />
               <Route path="/students" element={<StudentsManagement schoolId={school.id} />} />
@@ -188,7 +183,7 @@ const SchoolOverview: React.FC<{ school: School }> = ({ school }) => {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
+    <div className="space-y-8 animate-in fade-in duration-700 max-w-7xl mx-auto"> {/* تم الإبقاء على الحاوية محدودة في صفحة الأوفر فيو لجمالية التصميم */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">نظرة عامة</h1>
