@@ -15,7 +15,6 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
   const [showImport, setShowImport] = useState(false);
   const [newStudent, setNewStudent] = useState({ name: '', grade: 'الأول الابتدائي', section: '1', phoneNumber: '' });
   
-  // حالات الاستيراد
   const [importStep, setImportStep] = useState<'upload' | 'preview'>('upload');
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -52,6 +51,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     }
   };
 
+  // خوارزمية التحليل الذكي للأعمدة والمحتوى
   const processRawData = (text: string) => {
     setIsProcessing(true);
     setTimeout(() => {
@@ -66,38 +66,47 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
       const parsed = lines.map(line => {
         const parts = line.split(delimiter).map(p => p.trim());
         
-        let nameCandidate = parts[0] || '';
-        let phoneCandidate = parts[3] || '';
+        let name = '';
+        let phoneNumber = '';
+        let grade = 'الأول الابتدائي';
+        let section = '1';
 
-        const isFirstPartPhone = /^[0-9+ ]{5,}$/.test(nameCandidate);
-        const isLaterPartName = phoneCandidate && !/^[0-9+ ]+$/.test(phoneCandidate);
+        // محاولة تحديد الحقول بناءً على المحتوى
+        parts.forEach(part => {
+          if (!part) return;
 
-        if (isFirstPartPhone && isLaterPartName) {
-            const temp = nameCandidate;
-            nameCandidate = phoneCandidate;
-            phoneCandidate = temp;
-        }
+          // 1. فحص الجوال: أرقام طويلة تبدأ بـ 05 أو 966 أو 5
+          if (/^(05|966|5)\d+$/.test(part.replace(/\+/g, '')) || (part.length >= 9 && /^\d+$/.test(part))) {
+            phoneNumber = part;
+          } 
+          // 2. فحص الصف والفصل: نصوص تحتوي على كلمة ابتدائي أو متوسط أو ثانوي
+          else if (part.includes('ابتدائي') || part.includes('متوسط') || part.includes('ثانوي')) {
+             // محاولة استخراج الفصل إذا كان مدمجاً (مثل: الأول الابتدائي - 2)
+             if (part.includes('-')) {
+               const [g, s] = part.split('-').map(x => x.trim());
+               grade = g;
+               section = s;
+             } else {
+               grade = part;
+             }
+          }
+          // 3. فحص الاسم: نصوص طويلة (أكثر من كلمتين) ولا تحتوي على أرقام
+          else if (part.split(' ').length >= 2 && !/\d/.test(part)) {
+            name = part;
+          }
+        });
 
-        return {
-          name: nameCandidate,
-          grade: parts[1] || 'الأول الابتدائي',
-          section: parts[2] || '1',
-          phoneNumber: phoneCandidate
-        };
-      }).filter(s => s.name && s.name.length > 2);
+        // إذا فشل التحليل الذكي، نعتمد الترتيب الافتراضي (اسم، صف، فصل، جوال)
+        if (!name && parts[0]) name = parts[0];
+        if (!phoneNumber && parts[3]) phoneNumber = parts[3];
+
+        return { name, grade, section, phoneNumber };
+      }).filter(s => s.name.length > 3); // استبعاد الأسطر غير المكتملة
 
       setPreviewData(parsed);
       setImportStep('preview');
       setIsProcessing(false);
-    }, 1000);
-  };
-
-  const swapColumnsInPreview = () => {
-      setPreviewData(prev => prev.map(item => ({
-          ...item,
-          name: item.phoneNumber,
-          phoneNumber: item.name
-      })));
+    }, 1200);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,6 +134,8 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     setShowImport(false);
     setImportStep('upload');
     setPreviewData([]);
+    // مزامنة الفصول تلقائياً بعد الاستيراد
+    db.syncClassesFromStudents(schoolId);
   };
 
   return (
@@ -146,7 +157,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
             className="flex-1 md:flex-none bg-slate-900 text-white px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl shadow-slate-200 hover:scale-105 transition active:scale-95"
           >
             <Sparkles size={20} className="text-blue-400 hidden sm:block" />
-            استيراد ذكي
+            استيراد ذكي (نور)
           </button>
           <button 
             onClick={() => setShowAdd(true)}
@@ -164,7 +175,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
             <Search size={18} className="absolute right-4 top-3.5 text-slate-400" />
             <input 
               type="text" 
-              placeholder="بحث سريع..."
+              placeholder="بحث سريع بالاسم..."
               className="w-full bg-white border-none rounded-xl py-3 pr-12 pl-4 text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-blue-100 transition"
             />
           </div>
@@ -215,7 +226,6 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         </div>
       </div>
 
-      {/* مودال الاستيراد الذكي المطور (Responsive Modal) */}
       {showImport && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-[2.5rem] md:rounded-[3.5rem] w-full max-w-4xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col">
@@ -225,8 +235,8 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                     <Sparkles size={20} className="md:w-6 md:h-6" />
                  </div>
                  <div>
-                    <h3 className="text-xl md:text-2xl font-black text-slate-900">المعالج الذكي</h3>
-                    <p className="text-[10px] md:text-sm text-slate-500 font-bold">فصل الأسماء عن الأرقام تلقائياً.</p>
+                    <h3 className="text-xl md:text-2xl font-black text-slate-900">المعالج الذكي (Noor Sync)</h3>
+                    <p className="text-[10px] md:text-sm text-slate-500 font-bold">تمكين التمييز التلقائي للأسماء والأرقام والصفوف.</p>
                  </div>
               </div>
               <button onClick={() => setShowImport(false)} className="p-2 md:p-3 bg-white text-slate-400 rounded-2xl hover:text-rose-500 transition shadow-sm">
@@ -246,26 +256,26 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                        <div className="w-16 h-16 md:w-24 md:h-24 bg-blue-50 text-blue-600 rounded-[1.5rem] md:rounded-[2rem] flex items-center justify-center mx-auto mb-4 md:mb-6 group-hover:scale-110 transition-transform duration-500">
                           <Upload size={32} className="md:w-12 md:h-12" />
                        </div>
-                       <h4 className="text-lg md:text-xl font-black text-slate-800">اسحب ملف Excel هنا</h4>
-                       <p className="text-[10px] md:text-xs text-slate-400 mt-2 font-bold tracking-tight">يجب أن يحتوي الملف على البيانات بترتيبها الافتراضي</p>
+                       <h4 className="text-lg md:text-xl font-black text-slate-800">ارفع ملف بيانات "نور"</h4>
+                       <p className="text-[10px] md:text-xs text-slate-400 mt-2 font-bold tracking-tight">النظام سيتعرف على الأعمدة تلقائياً مهما كان ترتيبها</p>
                     </div>
                   </div>
 
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
-                    <div className="relative flex justify-center text-[10px]"><span className="px-4 bg-white text-slate-400 font-black uppercase tracking-[0.2em]">أو اللصق المباشر</span></div>
+                    <div className="relative flex justify-center text-[10px]"><span className="px-4 bg-white text-slate-400 font-black uppercase tracking-[0.2em]">أو الصق البيانات مباشرة</span></div>
                   </div>
 
                   <div className="space-y-4">
                     <textarea 
                       onPaste={handlePaste}
-                      placeholder="الصق البيانات هنا..."
+                      placeholder="الصق نص الجدول المنسوخ من Excel هنا..."
                       className="w-full h-32 p-4 md:p-6 bg-slate-50 rounded-[1.5rem] md:rounded-[2rem] border-none outline-none font-bold text-xs md:text-sm text-slate-600 focus:ring-4 focus:ring-blue-50 transition-all"
                     ></textarea>
                     {isProcessing && (
                       <div className="flex items-center gap-2 text-blue-600 font-black animate-pulse px-4 text-xs">
                         <Loader2 size={16} className="animate-spin" />
-                        جاري تحليل البيانات...
+                        جاري فحص البيانات ومطابقة الأعمدة...
                       </div>
                     )}
                   </div>
@@ -275,31 +285,27 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                   <div className="bg-blue-50 text-blue-700 p-4 md:p-6 rounded-2xl md:rounded-3xl border border-blue-100 flex flex-col md:flex-row items-center justify-between gap-4">
                      <div className="flex items-center gap-3">
                         <CheckCircle2 size={20} className="shrink-0" />
-                        <span className="font-black text-xs md:text-sm">تم تمييز {previewData.length} طالب.</span>
+                        <span className="font-black text-xs md:text-sm">تم تحليل {previewData.length} طالب بنجاح. راجع دقة البيانات أدناه.</span>
                      </div>
-                     <button 
-                        onClick={swapColumnsInPreview}
-                        className="w-full md:w-auto bg-white text-blue-600 px-4 py-2 rounded-xl font-black text-[10px] md:text-xs flex items-center justify-center gap-2 shadow-sm"
-                     >
-                        <RefreshCw size={14} /> تبديل الأعمدة يدوياً
-                     </button>
                   </div>
                   
                   <div className="overflow-x-auto rounded-2xl border border-slate-100 shadow-inner">
                     <table className="w-full text-right text-xs">
                       <thead className="sticky top-0 bg-slate-100 font-black">
                         <tr>
-                          <th className="p-4">الاسم</th>
-                          <th className="p-4">الجوال</th>
-                          <th className="p-4">الصف</th>
+                          <th className="p-4">الاسم (مكتشف)</th>
+                          <th className="p-4">الجوال (مكتشف)</th>
+                          <th className="p-4">الصف الدراسي</th>
+                          <th className="p-4">الفصل</th>
                         </tr>
                       </thead>
                       <tbody>
                         {previewData.map((p, i) => (
                           <tr key={i} className="border-b last:border-0 hover:bg-slate-50 transition">
-                            <td className="p-4 font-black truncate max-w-[150px]">{p.name}</td>
-                            <td className="p-4 font-mono font-bold text-slate-400">{p.phoneNumber}</td>
-                            <td className="p-4 font-bold text-slate-500 whitespace-nowrap">{p.grade} - {p.section}</td>
+                            <td className="p-4 font-black truncate max-w-[150px]">{p.name || '---'}</td>
+                            <td className="p-4 font-mono font-bold text-slate-400">{p.phoneNumber || '---'}</td>
+                            <td className="p-4 font-bold text-slate-500">{p.grade}</td>
+                            <td className="p-4 font-black text-blue-600">{p.section}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -307,8 +313,8 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-3 pt-4 sticky bottom-0 bg-white">
-                    <button onClick={confirmImport} className="flex-1 py-4 md:py-5 bg-blue-600 text-white rounded-[1.5rem] md:rounded-[2rem] font-black text-base md:text-xl shadow-xl shadow-blue-100">حفظ الطلاب</button>
-                    <button onClick={() => setImportStep('upload')} className="px-6 py-4 md:py-5 bg-slate-100 text-slate-500 rounded-[1.5rem] md:rounded-[2rem] font-black text-base md:text-xl">إلغاء</button>
+                    <button onClick={confirmImport} className="flex-1 py-4 md:py-5 bg-blue-600 text-white rounded-[1.5rem] md:rounded-[2rem] font-black text-base md:text-xl shadow-xl shadow-blue-100">اعتماد وحفظ البيانات</button>
+                    <button onClick={() => setImportStep('upload')} className="px-6 py-4 md:py-5 bg-slate-100 text-slate-500 rounded-[1.5rem] md:rounded-[2rem] font-black text-base md:text-xl">تعديل الملف</button>
                   </div>
                 </div>
               )}
@@ -317,7 +323,6 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         </div>
       )}
 
-      {/* مودال الإضافة اليدوية (Responsive Modal) */}
       {showAdd && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3rem] max-w-md w-full shadow-2xl animate-in slide-in-from-bottom-8 max-h-[90vh] overflow-y-auto">

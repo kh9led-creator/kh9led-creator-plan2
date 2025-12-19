@@ -16,17 +16,26 @@ const STORAGE_KEYS = {
   SUBJECTS: 'madrasati_subjects'
 };
 
-// دالة تحويل التاريخ إلى هجري
+// دالة تحويل التاريخ إلى هجري مطورة لضمان الدقة
 export const formatToHijri = (dateString: string | Date): string => {
   if (!dateString) return '';
   try {
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
-    return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-uma', {
+    // معالجة التاريخ لضمان عدم تأثره بالمنطقة الزمنية (إضافة وقت الظهر لتجنب تغيير اليوم)
+    let date: Date;
+    if (typeof dateString === 'string') {
+      const [year, month, day] = dateString.split('-').map(Number);
+      date = new Date(year, month - 1, day, 12, 0, 0);
+    } else {
+      date = dateString;
+    }
+
+    return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {
       day: 'numeric',
       month: 'long',
       year: 'numeric'
     }).format(date);
   } catch (e) {
+    console.error("Hijri Conversion Error:", e);
     return String(dateString);
   }
 };
@@ -174,7 +183,6 @@ export const db = {
     localStorage.setItem(`${STORAGE_KEYS.PLANS}_${schoolId}_${weekId}`, JSON.stringify(plans));
   },
 
-  // تفريغ خطط أسبوع محدد
   clearWeekPlans: (schoolId: string, weekId: string) => {
     localStorage.setItem(`${STORAGE_KEYS.PLANS}_${schoolId}_${weekId}`, JSON.stringify({}));
   },
