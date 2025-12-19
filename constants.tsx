@@ -1,10 +1,11 @@
 
-import { School, Teacher, Student, Subject } from './types.ts';
+import { School, Teacher, Student, Subject, SchoolClass } from './types.ts';
 
 const STORAGE_KEYS = {
   SCHOOLS: 'madrasati_schools',
   TEACHERS: 'madrasati_teachers',
   STUDENTS: 'madrasati_students',
+  CLASSES: 'madrasati_classes',
   SCHEDULES: 'madrasati_schedules',
   PLANS: 'madrasati_plans',
   ATTENDANCE: 'madrasati_attendance',
@@ -32,7 +33,6 @@ const DEFAULT_SUBJECTS: Subject[] = [
 ];
 
 export const db = {
-  // المدارس
   getSchools: (): School[] => JSON.parse(localStorage.getItem(STORAGE_KEYS.SCHOOLS) || '[]'),
   saveSchool: (school: School) => {
     const schools = db.getSchools();
@@ -43,11 +43,9 @@ export const db = {
   },
   getSchoolBySlug: (slug: string) => db.getSchools().find(s => s.slug === slug),
 
-  // مدير النظام
   getSystemAdmin: () => JSON.parse(localStorage.getItem(STORAGE_KEYS.SYSTEM_ADMIN) || '{"username":"admin","password":"123"}'),
   updateSystemAdmin: (data: any) => localStorage.setItem(STORAGE_KEYS.SYSTEM_ADMIN, JSON.stringify(data)),
 
-  // المعلمون
   getTeachers: (schoolId: string): Teacher[] => {
     const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.TEACHERS) || '[]');
     return all.filter((t: any) => t.schoolId === schoolId);
@@ -64,7 +62,6 @@ export const db = {
     localStorage.setItem(STORAGE_KEYS.TEACHERS, JSON.stringify(all.filter((t: any) => t.id !== id)));
   },
 
-  // الطلاب
   getStudents: (schoolId: string): Student[] => {
     const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.STUDENTS) || '[]');
     return all.filter((s: any) => s.schoolId === schoolId);
@@ -75,7 +72,34 @@ export const db = {
     localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(all));
   },
 
-  // المواد
+  // إدارة الفصول
+  getClasses: (schoolId: string): SchoolClass[] => {
+    const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.CLASSES) || '[]');
+    const schoolClasses = all.filter((c: any) => c.schoolId === schoolId);
+    
+    // إذا لم توجد فصول معرفة، نحاول استخراجها من الطلاب (للتوافق مع البيانات القديمة)
+    if (schoolClasses.length === 0) {
+      const students = db.getStudents(schoolId);
+      const uniqueClasses = Array.from(new Set(students.map(s => `${s.grade}|${s.section}`)));
+      return uniqueClasses.map(str => {
+        const [grade, section] = str.split('|');
+        return { id: Math.random().toString(36).substr(2, 9), grade, section, schoolId };
+      });
+    }
+    return schoolClasses;
+  },
+  saveClass: (schoolClass: SchoolClass) => {
+    const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.CLASSES) || '[]');
+    const index = all.findIndex((c: any) => c.id === schoolClass.id);
+    if (index > -1) all[index] = schoolClass;
+    else all.push(schoolClass);
+    localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(all));
+  },
+  deleteClass: (id: string) => {
+    const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.CLASSES) || '[]');
+    localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(all.filter((c: any) => c.id !== id)));
+  },
+
   getSubjects: (schoolId: string): Subject[] => {
     const all = JSON.parse(localStorage.getItem(`${STORAGE_KEYS.SUBJECTS}_${schoolId}`) || '[]');
     return all.length > 0 ? all : DEFAULT_SUBJECTS;
@@ -93,7 +117,6 @@ export const db = {
     localStorage.setItem(`${STORAGE_KEYS.SUBJECTS}_${schoolId}`, JSON.stringify(filtered));
   },
 
-  // الجداول (توزيع الحصص)
   getSchedule: (schoolId: string, classId: string) => {
     const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.SCHEDULES) || '{}');
     return all[`${schoolId}_${classId}`] || {};
@@ -104,7 +127,6 @@ export const db = {
     localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(all));
   },
 
-  // الخطط الأسبوعية (رصد الدروس)
   getPlans: (schoolId: string) => JSON.parse(localStorage.getItem(`${STORAGE_KEYS.PLANS}_${schoolId}`) || '{}'),
   savePlan: (schoolId: string, planKey: string, data: any) => {
     const plans = db.getPlans(schoolId);
@@ -112,7 +134,6 @@ export const db = {
     localStorage.setItem(`${STORAGE_KEYS.PLANS}_${schoolId}`, JSON.stringify(plans));
   },
 
-  // الغياب
   getAttendance: (schoolId: string) => JSON.parse(localStorage.getItem(`${STORAGE_KEYS.ATTENDANCE}_${schoolId}`) || '[]'),
   saveAttendance: (schoolId: string, report: any) => {
     const all = db.getAttendance(schoolId);

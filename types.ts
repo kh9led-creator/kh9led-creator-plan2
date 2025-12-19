@@ -4,7 +4,7 @@ export type UserRole = 'SYSTEM_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PUBLIC';
 export interface School {
   id: string;
   name: string;
-  email: string; // الحقل الجديد للاستعادة
+  email: string;
   logoUrl?: string;
   headerContent?: string;
   generalMessages?: string;
@@ -33,6 +33,13 @@ export interface Student {
   grade: string;
   section: string;
   phoneNumber: string;
+}
+
+export interface SchoolClass {
+  id: string;
+  grade: string;
+  section: string;
+  schoolId: string;
 }
 
 export interface Subject {

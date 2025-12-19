@@ -1,18 +1,17 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { DAYS, PERIODS, db } from '../../constants.tsx';
-import { School, Teacher, Subject } from '../../types.ts';
+import { School, Teacher, Subject, SchoolClass } from '../../types.ts';
 import { Save, Info, User, Book, LayoutGrid, CheckCircle2 } from 'lucide-react';
 
 const ScheduleManagement: React.FC<{ school: School }> = ({ school }) => {
-  const students = db.getStudents(school.id);
+  const classes = db.getClasses(school.id);
   const teachers = db.getTeachers(school.id);
   const subjects = db.getSubjects(school.id);
   
   const availableClasses = useMemo(() => {
-    const classes = students.map(s => `${s.grade} - فصل ${s.section}`);
-    return Array.from(new Set(classes));
-  }, [students]);
+    return classes.map(c => `${c.grade} - فصل ${c.section}`);
+  }, [classes]);
 
   const [selectedClass, setSelectedClass] = useState<string>(availableClasses[0] || "");
   const [schedule, setSchedule] = useState<any>({});
@@ -41,13 +40,13 @@ const ScheduleManagement: React.FC<{ school: School }> = ({ school }) => {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in">
+    <div className="space-y-8 animate-in fade-in font-['Tajawal']">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-black">إعداد الجداول</h2>
           <p className="text-slate-500">وزع المواد والمعلمين على الحصص.</p>
         </div>
-        <button onClick={saveAll} className={`px-8 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all ${saved ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white shadow-lg shadow-slate-200'}`}>
+        <button onClick={saveAll} className={`px-8 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all ${saved ? 'bg-emerald-500 text-white shadow-emerald-100' : 'bg-slate-900 text-white shadow-lg shadow-slate-200 hover:bg-black'}`}>
           {saved ? <CheckCircle2 /> : <Save />}
           {saved ? 'تم الحفظ بنجاح' : 'حفظ الجدول'}
         </button>
@@ -79,7 +78,7 @@ const ScheduleManagement: React.FC<{ school: School }> = ({ school }) => {
                     return (
                       <td key={`${day.id}-${period}`} className="p-4 border-b border-l space-y-2">
                         <select 
-                          className="w-full p-2 bg-slate-50 rounded-xl text-xs font-bold outline-none border border-transparent focus:border-blue-100"
+                          className="w-full p-2 bg-slate-50 rounded-xl text-xs font-bold outline-none border border-transparent focus:border-blue-100 transition"
                           value={cellData.subjectId || ""}
                           onChange={e => handleCellChange(day.id, period, 'subjectId', e.target.value)}
                         >
@@ -87,7 +86,7 @@ const ScheduleManagement: React.FC<{ school: School }> = ({ school }) => {
                           {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                         <select 
-                          className="w-full p-2 bg-blue-50/50 rounded-xl text-xs font-bold outline-none text-blue-700 border border-transparent focus:border-blue-200"
+                          className="w-full p-2 bg-blue-50/50 rounded-xl text-xs font-bold outline-none text-blue-700 border border-transparent focus:border-blue-200 transition"
                           value={cellData.teacherId || ""}
                           onChange={e => handleCellChange(day.id, period, 'teacherId', e.target.value)}
                         >
@@ -103,7 +102,7 @@ const ScheduleManagement: React.FC<{ school: School }> = ({ school }) => {
           </table>
         </div>
       ) : (
-        <div className="p-20 text-center font-bold text-slate-300 border-4 border-dashed rounded-[3rem]">يرجى إضافة طلاب لإنشاء فصول أولاً.</div>
+        <div className="p-20 text-center font-bold text-slate-300 border-4 border-dashed rounded-[3rem]">يرجى تعريف الفصول الدراسية في صفحة الإعدادات أولاً.</div>
       )}
     </div>
   );
