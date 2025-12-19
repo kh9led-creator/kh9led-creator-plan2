@@ -173,6 +173,11 @@ export const db = {
     plans[planKey] = data;
     localStorage.setItem(`${STORAGE_KEYS.PLANS}_${schoolId}_${weekId}`, JSON.stringify(plans));
   },
+
+  // تفريغ خطط أسبوع محدد
+  clearWeekPlans: (schoolId: string, weekId: string) => {
+    localStorage.setItem(`${STORAGE_KEYS.PLANS}_${schoolId}_${weekId}`, JSON.stringify({}));
+  },
   
   archiveWeekPlans: (schoolId: string, week: AcademicWeek) => {
     const currentPlans = db.getPlans(schoolId, week.id);

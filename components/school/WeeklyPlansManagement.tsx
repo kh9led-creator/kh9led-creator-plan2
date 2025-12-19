@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { School, Student, AcademicWeek } from '../../types.ts';
-import { Globe, Printer, Users, Sparkles, Camera, X, Save, CheckCircle2, Copy, ExternalLink, Link as LinkIcon, Image as ImageIcon, UserCircle, Archive, History, Trash2, Calendar, Plus, CheckCircle, Clock } from 'lucide-react';
+import { Globe, Printer, Users, Sparkles, Camera, X, Save, CheckCircle2, Copy, ExternalLink, Link as LinkIcon, Image as ImageIcon, UserCircle, Archive, History, Trash2, Calendar, Plus, CheckCircle, Clock, Trash } from 'lucide-react';
 import { db, formatToHijri } from '../../constants.tsx';
 import { Link } from 'react-router-dom';
 
@@ -62,6 +62,24 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
     }
   };
 
+  const handleClearActiveWeekPlans = () => {
+    const active = weeks.find(w => w.isActive);
+    if (!active) {
+      alert('لا يوجد أسبوع نشط لتفريغه');
+      return;
+    }
+
+    const warningMessage = `تحذير: سيتم حذف جميع الخطط المسجلة لـ "${active.name}" نهائياً.
+يرجى التأكد من أرشفة البيانات أولاً إذا كنت بحاجة للرجوع إليها لاحقاً.
+
+هل تريد الاستمرار في عملية التفريغ؟`;
+
+    if (confirm(warningMessage)) {
+      db.clearWeekPlans(school.id, active.id);
+      alert('تم تفريغ خطط الأسبوع بنجاح.');
+    }
+  };
+
   const handleAddWeek = () => {
     if (!newWeek.name || !newWeek.startDate || !newWeek.endDate) {
       alert('يرجى إكمال بيانات الأسبوع');
@@ -117,12 +135,18 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
 
   return (
     <div className="space-y-8 animate-in fade-in font-['Tajawal'] pb-20">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-3xl font-black text-slate-900">إدارة الخطط الدراسية</h2>
           <p className="text-slate-500 font-bold mt-1">إدارة الأسابيع بالتقويم الهجري وتحديث الهوية.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+           <button 
+            onClick={handleClearActiveWeekPlans}
+            className="bg-rose-50 text-rose-600 px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-2 hover:bg-rose-600 hover:text-white transition-all shadow-sm border border-rose-100"
+           >
+              <Trash size={18} /> تفريغ خطط الأسبوع
+           </button>
            <button 
             onClick={handleArchiveActiveWeek}
             className="bg-indigo-50 text-indigo-600 px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-2 hover:bg-indigo-600 hover:text-white transition-all shadow-sm border border-indigo-100"
@@ -201,7 +225,6 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
         </div>
       )}
 
-      {/* باقي التبويبات تظل كما هي ... */}
       {activeTab === 'archive' && (
         <div className="space-y-6 animate-in fade-in">
            {archivedPlans.length === 0 ? (
@@ -224,7 +247,73 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
            )}
         </div>
       )}
-      {/* ... */}
+
+      {activeTab === 'links' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in">
+           <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-6 flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-[1.5rem] flex items-center justify-center shadow-inner"><Globe size={32} /></div>
+              <div>
+                 <h3 className="text-xl font-black text-slate-800">رابط أولياء الأمور</h3>
+                 <p className="text-slate-500 font-bold text-sm mt-1 leading-relaxed">الرابط العام لمتابعة الخطط.</p>
+              </div>
+              <div className="w-full bg-slate-50 p-3 rounded-2xl border-2 border-slate-100 flex items-center gap-3">
+                 <div className="flex-1 text-left px-2 font-mono text-blue-600 font-bold text-xs truncate" dir="ltr">{`${window.location.origin}/#/p/${school.slug}`}</div>
+                 <button onClick={() => handleCopy(`${window.location.origin}/#/p/${school.slug}`, 'public')} className={`p-3 rounded-xl transition-all ${copiedLink === 'public' ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white hover:bg-black'}`}>
+                    {copiedLink === 'public' ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+                 </button>
+              </div>
+           </div>
+           <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-6 flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-[1.5rem] flex items-center justify-center shadow-inner"><UserCircle size={32} /></div>
+              <div>
+                 <h3 className="text-xl font-black text-slate-800">رابط المعلمين</h3>
+                 <p className="text-slate-500 font-bold text-sm mt-1 leading-relaxed">بوابة رصد الخطط والغياب.</p>
+              </div>
+              <div className="w-full bg-slate-50 p-3 rounded-2xl border-2 border-slate-100 flex items-center gap-3">
+                 <div className="flex-1 text-left px-2 font-mono text-indigo-600 font-bold text-xs truncate" dir="ltr">{`${window.location.origin}/#/school/${school.slug}/teacher-login`}</div>
+                 <button onClick={() => handleCopy(`${window.location.origin}/#/school/${school.slug}/teacher-login`, 'teacher')} className={`p-3 rounded-xl transition-all ${copiedLink === 'teacher' ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white hover:bg-black'}`}>
+                    {copiedLink === 'teacher' ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+                 </button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {activeTab === 'branding' && (
+        <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-10 animate-in fade-in">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              <div className="space-y-4">
+                 <label className="text-sm font-black text-slate-700 mr-2 flex items-center gap-2"><Camera size={16} className="text-blue-500" /> شعار المدرسة الرسمي</label>
+                 <div onClick={() => logoInputRef.current?.click()} className="bg-slate-50 border-4 border-dashed border-slate-100 rounded-[2.5rem] p-8 text-center h-64 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer hover:border-blue-200 hover:bg-blue-50/30 transition-all">
+                    {logoUrl ? <img src={logoUrl} className="max-h-full object-contain" /> : <ImageIcon size={64} className="opacity-20" />}
+                    <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
+                 </div>
+              </div>
+              <div className="space-y-4">
+                 <label className="text-sm font-black text-slate-700 mr-2">ترويسة الخطة</label>
+                 <textarea rows={4} className="w-full p-6 bg-slate-50 rounded-[2rem] font-bold outline-none border-2 border-transparent focus:border-blue-100 transition shadow-inner" value={headerContent} onChange={e => setHeaderContent(e.target.value)} placeholder="المملكة العربية السعودية..." />
+              </div>
+           </div>
+           <button onClick={handleSaveBranding} className={`w-full py-6 rounded-[2rem] font-black text-xl shadow-xl transition-all flex items-center justify-center gap-3 ${isSaved ? 'bg-emerald-500 text-white shadow-emerald-100' : 'bg-slate-900 text-white hover:bg-black'}`}>
+              {isSaved ? <CheckCircle2 size={24} /> : <Save size={24} />}
+              {isSaved ? 'تم حفظ التغييرات' : 'حفظ التغييرات'}
+           </button>
+        </div>
+      )}
+
+      {activeTab === 'students' && (
+         <div className="space-y-10 animate-in fade-in">
+            <div className="bg-blue-600 text-white p-10 rounded-[3.5rem] shadow-xl shadow-blue-100 flex flex-col md:flex-row items-center justify-between gap-8">
+               <div className="text-center md:text-right">
+                  <h3 className="text-3xl font-black mb-2 flex items-center gap-3 justify-center md:justify-start"><Users size={32} />الطباعة الفردية</h3>
+                  <p className="text-blue-100 font-bold">توليد صفحة خطة مخصصة لكل طالب.</p>
+               </div>
+               <Link to={`/p/${school.slug}/bulk/students`} className="bg-white text-blue-600 px-10 py-5 rounded-[2rem] font-black text-xl hover:bg-blue-50 transition shadow-lg flex items-center gap-3">
+                  <Printer size={24} />فتح محرك الطباعة
+               </Link>
+            </div>
+         </div>
+      )}
     </div>
   );
 };
