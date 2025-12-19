@@ -3,7 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { DAYS, PERIODS, db } from '../constants.tsx';
 import { Printer, User, GraduationCap } from 'lucide-react';
-import { School, Subject, Student } from '../types.ts';
+import { School, Subject, Student, AcademicWeek } from '../types.ts';
 
 const BulkStudentPlans: React.FC = () => {
   const { schoolSlug } = useParams();
@@ -15,6 +15,7 @@ const BulkStudentPlans: React.FC = () => {
   const [allSchedules, setAllSchedules] = useState<any>({});
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [studentsToPrint, setStudentsToPrint] = useState<Student[]>([]);
+  const [activeWeek, setActiveWeek] = useState<AcademicWeek | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -22,7 +23,12 @@ const BulkStudentPlans: React.FC = () => {
       const s = db.getSchoolBySlug(schoolSlug);
       if (s) {
         setSchool(s);
-        setAllPlans(db.getPlans(s.id));
+        // Fix: getPlans requires schoolId and weekId. We fetch the active week first.
+        const week = db.getActiveWeek(s.id);
+        setActiveWeek(week);
+        if (week) {
+          setAllPlans(db.getPlans(s.id, week.id));
+        }
         setSubjects(db.getSubjects(s.id));
         
         let students = db.getStudents(s.id);
@@ -85,7 +91,7 @@ const BulkStudentPlans: React.FC = () => {
                   <div className="text-right space-y-0.5 font-bold text-[8pt]">
                     <p>الصف: <span className="font-black underline">{classTitle}</span></p>
                     <p className="text-blue-600 font-black">الطالب: {student.name}</p>
-                    <p>الأسبوع الدراسي الأول</p>
+                    <p>الأسبوع: <span className="font-black">{activeWeek?.name || "---"}</span></p>
                   </div>
                 </div>
 

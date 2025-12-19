@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { DAYS, PERIODS, db } from '../constants.tsx';
-import { Printer, Book, LayoutGrid, School as SchoolIcon, ArrowLeft, ArrowRight, GraduationCap } from 'lucide-react';
-import { School, Subject } from '../types.ts';
+import { Printer, Book, LayoutGrid, School as SchoolIcon, ArrowLeft, ArrowRight, GraduationCap, Calendar } from 'lucide-react';
+import { School, Subject, AcademicWeek } from '../types.ts';
 
 const PublicPlanView: React.FC = () => {
   const { schoolSlug } = useParams();
@@ -13,14 +13,21 @@ const PublicPlanView: React.FC = () => {
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [schedule, setSchedule] = useState<any>({});
+  const [activeWeek, setActiveWeek] = useState<AcademicWeek | undefined>(undefined);
 
   useEffect(() => {
     if (schoolSlug) {
       const s = db.getSchoolBySlug(schoolSlug);
       if (s) {
         setSchool(s);
-        setPlans(db.getPlans(s.id));
+        const week = db.getActiveWeek(s.id);
+        setActiveWeek(week);
         setSubjects(db.getSubjects(s.id));
+        
+        if (week) {
+          setPlans(db.getPlans(s.id, week.id));
+        }
+
         const students = db.getStudents(s.id);
         const classes = Array.from(new Set(students.map(std => `${std.grade} - فصل ${std.section}`)));
         setAvailableClasses(classes);
@@ -84,7 +91,9 @@ const PublicPlanView: React.FC = () => {
           <div className="w-full animate-in fade-in slide-in-from-bottom-10 duration-1000">
             <div className="text-center mb-16 space-y-4">
                <h2 className="text-5xl font-black text-slate-900">أهلاً بكم في فصولنا</h2>
-               <p className="text-slate-400 font-bold text-xl max-w-xl mx-auto leading-relaxed">يرجى اختيار الفصل الدراسي لعرض وتحميل الخطة الأسبوعية المعتمدة.</p>
+               <p className="text-slate-400 font-bold text-xl max-w-xl mx-auto leading-relaxed">
+                  {activeWeek ? `عرض خطة ${activeWeek.name} - الفترة من ${activeWeek.startDate} إلى ${activeWeek.endDate}` : 'يرجى اختيار الفصل الدراسي لعرض وتحميل الخطة الأسبوعية المعتمدة.'}
+               </p>
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
@@ -111,7 +120,7 @@ const PublicPlanView: React.FC = () => {
         ) : (
           <div className="a4-page bg-white shadow-2xl border p-[8mm] relative flex flex-col overflow-hidden animate-in zoom-in-95 duration-700" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
             
-            {/* Header Branding - More Compact */}
+            {/* Header Branding */}
             <div className="grid grid-cols-3 gap-2 mb-2 border-b-2 border-black pb-2">
               <div className="text-right space-y-0 text-[8.5pt] font-black leading-tight">
                 {headerLines.map((line, i) => <p key={i}>{line}</p>)}
@@ -127,13 +136,13 @@ const PublicPlanView: React.FC = () => {
               </div>
 
               <div className="text-right space-y-0.5 font-bold text-[8pt]">
-                <p>الأسبوع: الأسبوع الأول</p>
+                <p>الأسبوع: <span className="font-black">{activeWeek?.name || "---"}</span></p>
+                <p>الفترة: {activeWeek ? `${activeWeek.startDate} إلى ${activeWeek.endDate}` : "---"}</p>
                 <p>الصف: <span className="font-black underline">{selectedClass}</span></p>
-                <p>العام الدراسي: ١٤٤٦ هـ</p>
               </div>
             </div>
 
-            {/* Main Table - Optimized Height */}
+            {/* Main Table */}
             <div className="flex-1 overflow-hidden border-2 border-black rounded-sm">
               <table className="w-full border-collapse table-fixed h-full text-center">
                 <thead className="border-b-2 border-black font-black bg-slate-50">
@@ -176,7 +185,7 @@ const PublicPlanView: React.FC = () => {
               </table>
             </div>
 
-            {/* Footer boxes - Slightly more compact */}
+            {/* Footer boxes */}
             <div className="grid grid-cols-2 gap-4 mt-3 h-[42mm]">
                <div className="border-2 border-black p-3 bg-white flex flex-col">
                   <h3 className="text-[9pt] font-black border-b border-black pb-1 mb-2 text-center bg-slate-50">توجيهات لولي الأمر</h3>

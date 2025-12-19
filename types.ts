@@ -18,6 +18,14 @@ export interface School {
   expiryDate: string;
 }
 
+export interface AcademicWeek {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+}
+
 export interface Teacher {
   id: string;
   name: string;

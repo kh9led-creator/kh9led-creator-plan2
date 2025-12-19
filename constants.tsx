@@ -1,5 +1,5 @@
 
-import { School, Teacher, Student, Subject, SchoolClass } from './types.ts';
+import { School, Teacher, Student, Subject, SchoolClass, AcademicWeek } from './types.ts';
 
 const STORAGE_KEYS = {
   SCHOOLS: 'madrasati_schools',
@@ -8,7 +8,7 @@ const STORAGE_KEYS = {
   CLASSES: 'madrasati_classes',
   SCHEDULES: 'madrasati_schedules',
   PLANS: 'madrasati_plans',
-  ARCHIVED_PLANS: 'madrasati_archived_plans',
+  WEEKS: 'madrasati_academic_weeks',
   ATTENDANCE: 'madrasati_attendance',
   ARCHIVED_ATTENDANCE: 'madrasati_archived_attendance',
   SYSTEM_ADMIN: 'madrasati_sysadmin',
@@ -46,7 +46,28 @@ export const db = {
   getSchoolBySlug: (slug: string) => db.getSchools().find(s => s.slug === slug),
 
   getSystemAdmin: () => JSON.parse(localStorage.getItem(STORAGE_KEYS.SYSTEM_ADMIN) || '{"username":"admin","password":"123"}'),
-  updateSystemAdmin: (data: any) => localStorage.setItem(STORAGE_KEYS.SYSTEM_ADMIN, JSON.stringify(data)),
+  
+  // تحديث بيانات المشرف العام
+  updateSystemAdmin: (admin: any) => localStorage.setItem(STORAGE_KEYS.SYSTEM_ADMIN, JSON.stringify(admin)),
+  
+  // إدارة الأسابيع
+  getWeeks: (schoolId: string): AcademicWeek[] => JSON.parse(localStorage.getItem(`${STORAGE_KEYS.WEEKS}_${schoolId}`) || '[]'),
+  saveWeek: (schoolId: string, week: AcademicWeek) => {
+    const weeks = db.getWeeks(schoolId);
+    const index = weeks.findIndex(w => w.id === week.id);
+    if (index > -1) weeks[index] = week;
+    else weeks.push(week);
+    localStorage.setItem(`${STORAGE_KEYS.WEEKS}_${schoolId}`, JSON.stringify(weeks));
+  },
+  deleteWeek: (schoolId: string, id: string) => {
+    const weeks = db.getWeeks(schoolId);
+    localStorage.setItem(`${STORAGE_KEYS.WEEKS}_${schoolId}`, JSON.stringify(weeks.filter(w => w.id !== id)));
+  },
+  setActiveWeek: (schoolId: string, id: string) => {
+    const weeks = db.getWeeks(schoolId).map(w => ({ ...w, isActive: w.id === id }));
+    localStorage.setItem(`${STORAGE_KEYS.WEEKS}_${schoolId}`, JSON.stringify(weeks));
+  },
+  getActiveWeek: (schoolId: string): AcademicWeek | undefined => db.getWeeks(schoolId).find(w => w.isActive),
 
   getTeachers: (schoolId: string): Teacher[] => {
     const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.TEACHERS) || '[]');
@@ -76,16 +97,7 @@ export const db = {
 
   getClasses: (schoolId: string): SchoolClass[] => {
     const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.CLASSES) || '[]');
-    const schoolClasses = all.filter((c: any) => c.schoolId === schoolId);
-    if (schoolClasses.length === 0) {
-      const students = db.getStudents(schoolId);
-      const uniqueClasses = Array.from(new Set(students.map(s => `${s.grade}|${s.section}`)));
-      return uniqueClasses.map(str => {
-        const [grade, section] = str.split('|');
-        return { id: Math.random().toString(36).substr(2, 9), grade, section, schoolId };
-      });
-    }
-    return schoolClasses;
+    return all.filter((c: any) => c.schoolId === schoolId);
   },
   saveClass: (schoolClass: SchoolClass) => {
     const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.CLASSES) || '[]');
@@ -110,7 +122,6 @@ export const db = {
     else all.push(subject);
     localStorage.setItem(`${STORAGE_KEYS.SUBJECTS}_${schoolId}`, JSON.stringify(all));
   },
-  // Fix: Added deleteSubject method which was missing but called in SchoolSettings
   deleteSubject: (schoolId: string, id: string) => {
     const all = db.getSubjects(schoolId);
     const filtered = all.filter(s => s.id !== id);
@@ -127,30 +138,12 @@ export const db = {
     localStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(all));
   },
 
-  getPlans: (schoolId: string) => JSON.parse(localStorage.getItem(`${STORAGE_KEYS.PLANS}_${schoolId}`) || '{}'),
-  savePlan: (schoolId: string, planKey: string, data: any) => {
-    const plans = db.getPlans(schoolId);
+  // تعديل الخطط لتعتمد على معرف الأسبوع
+  getPlans: (schoolId: string, weekId: string) => JSON.parse(localStorage.getItem(`${STORAGE_KEYS.PLANS}_${schoolId}_${weekId}`) || '{}'),
+  savePlan: (schoolId: string, weekId: string, planKey: string, data: any) => {
+    const plans = db.getPlans(schoolId, weekId);
     plans[planKey] = data;
-    localStorage.setItem(`${STORAGE_KEYS.PLANS}_${schoolId}`, JSON.stringify(plans));
-  },
-  archiveCurrentPlans: (schoolId: string, weekLabel: string) => {
-    const currentPlans = db.getPlans(schoolId);
-    const archived = JSON.parse(localStorage.getItem(`${STORAGE_KEYS.ARCHIVED_PLANS}_${schoolId}`) || '[]');
-    archived.unshift({
-      id: Date.now().toString(),
-      weekLabel,
-      date: new Date().toLocaleDateString('ar-SA'),
-      plans: currentPlans
-    });
-    localStorage.setItem(`${STORAGE_KEYS.ARCHIVED_PLANS}_${schoolId}`, JSON.stringify(archived));
-    // بعد الأرشفة، نقوم بتصفير الخطط الحالية لبدء أسبوع جديد
-    localStorage.setItem(`${STORAGE_KEYS.PLANS}_${schoolId}`, JSON.stringify({}));
-  },
-  getArchivedPlans: (schoolId: string) => JSON.parse(localStorage.getItem(`${STORAGE_KEYS.ARCHIVED_PLANS}_${schoolId}`) || '[]'),
-  deleteArchivedPlan: (schoolId: string, archiveId: string) => {
-    const all = db.getArchivedPlans(schoolId);
-    const filtered = all.filter((p: any) => p.id !== archiveId);
-    localStorage.setItem(`${STORAGE_KEYS.ARCHIVED_PLANS}_${schoolId}`, JSON.stringify(filtered));
+    localStorage.setItem(`${STORAGE_KEYS.PLANS}_${schoolId}_${weekId}`, JSON.stringify(plans));
   },
 
   getAttendance: (schoolId: string) => JSON.parse(localStorage.getItem(`${STORAGE_KEYS.ATTENDANCE}_${schoolId}`) || '[]'),
@@ -163,12 +156,8 @@ export const db = {
     const active = db.getAttendance(schoolId);
     const report = active.find((r: any) => r.id === reportId);
     if (!report) return;
-    
-    // إزالة من النشط
     const filteredActive = active.filter((r: any) => r.id !== reportId);
     localStorage.setItem(`${STORAGE_KEYS.ATTENDANCE}_${schoolId}`, JSON.stringify(filteredActive));
-    
-    // إضافة للأرشيف
     const archived = JSON.parse(localStorage.getItem(`${STORAGE_KEYS.ARCHIVED_ATTENDANCE}_${schoolId}`) || '[]');
     archived.unshift(report);
     localStorage.setItem(`${STORAGE_KEYS.ARCHIVED_ATTENDANCE}_${schoolId}`, JSON.stringify(archived));
@@ -178,12 +167,8 @@ export const db = {
     const archived = db.getArchivedAttendance(schoolId);
     const report = archived.find((r: any) => r.id === reportId);
     if (!report) return;
-
-    // إزالة من الأرشيف
     const filteredArchived = archived.filter((r: any) => r.id !== reportId);
     localStorage.setItem(`${STORAGE_KEYS.ARCHIVED_ATTENDANCE}_${schoolId}`, JSON.stringify(filteredArchived));
-
-    // إعادة للنشط
     const active = db.getAttendance(schoolId);
     active.unshift(report);
     localStorage.setItem(`${STORAGE_KEYS.ATTENDANCE}_${schoolId}`, JSON.stringify(active));
