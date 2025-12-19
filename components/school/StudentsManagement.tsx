@@ -6,9 +6,9 @@ import * as XLSX from 'xlsx';
 import { 
   Plus, Search, Trash2, CheckCircle2, 
   X, Sparkles, Loader2, User, 
-  Eraser, FileSpreadsheet, Upload, 
-  Edit2, Users, AlertCircle, Wand2, 
-  FileUp, Check, Info, FileText
+  FileSpreadsheet, Upload, 
+  Edit2, Users, AlertCircle, 
+  FileUp, Info
 } from 'lucide-react';
 
 const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
@@ -39,7 +39,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
 
   const HEADER_MAP = {
     name: ['اسم', 'طالب', 'الاسم', 'Name', 'Student', 'الرباعي', 'الكامل'],
-    phone: ['جوال', 'هاتف', 'تواصل', 'رقم', 'Mobile', 'Phone', 'اتصال'],
+    phone: ['جوال', 'هاتف', 'تواصل', 'رقم', 'Mobile', 'Phone', 'اتصال', 'والد'],
     grade: ['صف', 'Grade', 'المستوى', 'السنة', 'الدراسي'],
     section: ['فصل', 'Section', 'مجموعة', 'رقم الصف']
   };
@@ -50,7 +50,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     if (str.includes('E') || str.includes('e')) {
       str = Number(val).toLocaleString('fullwide', {useGrouping:false});
     }
-    str = str.replace(/[^0-9+]/g, '');
+    str = str.replace(/[^0-9]/g, '');
     if (str.startsWith('5') && str.length === 9) return '0' + str;
     return str;
   };
@@ -81,64 +81,71 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
       if (rows.length < 1) throw new Error('الملف فارغ');
 
       let colMap = { name: -1, phone: -1, grade: -1, section: -1 };
-      let startRow = -1;
+      let startRowIdx = -1;
 
+      // 1. تحديد مكان الأعمدة بدقة
       for (let i = 0; i < Math.min(rows.length, 50); i++) {
         const row = rows[i];
         row.forEach((cell, idx) => {
-          const val = String(cell).toLowerCase();
-          if (HEADER_MAP.name.some(h => val.includes(h.toLowerCase()))) colMap.name = idx;
-          if (HEADER_MAP.phone.some(h => val.includes(h.toLowerCase()))) colMap.phone = idx;
-          if (HEADER_MAP.grade.some(h => val.includes(h.toLowerCase()))) colMap.grade = idx;
-          if (HEADER_MAP.section.some(h => val.includes(h.toLowerCase()))) colMap.section = idx;
+          const val = String(cell).toLowerCase().trim();
+          if (!val) return;
+
+          if (colMap.name === -1 && HEADER_MAP.name.some(h => val.includes(h.toLowerCase()))) colMap.name = idx;
+          if (colMap.phone === -1 && HEADER_MAP.phone.some(h => val.includes(h.toLowerCase()))) colMap.phone = idx;
+          if (colMap.grade === -1 && HEADER_MAP.grade.some(h => val.includes(h.toLowerCase()))) colMap.grade = idx;
+          if (colMap.section === -1 && HEADER_MAP.section.some(h => val.includes(h.toLowerCase()))) colMap.section = idx;
         });
 
         if (colMap.name !== -1) {
-          startRow = i + 1;
+          startRowIdx = i + 1;
           break;
         }
       }
 
-      const tempStudents: Student[] = [];
-      const dataToProcess = startRow !== -1 ? rows.slice(startRow) : rows;
+      const extractedStudents: Student[] = [];
+      const rowsToProcess = startRowIdx !== -1 ? rows.slice(startRowIdx) : rows;
 
-      dataToProcess.forEach(row => {
+      rowsToProcess.forEach((row, index) => {
         let name = '', phone = '', grade = '', section = '1';
 
-        if (startRow !== -1) {
+        if (colMap.name !== -1) {
           name = String(row[colMap.name] || '').trim();
-          phone = cleanPhoneNumber(row[colMap.phone]);
-          grade = standardizeGrade(row[colMap.grade]);
-          section = String(row[colMap.section] || '1').trim();
+          phone = colMap.phone !== -1 ? cleanPhoneNumber(row[colMap.phone]) : '';
+          grade = colMap.grade !== -1 ? standardizeGrade(row[colMap.grade]) : '';
+          section = colMap.section !== -1 ? String(row[colMap.section] || '1').trim() : '1';
         } else {
+          // تخمين ذكي في حال لم نجد ترويسة
           row.forEach(cell => {
             const val = String(cell).trim();
-            if (/^(966|05|5|00966)[0-9]+/.test(val.replace(/\s/g, ''))) phone = cleanPhoneNumber(val);
-            else if (val.length > 8 && !name) name = val;
-            else if (val.includes('ابتدا') || val.includes('متوسط')) grade = val;
+            if (/^[0-9+]{8,15}$/.test(val)) phone = cleanPhoneNumber(val);
+            else if (val.length > 5 && !name && !/[0-9]/.test(val)) name = val;
           });
         }
 
-        if (name && name.length > 3 && !HEADER_MAP.name.some(h => name.includes(h))) {
-          tempStudents.push({
-            id: (Date.now() + Math.random()).toString(),
+        // فلترة: التأكد أن الاسم ليس رقماً وليس كلمة ترويسة
+        const isHeaderWord = HEADER_MAP.name.some(h => name.toLowerCase() === h.toLowerCase());
+        const isNumeric = /^[0-9]+$/.test(name.replace(/\s/g, ''));
+
+        if (name && name.length > 3 && !isHeaderWord && !isNumeric) {
+          extractedStudents.push({
+            id: `import-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`,
             name, 
             phoneNumber: phone, 
-            grade: grade || 'الأول الابتدائي', 
+            grade: grade || 'غير محدد', 
             section: section || '1', 
             schoolId: schoolId
           });
         }
       });
 
-      if (tempStudents.length > 0) {
+      if (extractedStudents.length > 0) {
         setImportSummary({
-          count: tempStudents.length,
-          samples: tempStudents.slice(0, 3).map(s => s.name)
+          count: extractedStudents.length,
+          samples: extractedStudents.slice(0, 3).map(s => s.name)
         });
-        setTempImportData(tempStudents);
+        setTempImportData(extractedStudents);
       } else {
-        setImportError('لم نستطع التعرف على بيانات الطلاب. تأكد أن الملف يحتوي على أسماء واضحة.');
+        setImportError('لم نستطع التعرف على بيانات الطلاب. تأكد أن الملف يحتوي على أسماء في عمود واضح.');
       }
     } catch (err) {
       setImportError('حدث خطأ أثناء قراءة الملف. يرجى التأكد من صيغة الإكسل.');
@@ -147,27 +154,32 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     }
   };
 
-  const confirmImport = () => {
-    if (tempImportData && tempImportData.length > 0) {
+  const confirmAndSave = () => {
+    if (!tempImportData || tempImportData.length === 0) return;
+
+    try {
       const currentAll = JSON.parse(localStorage.getItem('madrasati_students') || '[]');
       const updatedAll = [...currentAll, ...tempImportData];
       localStorage.setItem('madrasati_students', JSON.stringify(updatedAll));
       
-      // تحديث الواجهة فوراً
+      // تحديث قائمة العرض فوراً
       setStudents(db.getStudents(schoolId));
       db.syncClassesFromStudents(schoolId);
       
-      // إغلاق النافذة وتنظيف الحالة
+      // تنظيف الواجهة
       setShowImport(false);
       setImportSummary(null);
       setTempImportData(null);
-      alert(`تم بنجاح حفظ ${tempImportData.length} طالباً.`);
+      
+      alert(`بنجاح! تم استيراد وحفظ ${tempImportData.length} طالباً في قاعدة البيانات.`);
+    } catch (e) {
+      alert('خطأ في الحفظ: قد يكون حجم البيانات كبيراً جداً على المتصفح.');
     }
   };
 
-  const handleSave = () => {
+  const handleSaveManual = () => {
     if (!formData.name || !formData.grade || !formData.section) {
-      alert('يرجى تعبئة كافة الحقول الأساسية (الاسم، الصف، الفصل)');
+      alert('يرجى تعبئة كافة الحقول الأساسية');
       return;
     }
 
@@ -204,10 +216,10 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     <div className="space-y-8 animate-in fade-in duration-500 max-w-full">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100"><Users size={28} /></div>
+          <div className="w-14 h-14 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg"><Users size={28} /></div>
           <div>
             <h2 className="text-2xl font-black text-slate-800 tracking-tight">إدارة الطلاب</h2>
-            <p className="text-slate-400 font-bold text-sm">إجمالي المسجلين بالمدرسة: {students.length}</p>
+            <p className="text-slate-400 font-bold text-sm">إجمالي المسجلين: {students.length}</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-3 w-full md:w-auto">
@@ -260,7 +272,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {filteredStudents.length === 0 ? (
-                <tr><td colSpan={5} className="p-20 text-center text-slate-300 font-bold italic">لا توجد بيانات لعرضها.</td></tr>
+                <tr><td colSpan={5} className="p-20 text-center text-slate-300 font-bold italic">لا توجد بيانات طلاب.</td></tr>
               ) : (
                 filteredStudents.map(s => (
                   <tr key={s.id} className="hover:bg-slate-50/80 transition-colors group">
@@ -280,7 +292,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                     <td className="p-5 text-left">
                       <div className="flex justify-end gap-2">
                         <button onClick={() => { setEditingStudent(s); setFormData({ name: s.name, grade: s.grade, section: s.section, phoneNumber: s.phoneNumber }); setShowForm(true); }} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Edit2 size={16} /></button>
-                        <button onClick={() => { if (confirm('حذف الطالب؟')) { const all = JSON.parse(localStorage.getItem('madrasati_students') || '[]'); localStorage.setItem('madrasati_students', JSON.stringify(all.filter((st: any) => st.id !== s.id))); setStudents(db.getStudents(schoolId)); db.syncClassesFromStudents(schoolId); } }} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
+                        <button onClick={() => { if (confirm('حذف؟')) { const all = JSON.parse(localStorage.getItem('madrasati_students') || '[]'); localStorage.setItem('madrasati_students', JSON.stringify(all.filter((st: any) => st.id !== s.id))); setStudents(db.getStudents(schoolId)); db.syncClassesFromStudents(schoolId); } }} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -322,7 +334,6 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                       <>
                          <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-emerald-600 shadow-sm mb-4"><Upload size={32} /></div>
                          <p className="text-slate-700 font-black text-lg">اسحب ملف الإكسل هنا</p>
-                         <p className="text-slate-400 font-bold text-xs mt-1">يدعم جميع تنسيقات أنظمة المدارس</p>
                          <button onClick={() => fileInputRef.current?.click()} className="mt-6 px-8 py-3 bg-emerald-600 text-white rounded-xl font-black text-sm shadow-lg hover:bg-emerald-700 transition-all">اختيار من الجهاز</button>
                       </>
                     )}
@@ -342,12 +353,11 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                            {importSummary.samples.map((name, i) => (
                              <span key={i} className="bg-white px-4 py-2 rounded-xl text-xs font-bold text-slate-600 border border-emerald-100">{name}</span>
                            ))}
-                           <span className="px-4 py-2 text-xs font-bold text-emerald-400">...وغيرهم</span>
                         </div>
                      </div>
                      <div className="flex gap-4">
                         <button onClick={() => { setImportSummary(null); setTempImportData(null); }} className="flex-1 py-4 bg-white text-slate-600 rounded-2xl font-black border border-slate-200">إلغاء</button>
-                        <button onClick={confirmImport} className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-black shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all">تأكيد وحفظ البيانات</button>
+                        <button onClick={confirmAndSave} className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-black shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95">تأكيد وحفظ البيانات</button>
                      </div>
                   </div>
                 )}
@@ -364,7 +374,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                      <div className="space-y-1">
                         <h4 className="text-sm font-black text-blue-900 italic">كيف يعمل النظام؟</h4>
                         <p className="text-[10px] text-blue-800/70 font-bold leading-relaxed">
-                          نستخدم تقنيات المسح الضوئي للبيانات لاكتشاف الأعمدة تلقائياً. لا يهم إذا كان اسم الطالب في العمود الأول أو الأخير، نظامنا سيتعرف عليه.
+                          نستخدم تقنيات المسح الضوئي للبيانات لاكتشاف الأعمدة تلقائياً وتصفية الأرقام من عمود الأسماء لضمان دقة الاستيراد.
                         </p>
                      </div>
                   </div>
@@ -376,37 +386,19 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
 
       {showForm && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white p-8 rounded-[2.5rem] max-w-md w-full shadow-2xl animate-in zoom-in-95 border border-slate-50">
+          <div className="bg-white p-8 rounded-[2.5rem] max-w-md w-full shadow-2xl animate-in zoom-in-95">
              <div className="flex justify-between items-center mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center"><User size={20} /></div>
-                  <h3 className="text-xl font-black text-slate-900">{editingStudent ? 'تعديل بيانات طالب' : 'إضافة طالب جديد'}</h3>
-                </div>
-                <button onClick={() => setShowForm(false)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors"><X size={22} /></button>
+                <h3 className="text-xl font-black text-slate-900">{editingStudent ? 'تعديل بيانات طالب' : 'إضافة طالب جديد'}</h3>
+                <button onClick={() => setShowForm(false)} className="p-2 text-slate-400 hover:text-rose-50"><X size={22} /></button>
              </div>
              <div className="space-y-5">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-black text-slate-400 mr-1">الاسم الكامل</label>
-                  <input placeholder="أدخل اسم الطالب..." className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 focus:bg-white transition-all shadow-sm" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                </div>
+                <input placeholder="اسم الطالب..." className="w-full p-4 bg-slate-50 rounded-2xl font-bold" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-black text-slate-400 mr-1">الصف الدراسي</label>
-                    <input placeholder="الأول الابتدائي" className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 focus:bg-white transition-all shadow-sm" value={formData.grade} onChange={e => setFormData({...formData, grade: e.target.value})} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-black text-slate-400 mr-1">رقم الفصل</label>
-                    <input placeholder="1" className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 focus:bg-white transition-all shadow-sm" value={formData.section} onChange={e => setFormData({...formData, section: e.target.value})} />
-                  </div>
+                  <input placeholder="الصف الدراسي" className="w-full p-4 bg-slate-50 rounded-2xl font-bold" value={formData.grade} onChange={e => setFormData({...formData, grade: e.target.value})} />
+                  <input placeholder="الفصل" className="w-full p-4 bg-slate-50 rounded-2xl font-bold" value={formData.section} onChange={e => setFormData({...formData, section: e.target.value})} />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-black text-slate-400 mr-1">رقم التواصل (جوال ولي الأمر)</label>
-                  <input placeholder="05xxxxxxxx" className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 focus:bg-white transition-all text-left shadow-sm" value={formData.phoneNumber} dir="ltr" onChange={e => setFormData({...formData, phoneNumber: e.target.value})} />
-                </div>
-                <button onClick={handleSave} className="w-full bg-indigo-600 text-white py-5 rounded-[1.5rem] font-black text-lg shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all mt-4 flex items-center justify-center gap-2">
-                  <CheckCircle2 size={22} />
-                  {editingStudent ? 'تحديث البيانات' : 'حفظ الطالب'}
-                </button>
+                <input placeholder="رقم الجوال" className="w-full p-4 bg-slate-50 rounded-2xl font-bold" value={formData.phoneNumber} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} />
+                <button onClick={handleSaveManual} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black shadow-lg">حفظ الطالب</button>
              </div>
           </div>
         </div>
