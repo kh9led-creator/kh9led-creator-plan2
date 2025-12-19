@@ -2,8 +2,19 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { DAYS, PERIODS, db, formatToHijri } from '../constants.tsx';
-import { Printer, School as SchoolIcon, ArrowRight, GraduationCap } from 'lucide-react';
+import { 
+  Printer, School as SchoolIcon, ArrowRight, GraduationCap,
+  Backpack, Compass, Calculator, Library, 
+  NotebookPen, Shapes, Telescope, BookOpen, Microscope,
+  CalendarDays
+} from 'lucide-react';
 import { School, Subject, AcademicWeek } from '../types.ts';
+
+const CLASS_ICONS = [
+  Backpack, Compass, Calculator, Library, 
+  NotebookPen, Shapes, Telescope, GraduationCap, 
+  SchoolIcon, BookOpen, Microscope
+];
 
 const PublicPlanView: React.FC = () => {
   const { schoolSlug } = useParams();
@@ -34,6 +45,15 @@ const PublicPlanView: React.FC = () => {
   useEffect(() => {
     if (school && selectedClass) setSchedule(db.getSchedule(school.id, selectedClass));
   }, [school, selectedClass]);
+
+  const getClassIcon = (classTitle: string) => {
+    let hash = 0;
+    for (let i = 0; i < classTitle.length; i++) {
+      hash = classTitle.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % CLASS_ICONS.length;
+    return CLASS_ICONS[index];
+  };
 
   if (!school) return <div className="p-24 text-center font-black animate-pulse text-indigo-400 text-2xl">جاري تهيئة البوابة التعليمية...</div>;
 
@@ -74,14 +94,17 @@ const PublicPlanView: React.FC = () => {
                <p className="text-slate-400 font-bold">يرجى اختيار الفصل الدراسي لعرض الخطة المعتمدة</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {availableClasses.map((cls) => (
-                <button key={cls} onClick={() => setSelectedClass(cls)} className="group bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all text-center flex flex-col items-center gap-4">
-                  <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                     <GraduationCap size={28} />
-                  </div>
-                  <h3 className="text-xl font-black text-slate-800">{cls}</h3>
-                </button>
-              ))}
+              {availableClasses.map((cls) => {
+                const ClassIcon = getClassIcon(cls);
+                return (
+                  <button key={cls} onClick={() => setSelectedClass(cls)} className="group bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all text-center flex flex-col items-center gap-4">
+                    <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                       <ClassIcon size={28} />
+                    </div>
+                    <h3 className="text-xl font-black text-slate-800">{cls}</h3>
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : (
@@ -89,14 +112,12 @@ const PublicPlanView: React.FC = () => {
             <div className="origin-top scale-[0.45] sm:scale-[0.7] md:scale-100 mb-[-550px] sm:mb-[-150px] md:mb-0">
                <div className="a4-page bg-white shadow-2xl border p-[8mm] relative flex flex-col overflow-hidden" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
                 
-                {/* العلامة المائية - Watermark مرئية بوضوح أكبر */}
                 {school.logoUrl && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.08] z-0 overflow-hidden">
                     <img src={school.logoUrl} className="w-[500px] h-[500px] object-contain grayscale" alt="علامة مائية" />
                   </div>
                 )}
 
-                {/* الترويسة - إزالة اللون الأزرق ودمج التاريخ */}
                 <div className="relative z-10 grid grid-cols-3 gap-2 mb-2.5 border-b-2 border-slate-900 pb-2 items-center">
                   <div className="text-right space-y-0.5 font-black text-[7pt] leading-tight text-slate-800">
                     {headerLines.map((line, i) => <p key={i}>{line}</p>)}
@@ -114,11 +135,13 @@ const PublicPlanView: React.FC = () => {
                         الأسبوع: <span className="font-black">{activeWeek?.name || "---"}</span>
                         <span className="text-[7pt] text-slate-500 font-bold mr-1">({activeWeek ? formatToHijri(activeWeek.startDate) : '--'})</span>
                     </p>
-                    <p className="flex items-center justify-end gap-1">الصف الدراسي: <span className="font-black">{selectedClass}</span></p>
+                    <p className="flex items-center justify-end gap-1">
+                        {React.createElement(getClassIcon(selectedClass), { size: 10, className: "text-slate-500" })} 
+                        الصف: <span className="font-black">{selectedClass}</span>
+                    </p>
                   </div>
                 </div>
 
-                {/* الجدول الدراسي - ارتفاع الصفوف لضمان احتواء الخميس كاملاً */}
                 <div className="relative z-10 flex-1 overflow-hidden border-[2px] border-slate-900 rounded-sm mb-3">
                   <table className="w-full border-collapse table-fixed h-full text-center">
                     <thead className="bg-slate-50 border-b-[2px] border-slate-900 font-black">
@@ -160,7 +183,6 @@ const PublicPlanView: React.FC = () => {
                   </table>
                 </div>
 
-                {/* صناديق المعلومات السفلية */}
                 <div className="relative z-10 grid grid-cols-2 gap-4 h-[38mm]">
                    <div className="border-[1.5px] border-slate-900 p-3 bg-white rounded-lg shadow-sm">
                       <h3 className="text-[9.5pt] font-black mb-2 border-b border-slate-900 pb-1 text-center bg-slate-50 rounded-md">توجيهات ولي الأمر</h3>
@@ -178,8 +200,6 @@ const PublicPlanView: React.FC = () => {
                       </div>
                    </div>
                 </div>
-                
-                {/* تم حذف سطر التذييل السفلي نهائياً لضمان المساحة */}
               </div>
             </div>
           </div>
