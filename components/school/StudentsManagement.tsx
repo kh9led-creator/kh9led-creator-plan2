@@ -5,7 +5,7 @@ import { Student } from '../../types.ts';
 import { 
   FileUp, Plus, Search, Trash2, CheckCircle2, 
   Upload, FileSpreadsheet, AlertCircle, X, 
-  Sparkles, ClipboardPaste, Loader2 
+  Sparkles, ClipboardPaste, Loader2, User 
 } from 'lucide-react';
 
 const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
@@ -42,28 +42,21 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     }
   };
 
-  // معالج البيانات الذكي
   const processRawData = (text: string) => {
     setIsProcessing(true);
     setTimeout(() => {
-      // تقسيم الأسطر
       const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
       if (lines.length === 0) {
         setIsProcessing(false);
         return;
       }
 
-      // محاولة استنتاج الفاصل (فاصلة أو Tab)
       const delimiter = lines[0].includes('\t') ? '\t' : (lines[0].includes(',') ? ',' : ';');
       
       const parsed = lines.map(line => {
         const parts = line.split(delimiter).map(p => p.trim());
-        // محاولة ذكية لتوزيع البيانات:
-        // الاسم عادة أول حقل نصي طويل
-        // الجوال عادة حقل يبدأ بـ 05 أو 966
-        // الصف قد يحتوي على كلمات مثل "ابتدائي" أو أرقام 1-6
         return {
-          name: parts[0] || '',
+          name: parts[0] || '', // يجب أن يكون الاسم الرباعي في العمود الأول
           grade: parts[1] || 'الأول الابتدائي',
           section: parts[2] || '1',
           phoneNumber: parts[3] || ''
@@ -142,7 +135,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         <table className="w-full text-right">
           <thead className="bg-slate-50/50 text-slate-400 text-xs font-black uppercase tracking-widest">
             <tr>
-              <th className="p-6">الاسم الكامل</th>
+              <th className="p-6">الاسم الرباعي الكامل</th>
               <th className="p-6">الصف / الفصل</th>
               <th className="p-6">رقم الجوال</th>
               <th className="p-6 text-left">الإجراءات</th>
@@ -194,7 +187,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                  </div>
                  <div>
                     <h3 className="text-2xl font-black text-slate-900">المعالج الذكي لاستيراد الطلاب</h3>
-                    <p className="text-sm text-slate-500 font-bold">ارفع ملف Excel أو الصق البيانات مباشرة وسنقوم بالباقي.</p>
+                    <p className="text-sm text-slate-500 font-bold">تأكد أن العمود الأول يحتوي على **الاسم الرباعي** للطالب.</p>
                  </div>
               </div>
               <button onClick={() => setShowImport(false)} className="p-3 bg-white text-slate-400 rounded-2xl hover:text-rose-500 transition shadow-sm">
@@ -207,16 +200,6 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                 <div className="space-y-8">
                   <div 
                     onClick={() => fileInputRef.current?.click()}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const file = e.dataTransfer.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (ev) => processRawData(ev.target?.result as string);
-                        reader.readAsText(file);
-                      }
-                    }}
                     className="border-4 border-dashed border-slate-100 rounded-[3rem] p-16 text-center hover:border-blue-100 hover:bg-blue-50/30 transition-all cursor-pointer group relative overflow-hidden"
                   >
                     <input type="file" ref={fileInputRef} className="hidden" accept=".csv,.txt" onChange={handleFileUpload} />
@@ -225,29 +208,25 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                           <Upload size={48} />
                        </div>
                        <h4 className="text-xl font-black text-slate-800">اسحب الملف هنا أو انقر للإرفاق</h4>
-                       <p className="text-slate-400 mt-2 font-bold">يدعم ملفات CSV و Text المصدرة من نور أو إكسل</p>
+                       <p className="text-slate-400 mt-2 font-bold">يجب أن يحتوي الملف على (الاسم الرباعي، الصف، الفصل، الجوال)</p>
                     </div>
                   </div>
 
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
-                    <div className="relative flex justify-center text-sm"><span className="px-4 bg-white text-slate-400 font-bold uppercase tracking-widest">أو اللصق السريع</span></div>
+                    <div className="relative flex justify-center text-sm"><span className="px-4 bg-white text-slate-400 font-bold uppercase tracking-widest">أو اللصق المباشر</span></div>
                   </div>
 
                   <div className="space-y-4">
-                    <label className="text-sm font-black text-slate-700 mr-4 flex items-center gap-2">
-                       <ClipboardPaste size={16} className="text-blue-500" />
-                       الصق جدول البيانات المنسوخ من Excel هنا مباشرة:
-                    </label>
                     <textarea 
                       onPaste={handlePaste}
-                      placeholder="لصق البيانات هنا..."
+                      placeholder="الصق بيانات الطلاب من Excel هنا..."
                       className="w-full h-32 p-6 bg-slate-50 rounded-[2rem] border-none outline-none font-bold text-slate-600 focus:ring-4 focus:ring-blue-50 transition-all"
                     ></textarea>
                     {isProcessing && (
                       <div className="flex items-center gap-2 text-blue-600 font-black animate-pulse px-4">
                         <Loader2 size={18} className="animate-spin" />
-                        جاري تحليل البيانات بذكاء...
+                        جاري فحص الأسماء وتحليلها...
                       </div>
                     )}
                   </div>
@@ -259,14 +238,13 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                         <CheckCircle2 size={24} />
                         <span className="font-black">تم اكتشاف {previewData.length} طالب بنجاح!</span>
                      </div>
-                     <button onClick={() => setImportStep('upload')} className="text-emerald-700 font-black text-sm underline">إعادة المحاولة</button>
                   </div>
                   
                   <div className="max-h-[350px] overflow-y-auto rounded-3xl border border-slate-100 shadow-inner">
                     <table className="w-full text-right text-sm">
                       <thead className="sticky top-0 bg-slate-100 font-black">
                         <tr>
-                          <th className="p-4">الاسم المستخرج</th>
+                          <th className="p-4">الاسم الرباعي (سيظهر في الخطة)</th>
                           <th className="p-4">الصف</th>
                           <th className="p-4">الجوال</th>
                         </tr>
@@ -284,18 +262,8 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                   </div>
 
                   <div className="flex gap-4 pt-4">
-                    <button 
-                      onClick={confirmImport}
-                      className="flex-1 py-5 bg-blue-600 text-white rounded-[2rem] font-black text-xl shadow-xl shadow-blue-100 hover:scale-[1.02] transition"
-                    >
-                      تأكيد وحفظ الكل
-                    </button>
-                    <button 
-                      onClick={() => setShowImport(false)}
-                      className="px-10 py-5 bg-slate-100 text-slate-500 rounded-[2rem] font-black text-xl hover:bg-slate-200 transition"
-                    >
-                      إلغاء
-                    </button>
+                    <button onClick={confirmImport} className="flex-1 py-5 bg-blue-600 text-white rounded-[2rem] font-black text-xl shadow-xl shadow-blue-100 hover:scale-[1.02] transition">تأكيد وحفظ الكل</button>
+                    <button onClick={() => setImportStep('upload')} className="px-10 py-5 bg-slate-100 text-slate-500 rounded-[2rem] font-black text-xl hover:bg-slate-200 transition">تعديل الملف</button>
                   </div>
                 </div>
               )}
@@ -314,8 +282,8 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
              </div>
              <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-400 px-2">اسم الطالب الثلاثي</label>
-                  <input placeholder="مثال: أحمد محمد علي" className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold focus:ring-2 focus:ring-blue-100" value={newStudent.name} onChange={e => setNewStudent({...newStudent, name: e.target.value})} />
+                  <label className="text-xs font-black text-slate-400 px-2 flex items-center gap-1"><User size={12} /> اسم الطالب الرباعي الكامل</label>
+                  <input placeholder="مثال: أحمد محمد علي القحطاني" className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold focus:ring-2 focus:ring-blue-100" value={newStudent.name} onChange={e => setNewStudent({...newStudent, name: e.target.value})} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">

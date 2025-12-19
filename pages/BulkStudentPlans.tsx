@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { DAYS, PERIODS, db, formatToHijri } from '../constants.tsx';
-import { Printer, User, GraduationCap, FileCheck } from 'lucide-react';
+import { Printer, User, GraduationCap, FileCheck, Award } from 'lucide-react';
 import { School, Subject, Student, AcademicWeek } from '../types.ts';
 
 const BulkStudentPlans: React.FC = () => {
@@ -56,13 +56,13 @@ const BulkStudentPlans: React.FC = () => {
     <div className="bg-slate-100 min-h-screen font-['Tajawal'] pb-10">
       <div className="max-w-[1100px] mx-auto p-6 no-print flex justify-between items-center sticky top-0 bg-white/95 backdrop-blur-md z-50 border-b shadow-md">
         <div className="flex items-center gap-4">
-           <div className="bg-blue-600 p-3 rounded-2xl text-white shadow-xl shadow-blue-100"><Printer size={28} /></div>
+           <div className="bg-indigo-600 p-3 rounded-2xl text-white shadow-xl shadow-indigo-100"><Printer size={28} /></div>
            <div>
               <h1 className="text-2xl font-black text-slate-800">محرك الطباعة الفردية للطلاب</h1>
               <p className="text-sm text-slate-400 font-bold tracking-tight">إجمالي المستندات: {studentsToPrint.length} ورقة</p>
            </div>
         </div>
-        <button onClick={() => window.print()} className="bg-blue-600 text-white px-10 py-4 rounded-2xl font-black text-lg shadow-2xl shadow-blue-100 hover:bg-blue-700 hover:-translate-y-0.5 transition-all">
+        <button onClick={() => window.print()} className="bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black text-lg shadow-2xl shadow-indigo-100 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all">
              بدء الطباعة الآن
         </button>
       </div>
@@ -74,7 +74,7 @@ const BulkStudentPlans: React.FC = () => {
 
           return (
             <div key={student.id} className="student-page-container flex justify-center mb-10">
-              <div className="a4-page bg-white shadow-2xl p-[8mm] relative flex flex-col overflow-hidden" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
+              <div className="a4-page bg-white shadow-2xl p-[8mm] relative flex flex-col overflow-hidden border-2 border-slate-200" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
                 
                 {/* Header Section */}
                 <div className="grid grid-cols-3 gap-2 mb-2 border-b-2 border-black pb-2 items-center">
@@ -89,15 +89,18 @@ const BulkStudentPlans: React.FC = () => {
                     ) : (
                       <div className="w-14 h-14 border-2 border-dashed rounded-xl"></div>
                     )}
-                    <div className="mt-1 bg-slate-100 px-3 py-0.5 rounded-full border border-slate-200">
-                      <span className="text-[6pt] font-black text-slate-500 tracking-tighter uppercase">Individual Student Plan</span>
+                    <div className="mt-1 bg-indigo-50 px-3 py-0.5 rounded-full border border-indigo-100">
+                      <span className="text-[6pt] font-black text-indigo-600 tracking-tighter uppercase">الخطة الدراسية الأسبوعية</span>
                     </div>
                   </div>
 
                   <div className="text-right space-y-1">
-                    <div className="bg-slate-900 text-white p-2 rounded-lg text-center mb-1">
-                      <p className="text-[7pt] font-bold opacity-80 mb-0.5">اسم الطالب</p>
-                      <h4 className="text-[10pt] font-black tracking-tight">{student.name}</h4>
+                    {/* Student Name Box - Enhanced Size and Label */}
+                    <div className="bg-slate-900 text-white p-3 rounded-xl text-center mb-1 shadow-md">
+                      <p className="text-[7pt] font-bold opacity-80 mb-1 flex items-center justify-center gap-1">
+                        <User size={10} /> اسم الطالب الرباعي
+                      </p>
+                      <h4 className="text-[12pt] font-black tracking-tight leading-none">{student.name}</h4>
                     </div>
                     <div className="text-[8pt] font-bold space-y-0.5 pr-1">
                       <p>الأسبوع: <span className="font-black underline">{activeWeek?.name || "---"}</span></p>
@@ -110,14 +113,14 @@ const BulkStudentPlans: React.FC = () => {
                 {/* Main Schedule Table */}
                 <div className="flex-1 overflow-hidden border-2 border-black rounded-sm mb-2">
                   <table className="w-full border-collapse table-fixed h-full text-center">
-                    <thead className="bg-slate-100 border-b-2 border-black font-black">
+                    <thead className="bg-slate-50 border-b-2 border-black font-black">
                       <tr className="h-8">
                         <th className="border-l-2 border-black w-10 text-[8pt]">اليوم</th>
                         <th className="border-l-2 border-black w-7 text-[7pt]">م</th>
                         <th className="border-l-2 border-black w-24 text-[8pt]">المادة</th>
                         <th className="border-l-2 border-black text-[8pt]">الدرس المقرر</th>
                         <th className="border-l-2 border-black text-[8pt]">الواجب</th>
-                        <th className="w-24 text-[8pt]">ملاحظات</th>
+                        <th className="w-24 text-[8pt]">الملاحظات</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -183,7 +186,7 @@ const BulkStudentPlans: React.FC = () => {
                 
                 <div className="mt-1 text-center border-t border-slate-100 pt-1 opacity-50">
                    <p className="text-[6pt] font-black text-slate-400 uppercase tracking-tighter">
-                     خطة الطالب: {student.name} - {classTitle} - مدرسة {school.name} - تم الإنشاء بواسطة منصة مدرستي
+                     خطة الطالب: {student.name} - {classTitle} - مدرسة {school.name}
                    </p>
                 </div>
               </div>
