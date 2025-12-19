@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { School, Student } from '../../types.ts';
-import { Globe, Printer, Users, Sparkles, Camera, X, Save, CheckCircle2, Copy, ExternalLink, Link as LinkIcon } from 'lucide-react';
+import { Globe, Printer, Users, Sparkles, Camera, X, Save, CheckCircle2, Copy, ExternalLink, Link as LinkIcon, Image as ImageIcon } from 'lucide-react';
 import { db } from '../../constants.tsx';
 import { Link } from 'react-router-dom';
 
@@ -19,7 +19,7 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
-  // تحديث القيم عند تغير المدرسة (مثلاً عند الاستعادة)
+  // تحديث القيم عند تغير المدرسة
   useEffect(() => {
     setHeaderContent(initialSchool.headerContent || "");
     setGeneralMessages(initialSchool.generalMessages || "");
@@ -81,7 +81,7 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
   }, [students]);
 
   return (
-    <div className="space-y-8 animate-in fade-in">
+    <div className="space-y-8 animate-in fade-in font-['Tajawal']">
       <div>
         <h2 className="text-3xl font-black text-slate-900">بوابة الخطط الأسبوعية</h2>
         <p className="text-slate-500 font-bold mt-1">إدارة الرابط الموحد وهوية المطبوعات.</p>
@@ -142,19 +142,29 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
                  <label className="text-sm font-black text-slate-700 mr-2 flex items-center gap-2">
                     <Camera size={16} className="text-blue-500" /> شعار المدرسة الرسمي
                  </label>
-                 <div className="bg-slate-50 border-4 border-dashed border-slate-100 rounded-[2.5rem] p-8 text-center h-64 flex flex-col items-center justify-center relative overflow-hidden group">
+                 <div 
+                    onClick={() => logoInputRef.current?.click()}
+                    className="bg-slate-50 border-4 border-dashed border-slate-100 rounded-[2.5rem] p-8 text-center h-64 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer hover:border-blue-200 hover:bg-blue-50/30 transition-all"
+                 >
                     {logoUrl ? (
                       <div className="relative group/img h-full flex items-center">
                         <img src={logoUrl} className="max-h-full object-contain transition group-hover/img:scale-105" />
-                        <button onClick={() => setLogoUrl(null)} className="absolute -top-2 -right-2 bg-white text-rose-500 p-2 rounded-full shadow-lg opacity-0 group-hover/img:opacity-100 transition"><X size={16} /></button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setLogoUrl(null); }} 
+                          className="absolute -top-2 -right-2 bg-white text-rose-500 p-2 rounded-full shadow-lg opacity-0 group-hover/img:opacity-100 transition hover:bg-rose-50"
+                        >
+                          <X size={16} />
+                        </button>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center gap-3 text-slate-300">
-                        <LinkIcon size={64} className="opacity-20" />
+                      <div className="flex flex-col items-center gap-3 text-slate-300 group-hover:text-blue-400 transition-colors">
+                        <ImageIcon size={64} className="opacity-20" />
                         <p className="font-bold text-sm">ارفع الشعار الرسمي</p>
                       </div>
                     )}
-                    <button onClick={() => logoInputRef.current?.click()} className="mt-4 bg-white px-6 py-2 rounded-xl text-xs font-black shadow-sm border hover:bg-blue-600 hover:text-white transition">اختيار شعار</button>
+                    {!logoUrl && (
+                      <button className="mt-4 bg-white px-6 py-2 rounded-xl text-xs font-black shadow-sm border group-hover:bg-blue-600 group-hover:text-white transition-all">اختيار شعار</button>
+                    )}
                     <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
                  </div>
               </div>
@@ -163,19 +173,29 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
                  <label className="text-sm font-black text-slate-700 mr-2 flex items-center gap-2">
                     <Sparkles size={16} className="text-blue-500" /> صورة النشاط الأسبوعي
                  </label>
-                 <div className="bg-slate-50 border-4 border-dashed border-slate-100 rounded-[2.5rem] p-8 text-center h-64 flex flex-col items-center justify-center relative overflow-hidden group">
+                 <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-slate-50 border-4 border-dashed border-slate-100 rounded-[2.5rem] p-8 text-center h-64 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer hover:border-blue-200 hover:bg-blue-50/30 transition-all"
+                 >
                     {weeklyNotesImage ? (
                       <div className="relative group/act h-full flex items-center">
                         <img src={weeklyNotesImage} className="max-h-full object-contain" />
-                        <button onClick={() => setWeeklyNotesImage(null)} className="absolute -top-2 -right-2 bg-white text-rose-500 p-2 rounded-full shadow-lg opacity-0 group-hover/act:opacity-100 transition"><X size={16} /></button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setWeeklyNotesImage(null); }} 
+                          className="absolute -top-2 -right-2 bg-white text-rose-500 p-2 rounded-full shadow-lg opacity-0 group-hover/act:opacity-100 transition hover:bg-rose-50"
+                        >
+                          <X size={16} />
+                        </button>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center gap-3 text-slate-300">
+                      <div className="flex flex-col items-center gap-3 text-slate-300 group-hover:text-blue-400 transition-colors">
                          <Camera size={64} className="opacity-20" />
                          <p className="font-bold text-sm">تغيير صورة النشاط</p>
                       </div>
                     )}
-                    <button onClick={() => fileInputRef.current?.click()} className="mt-4 bg-white px-6 py-2 rounded-xl text-xs font-black shadow-sm border hover:bg-blue-600 hover:text-white transition">رفع صورة نشاط</button>
+                    {!weeklyNotesImage && (
+                      <button className="mt-4 bg-white px-6 py-2 rounded-xl text-xs font-black shadow-sm border group-hover:bg-blue-600 group-hover:text-white transition-all">رفع صورة نشاط</button>
+                    )}
                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
                  </div>
               </div>
