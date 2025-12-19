@@ -51,7 +51,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     }
   };
 
-  // خوارزمية التحليل الذكي للأعمدة والمحتوى
+  // خوارزمية التحليل الذكي المحدثة بناءً على طلب المستخدم
   const processRawData = (text: string) => {
     setIsProcessing(true);
     setTimeout(() => {
@@ -61,52 +61,61 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         return;
       }
 
-      const delimiter = lines[0].includes('\t') ? '\t' : (lines[0].includes(',') ? ',' : ';');
-      
       const parsed = lines.map(line => {
-        const parts = line.split(delimiter).map(p => p.trim());
+        // تحديد الفاصل تلقائياً (تبويب، فاصلة، أو مسافات متعددة)
+        const delimiter = line.includes('\t') ? '\t' : (line.includes(',') ? ',' : (line.includes('  ') ? '  ' : ' '));
+        const parts = line.split(delimiter).map(p => p.trim()).filter(p => p !== '');
         
         let name = '';
         let phoneNumber = '';
-        let grade = 'الأول الابتدائي';
+        let gradeRaw = '';
         let section = '1';
 
-        // محاولة تحديد الحقول بناءً على المحتوى
         parts.forEach(part => {
           if (!part) return;
 
-          // 1. فحص الجوال: أرقام طويلة تبدأ بـ 05 أو 966 أو 5
-          if (/^(05|966|5)\d+$/.test(part.replace(/\+/g, '')) || (part.length >= 9 && /^\d+$/.test(part))) {
-            phoneNumber = part;
+          // 1. فحص الجوال: أرقام تبدأ بـ 05 أو 966 أو 5
+          if (/^(05|966|5)\d+$/.test(part.replace(/[\s\+]/g, '')) || (part.length >= 9 && /^\d+$/.test(part.replace(/[\s]/g, '')))) {
+            phoneNumber = part.replace(/\s/g, '');
           } 
-          // 2. فحص الصف والفصل: نصوص تحتوي على كلمة ابتدائي أو متوسط أو ثانوي
-          else if (part.includes('ابتدائي') || part.includes('متوسط') || part.includes('ثانوي')) {
-             // محاولة استخراج الفصل إذا كان مدمجاً (مثل: الأول الابتدائي - 2)
-             if (part.includes('-')) {
-               const [g, s] = part.split('-').map(x => x.trim());
-               grade = g;
-               section = s;
-             } else {
-               grade = part;
-             }
+          // 2. فحص الصف الدراسي
+          else if (part.includes('ابتدائي') || part.includes('متوسط') || part.includes('ثانوي') || part.includes('الصف')) {
+            gradeRaw = part;
           }
-          // 3. فحص الاسم: نصوص طويلة (أكثر من كلمتين) ولا تحتوي على أرقام
+          // 3. فحص الاسم: نصوص بدون أرقام وطويلة نسبياً
           else if (part.split(' ').length >= 2 && !/\d/.test(part)) {
             name = part;
           }
         });
 
-        // إذا فشل التحليل الذكي، نعتمد الترتيب الافتراضي (اسم، صف، فصل، جوال)
-        if (!name && parts[0]) name = parts[0];
-        if (!phoneNumber && parts[3]) phoneNumber = parts[3];
+        // تنسيق الصف: استيراد أول كلمتين فقط ومعالجة الفصل
+        let formattedGrade = 'غير محدد';
+        if (gradeRaw) {
+          // إزالة كلمة "الصف" إذا وجدت للتركيز على المسمى (الأول، الثاني...)
+          let cleanGrade = gradeRaw.replace('الصف', '').trim();
+          
+          // معالجة الفصل إذا كان مدمجاً بواصلة
+          if (cleanGrade.includes('-')) {
+            const gradeParts = cleanGrade.split('-');
+            const gradeName = gradeParts[0].trim().split(' ').slice(0, 2).join(' '); // أول كلمتين
+            section = gradeParts[1].trim();
+            formattedGrade = gradeName;
+          } else {
+            // أخذ أول كلمتين فقط من مسمى الصف (مثل: الأول الابتدائي)
+            formattedGrade = cleanGrade.split(' ').slice(0, 2).join(' ');
+          }
+        }
 
-        return { name, grade, section, phoneNumber };
-      }).filter(s => s.name.length > 3); // استبعاد الأسطر غير المكتملة
+        // تحسين اختيار الاسم إذا لم يتم اكتشافه بدقة
+        if (!name && parts[0] && !/\d/.test(parts[0])) name = parts[0];
+
+        return { name, grade: formattedGrade, section, phoneNumber };
+      }).filter(s => s.name.length > 3); // استبعاد السجلات غير الصالحة
 
       setPreviewData(parsed);
       setImportStep('preview');
       setIsProcessing(false);
-    }, 1200);
+    }, 1000);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -134,7 +143,6 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     setShowImport(false);
     setImportStep('upload');
     setPreviewData([]);
-    // مزامنة الفصول تلقائياً بعد الاستيراد
     db.syncClassesFromStudents(schoolId);
   };
 
@@ -149,6 +157,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
           <button 
             onClick={clearAllStudents}
             className="flex-1 md:flex-none p-4 bg-rose-50 text-rose-500 rounded-2xl border border-rose-100 hover:bg-rose-500 hover:text-white transition shadow-sm flex items-center justify-center group"
+            title="حذف الكل"
           >
             <Eraser size={22} className="group-hover:rotate-12 transition-transform" />
           </button>
@@ -184,9 +193,9 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
           <table className="w-full text-right min-w-[600px]">
             <thead className="bg-slate-50/50 text-slate-400 text-[10px] md:text-xs font-black uppercase tracking-widest">
               <tr>
-                <th className="p-4 md:p-6">الاسم الرباعي الكامل</th>
-                <th className="p-4 md:p-6">الصف / الفصل</th>
-                <th className="p-4 md:p-6">رقم الجوال</th>
+                <th className="p-4 md:p-6">اسم الطالب</th>
+                <th className="p-4 md:p-6">الصف والفصل</th>
+                <th className="p-4 md:p-6 text-center">رقم الجوال</th>
                 <th className="p-4 md:p-6 text-left">الإجراءات</th>
               </tr>
             </thead>
@@ -209,7 +218,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                         {s.grade} - {s.section}
                       </span>
                     </td>
-                    <td className="p-4 md:p-6 font-mono font-bold text-slate-500 text-xs md:text-sm">{s.phoneNumber || '---'}</td>
+                    <td className="p-4 md:p-6 font-mono font-bold text-slate-500 text-xs md:text-sm text-center">{s.phoneNumber || '---'}</td>
                     <td className="p-4 md:p-6 text-left">
                       <button 
                         onClick={() => deleteStudent(s.id)}
@@ -236,7 +245,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                  </div>
                  <div>
                     <h3 className="text-xl md:text-2xl font-black text-slate-900">المعالج الذكي (Noor Sync)</h3>
-                    <p className="text-[10px] md:text-sm text-slate-500 font-bold">تمكين التمييز التلقائي للأسماء والأرقام والصفوف.</p>
+                    <p className="text-[10px] md:text-sm text-slate-500 font-bold">استيراد الاسم، الصف (أول كلمتين)، ورقم الجوال.</p>
                  </div>
               </div>
               <button onClick={() => setShowImport(false)} className="p-2 md:p-3 bg-white text-slate-400 rounded-2xl hover:text-rose-500 transition shadow-sm">
@@ -257,7 +266,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                           <Upload size={32} className="md:w-12 md:h-12" />
                        </div>
                        <h4 className="text-lg md:text-xl font-black text-slate-800">ارفع ملف بيانات "نور"</h4>
-                       <p className="text-[10px] md:text-xs text-slate-400 mt-2 font-bold tracking-tight">النظام سيتعرف على الأعمدة تلقائياً مهما كان ترتيبها</p>
+                       <p className="text-[10px] md:text-xs text-slate-400 mt-2 font-bold tracking-tight">النظام سيتعرف على البيانات المطلوبة تلقائياً</p>
                     </div>
                   </div>
 
@@ -269,13 +278,13 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                   <div className="space-y-4">
                     <textarea 
                       onPaste={handlePaste}
-                      placeholder="الصق نص الجدول المنسوخ من Excel هنا..."
+                      placeholder="الصق نص الجدول المنسوخ من Excel أو نور هنا..."
                       className="w-full h-32 p-4 md:p-6 bg-slate-50 rounded-[1.5rem] md:rounded-[2rem] border-none outline-none font-bold text-xs md:text-sm text-slate-600 focus:ring-4 focus:ring-blue-50 transition-all"
                     ></textarea>
                     {isProcessing && (
                       <div className="flex items-center gap-2 text-blue-600 font-black animate-pulse px-4 text-xs">
                         <Loader2 size={16} className="animate-spin" />
-                        جاري فحص البيانات ومطابقة الأعمدة...
+                        جاري معالجة البيانات وتنسيق الصفوف...
                       </div>
                     )}
                   </div>
@@ -293,19 +302,19 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                     <table className="w-full text-right text-xs">
                       <thead className="sticky top-0 bg-slate-100 font-black">
                         <tr>
-                          <th className="p-4">الاسم (مكتشف)</th>
-                          <th className="p-4">الجوال (مكتشف)</th>
-                          <th className="p-4">الصف الدراسي</th>
+                          <th className="p-4">اسم الطالب</th>
+                          <th className="p-4">الصف (مختصر)</th>
                           <th className="p-4">الفصل</th>
+                          <th className="p-4">رقم الجوال</th>
                         </tr>
                       </thead>
                       <tbody>
                         {previewData.map((p, i) => (
                           <tr key={i} className="border-b last:border-0 hover:bg-slate-50 transition">
-                            <td className="p-4 font-black truncate max-w-[150px]">{p.name || '---'}</td>
-                            <td className="p-4 font-mono font-bold text-slate-400">{p.phoneNumber || '---'}</td>
+                            <td className="p-4 font-black truncate max-w-[200px]">{p.name || '---'}</td>
                             <td className="p-4 font-bold text-slate-500">{p.grade}</td>
-                            <td className="p-4 font-black text-blue-600">{p.section}</td>
+                            <td className="p-4 font-black text-blue-600 text-center">{p.section}</td>
+                            <td className="p-4 font-mono font-bold text-slate-400 text-center">{p.phoneNumber || '---'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -332,7 +341,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
              </div>
              <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-400 px-2 flex items-center gap-1"><User size={12} /> الاسم الرباعي</label>
+                  <label className="text-xs font-black text-slate-400 px-2 flex items-center gap-1"><User size={12} /> اسم الطالب</label>
                   <input placeholder="خالد محمد..." className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-sm focus:ring-2 focus:ring-blue-100" value={newStudent.name} onChange={e => setNewStudent({...newStudent, name: e.target.value})} />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -340,6 +349,8 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                     <label className="text-xs font-black text-slate-400 px-2">الصف</label>
                     <select className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-sm" value={newStudent.grade} onChange={e => setNewStudent({...newStudent, grade: e.target.value})}>
                       <option>الأول الابتدائي</option><option>الثاني الابتدائي</option><option>الثالث الابتدائي</option><option>الرابع الابتدائي</option><option>الخامس الابتدائي</option><option>السادس الابتدائي</option>
+                      <option>الأول المتوسط</option><option>الثاني المتوسط</option><option>الثالث المتوسط</option>
+                      <option>الأول الثانوي</option><option>الثاني الثانوي</option><option>الثالث الثانوي</option>
                     </select>
                   </div>
                   <div className="space-y-2">
