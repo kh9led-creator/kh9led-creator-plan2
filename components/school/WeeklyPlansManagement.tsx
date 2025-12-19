@@ -22,6 +22,7 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const weeklyImageRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setHeaderContent(initialSchool.headerContent || "");
@@ -115,20 +116,14 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
     setTimeout(() => setCopiedLink(null), 2000);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'weekly') => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => setWeeklyNotesImage(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setLogoUrl(reader.result as string);
+      reader.onloadend = () => {
+        if (type === 'logo') setLogoUrl(reader.result as string);
+        else setWeeklyNotesImage(reader.result as string);
+      };
       reader.readAsDataURL(file);
     }
   };
@@ -156,7 +151,7 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
         </div>
       </div>
 
-      <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl w-fit">
+      <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl w-fit overflow-x-auto no-scrollbar max-w-full">
         {[
           {id:'weeks', label:'الأسابيع الهجرية'},
           {id:'archive', label:'الأرشيف'},
@@ -167,7 +162,7 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
           <button 
             key={tab.id} 
             onClick={() => setActiveTab(tab.id as any)} 
-            className={`px-6 py-2 rounded-xl font-bold transition ${activeTab === tab.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-indigo-600'}`}
+            className={`px-6 py-2 rounded-xl font-bold transition whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-indigo-600'}`}
           >
             {tab.label}
           </button>
@@ -176,7 +171,7 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
 
       {activeTab === 'weeks' && (
         <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-          <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-8">
+          <div className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] border border-slate-100 shadow-sm space-y-8">
              <div className="flex items-center gap-4 mb-2">
                 <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg"><Plus size={24} /></div>
                 <div>
@@ -222,6 +217,53 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
                </div>
              ))}
           </div>
+        </div>
+      )}
+
+      {activeTab === 'branding' && (
+        <div className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] border border-slate-100 shadow-sm space-y-10 animate-in fade-in">
+           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+              <div className="space-y-8">
+                 <div className="space-y-4">
+                    <label className="text-sm font-black text-slate-700 mr-2 flex items-center gap-2"><Camera size={16} className="text-blue-500" /> شعار المدرسة الرسمي</label>
+                    <div onClick={() => logoInputRef.current?.click()} className="bg-slate-50 border-4 border-dashed border-slate-100 rounded-[2.5rem] p-8 text-center h-48 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer hover:border-blue-200 hover:bg-blue-50/30 transition-all">
+                       {logoUrl ? <img src={logoUrl} className="max-h-full object-contain" /> : <ImageIcon size={48} className="opacity-20" />}
+                       <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, 'logo')} />
+                    </div>
+                 </div>
+                 
+                 <div className="space-y-4">
+                    <label className="text-sm font-black text-slate-700 mr-2 flex items-center gap-2"><Sparkles size={16} className="text-indigo-500" /> صورة النشاط الأسبوعي (اختياري)</label>
+                    <div onClick={() => weeklyImageRef.current?.click()} className="bg-slate-50 border-4 border-dashed border-slate-100 rounded-[2.5rem] p-8 text-center h-48 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer hover:border-indigo-200 hover:bg-indigo-50/30 transition-all">
+                       {weeklyNotesImage ? <img src={weeklyNotesImage} className="max-h-full object-contain" /> : <ImageIcon size={48} className="opacity-20" />}
+                       <input type="file" ref={weeklyImageRef} className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, 'weekly')} />
+                       {weeklyNotesImage && <button onClick={(e) => {e.stopPropagation(); setWeeklyNotesImage(null);}} className="absolute top-2 left-2 bg-rose-500 text-white p-1 rounded-full"><X size={14}/></button>}
+                    </div>
+                 </div>
+              </div>
+
+              <div className="space-y-6">
+                 <div className="space-y-2">
+                    <label className="text-sm font-black text-slate-700 mr-2">ترويسة الخطة (أعلى الصفحة)</label>
+                    <textarea rows={4} className="w-full p-5 bg-slate-50 rounded-[1.5rem] font-bold outline-none border-2 border-transparent focus:border-blue-100 transition shadow-inner" value={headerContent} onChange={e => setHeaderContent(e.target.value)} placeholder="المملكة العربية السعودية\nوزارة التعليم..." />
+                 </div>
+                 
+                 <div className="space-y-2">
+                    <label className="text-sm font-black text-slate-700 mr-2">توجيهات لولي الأمر (أسفل الجدول)</label>
+                    <textarea rows={3} className="w-full p-5 bg-slate-50 rounded-[1.5rem] font-bold outline-none border-2 border-transparent focus:border-indigo-100 transition shadow-inner" value={generalMessages} onChange={e => setGeneralMessages(e.target.value)} placeholder="١. متابعة المنصة يومياً..." />
+                 </div>
+
+                 <div className="space-y-2">
+                    <label className="text-sm font-black text-slate-700 mr-2">النشاط الأسبوعي أو حكمة الأسبوع</label>
+                    <textarea rows={2} className="w-full p-5 bg-slate-50 rounded-[1.5rem] font-bold outline-none border-2 border-transparent focus:border-emerald-100 transition shadow-inner" value={weeklyNotes} onChange={e => setWeeklyNotes(e.target.value)} placeholder="مثال: مدرستنا بيئة آمنة للتعلم" />
+                 </div>
+              </div>
+           </div>
+           
+           <button onClick={handleSaveBranding} className={`w-full py-6 rounded-[2rem] font-black text-xl shadow-xl transition-all flex items-center justify-center gap-3 ${isSaved ? 'bg-emerald-500 text-white shadow-emerald-100' : 'bg-slate-900 text-white hover:bg-black'}`}>
+              {isSaved ? <CheckCircle2 size={24} /> : <Save size={24} />}
+              {isSaved ? 'تم حفظ التغييرات بنجاح' : 'حفظ الهوية والنشاط'}
+           </button>
         </div>
       )}
 
@@ -276,28 +318,6 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
                  </button>
               </div>
            </div>
-        </div>
-      )}
-
-      {activeTab === 'branding' && (
-        <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-10 animate-in fade-in">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-              <div className="space-y-4">
-                 <label className="text-sm font-black text-slate-700 mr-2 flex items-center gap-2"><Camera size={16} className="text-blue-500" /> شعار المدرسة الرسمي</label>
-                 <div onClick={() => logoInputRef.current?.click()} className="bg-slate-50 border-4 border-dashed border-slate-100 rounded-[2.5rem] p-8 text-center h-64 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer hover:border-blue-200 hover:bg-blue-50/30 transition-all">
-                    {logoUrl ? <img src={logoUrl} className="max-h-full object-contain" /> : <ImageIcon size={64} className="opacity-20" />}
-                    <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
-                 </div>
-              </div>
-              <div className="space-y-4">
-                 <label className="text-sm font-black text-slate-700 mr-2">ترويسة الخطة</label>
-                 <textarea rows={4} className="w-full p-6 bg-slate-50 rounded-[2rem] font-bold outline-none border-2 border-transparent focus:border-blue-100 transition shadow-inner" value={headerContent} onChange={e => setHeaderContent(e.target.value)} placeholder="المملكة العربية السعودية..." />
-              </div>
-           </div>
-           <button onClick={handleSaveBranding} className={`w-full py-6 rounded-[2rem] font-black text-xl shadow-xl transition-all flex items-center justify-center gap-3 ${isSaved ? 'bg-emerald-500 text-white shadow-emerald-100' : 'bg-slate-900 text-white hover:bg-black'}`}>
-              {isSaved ? <CheckCircle2 size={24} /> : <Save size={24} />}
-              {isSaved ? 'تم حفظ التغييرات' : 'حفظ التغييرات'}
-           </button>
         </div>
       )}
 

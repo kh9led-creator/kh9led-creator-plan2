@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { School, Teacher, Subject, Student, AcademicWeek } from '../types.ts';
 import { DAYS, PERIODS, db, formatToHijri } from '../constants.tsx';
-import { LogOut, BookOpen, ClipboardCheck, MessageSquare, Save, Book, Edit2, Home, Sparkles, StickyNote, CheckCircle, UserX, Users, CheckCircle2, ChevronLeft, Calendar, Info, AlertTriangle, UserCheck, Menu, X } from 'lucide-react';
+import { LogOut, BookOpen, ClipboardCheck, MessageSquare, Save, Book, Edit2, Home, Sparkles, StickyNote, CheckCircle, UserX, Users, CheckCircle2, ChevronLeft, Calendar, Info, AlertTriangle, UserCheck, Menu, X, FileText } from 'lucide-react';
 import CommunicationHub from '../components/school/CommunicationHub.tsx';
 
 interface Props {
@@ -195,7 +195,7 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
                           </div>
                           <div className="flex-1 p-6 md:p-10 space-y-6 md:space-y-8">
                             <div className="flex items-center gap-3 text-lg md:text-xl font-black text-slate-700"><Book className="text-indigo-600" size={20} /> مادة: {subjectName}</div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                                <div className="space-y-1.5">
                                   <label className="text-xs font-black text-slate-400">اسم الدرس</label>
                                   <input className="w-full p-4 bg-slate-50 rounded-xl font-bold outline-none border-2 border-transparent focus:border-indigo-100 transition" value={currentPlan.lesson || ''} onChange={e => handlePlanChange(session.classTitle, session.dayId, session.period, 'lesson', e.target.value)} />
@@ -203,6 +203,10 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
                                <div className="space-y-1.5">
                                   <label className="text-xs font-black text-slate-400">الواجب</label>
                                   <input className="w-full p-4 bg-slate-50 rounded-xl font-bold outline-none border-2 border-transparent focus:border-indigo-100 transition" value={currentPlan.homework || ''} onChange={e => handlePlanChange(session.classTitle, session.dayId, session.period, 'homework', e.target.value)} />
+                               </div>
+                               <div className="space-y-1.5">
+                                  <label className="text-xs font-black text-slate-400 flex items-center gap-2"><FileText size={14} className="text-indigo-500" /> الملاحظات / الإثراء</label>
+                                  <input className="w-full p-4 bg-slate-50 rounded-xl font-bold outline-none border-2 border-transparent focus:border-indigo-100 transition" value={currentPlan.enrichment || ''} onChange={e => handlePlanChange(session.classTitle, session.dayId, session.period, 'enrichment', e.target.value)} placeholder="اختياري..." />
                                </div>
                             </div>
                           </div>
