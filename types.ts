@@ -5,6 +5,7 @@ export interface School {
   id: string;
   name: string;
   email: string;
+  adminPhone?: string;
   logoUrl?: string;
   headerContent?: string;
   generalMessages?: string;

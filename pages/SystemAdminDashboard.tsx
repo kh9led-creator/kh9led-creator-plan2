@@ -5,7 +5,8 @@ import { School as SchoolType } from '../types';
 import { 
   LayoutDashboard, ShieldCheck, School, 
   CreditCard, Settings, LogOut, CheckCircle2, 
-  XCircle, ArrowUpRight, Plus, Globe, User, Lock, Save, Check, Key
+  XCircle, ArrowUpRight, Plus, Globe, User, Lock, Save, Check, Key,
+  Mail, Phone
 } from 'lucide-react';
 
 const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
@@ -156,54 +157,69 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
             <div className="p-8 border-b bg-slate-50/50 flex justify-between items-center">
               <div>
                 <h3 className="text-xl font-black text-slate-800">إدارة المدارس والبيانات الحساسة</h3>
-                <p className="text-xs text-slate-400 font-bold mt-1">بيانات الدخول الكاملة لجميع المدارس المسجلة.</p>
+                <p className="text-xs text-slate-400 font-bold mt-1">بيانات الدخول والتواصل لجميع المدارس المسجلة.</p>
               </div>
             </div>
             {schools.length === 0 ? (
                <div className="p-20 text-center text-slate-400 font-bold">لا يوجد مدارس مسجلة بعد.</div>
             ) : (
-              <table className="w-full text-right">
-                <thead className="bg-slate-50/50 text-slate-400 text-xs font-black uppercase tracking-widest">
-                  <tr>
-                    <th className="p-6">المدرسة</th>
-                    <th className="p-6">اسم المستخدم (Slug)</th>
-                    <th className="p-6">كلمة المرور</th>
-                    <th className="p-6">الحالة</th>
-                    <th className="p-6 text-left">الإجراءات</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {schools.map(school => (
-                    <tr key={school.id} className="border-b last:border-0 hover:bg-slate-50 transition">
-                      <td className="p-6">
-                        <div className="flex items-center gap-3">
-                           {school.logoUrl && <img src={school.logoUrl} className="w-8 h-8 rounded-lg object-contain bg-white border" />}
-                           <span className="font-black text-slate-900">{school.name}</span>
-                        </div>
-                      </td>
-                      <td className="p-6 font-mono text-blue-600 font-bold">{school.slug}</td>
-                      <td className="p-6">
-                         <div className="flex items-center gap-2 text-slate-600 font-black">
-                            <Key size={14} className="text-amber-500" />
-                            <span>{school.adminPassword || 'admin (افتراضي)'}</span>
-                         </div>
-                      </td>
-                      <td className="p-6">
-                        <span className="bg-emerald-50 text-emerald-600 px-4 py-1 rounded-full text-[10px] font-black border border-emerald-100">نشط</span>
-                      </td>
-                      <td className="p-6 text-left">
-                        <button 
-                          onClick={() => deleteSchool(school.id)}
-                          className="p-3 text-rose-500 hover:bg-rose-50 rounded-xl transition"
-                          title="حذف المدرسة"
-                        >
-                          <XCircle size={18} />
-                        </button>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-right">
+                  <thead className="bg-slate-50/50 text-slate-400 text-xs font-black uppercase tracking-widest">
+                    <tr>
+                      <th className="p-6">المدرسة</th>
+                      <th className="p-6">رابط الوصول (Slug)</th>
+                      <th className="p-6">التواصل (البريد/الجوال)</th>
+                      <th className="p-6">كلمة المرور</th>
+                      <th className="p-6">الحالة</th>
+                      <th className="p-6 text-left">الإجراءات</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {schools.map(school => (
+                      <tr key={school.id} className="border-b last:border-0 hover:bg-slate-50 transition">
+                        <td className="p-6">
+                          <div className="flex items-center gap-3">
+                             {school.logoUrl && <img src={school.logoUrl} className="w-8 h-8 rounded-lg object-contain bg-white border" />}
+                             <span className="font-black text-slate-900">{school.name}</span>
+                          </div>
+                        </td>
+                        <td className="p-6 font-mono text-blue-600 font-bold">{school.slug}</td>
+                        <td className="p-6">
+                           <div className="flex flex-col gap-1.5">
+                              <div className="flex items-center gap-2 text-slate-600 font-bold text-xs">
+                                <Mail size={12} className="text-indigo-400" />
+                                <span>{school.email}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-slate-600 font-bold text-xs">
+                                <Phone size={12} className="text-emerald-400" />
+                                <span dir="ltr">{school.adminPhone || '---'}</span>
+                              </div>
+                           </div>
+                        </td>
+                        <td className="p-6">
+                           <div className="flex items-center gap-2 text-slate-600 font-black">
+                              <Key size={14} className="text-amber-500" />
+                              <span>{school.adminPassword || 'admin (افتراضي)'}</span>
+                           </div>
+                        </td>
+                        <td className="p-6">
+                          <span className="bg-emerald-50 text-emerald-600 px-4 py-1 rounded-full text-[10px] font-black border border-emerald-100">نشط</span>
+                        </td>
+                        <td className="p-6 text-left">
+                          <button 
+                            onClick={() => deleteSchool(school.id)}
+                            className="p-3 text-rose-500 hover:bg-rose-50 rounded-xl transition"
+                            title="حذف المدرسة"
+                          >
+                            <XCircle size={18} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}

@@ -15,7 +15,8 @@ import {
   Sparkles,
   Camera,
   X,
-  Mail
+  Mail,
+  Phone
 } from 'lucide-react';
 
 interface Props {
@@ -31,6 +32,7 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
     schoolName: '',
     slug: '',
     email: '',
+    adminPhone: '',
     adminName: '',
     adminPassword: '',
     logoUrl: '',
@@ -68,6 +70,7 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
         name: formData.schoolName,
         slug: formData.slug,
         email: formData.email,
+        adminPhone: formData.adminPhone,
         logoUrl: formData.logoUrl,
         adminPassword: formData.adminPassword,
         subscriptionActive: true,
@@ -171,45 +174,67 @@ const SchoolRegistration: React.FC<Props> = ({ onLogin }) => {
             <div className="space-y-8 animate-in fade-in slide-in-from-left-4">
               <div className="text-center">
                 <h2 className="text-3xl font-black text-slate-900">بيانات الإدارة</h2>
-                <p className="text-slate-400 mt-2 font-bold text-sm leading-relaxed">أدخل بيانات الدخول للمدير المسئول</p>
+                <p className="text-slate-400 mt-2 font-bold text-sm leading-relaxed">أدخل بيانات التواصل والتحقق للمدير</p>
               </div>
 
               <div className="space-y-5">
-                <input 
-                  type="text" 
-                  name="adminName"
-                  value={formData.adminName}
-                  onChange={handleInputChange}
-                  placeholder="الاسم الكامل للمدير"
-                  className="w-full p-5 bg-slate-50/50 border-2 border-transparent rounded-2xl font-bold outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-50/50 transition-all"
-                />
+                <div className="relative group">
+                  <User className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={20} />
+                  <input 
+                    type="text" 
+                    name="adminName"
+                    value={formData.adminName}
+                    onChange={handleInputChange}
+                    placeholder="الاسم الكامل للمدير"
+                    className="w-full p-5 pr-12 bg-slate-50/50 border-2 border-transparent rounded-2xl font-bold outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-50/50 transition-all"
+                  />
+                </div>
 
-                <input 
-                  type="email" 
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="البريد الإلكتروني"
-                  className="w-full p-5 bg-slate-50/50 border-2 border-transparent rounded-2xl font-bold outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-50/50 transition-all text-left"
-                  dir="ltr"
-                />
+                <div className="relative group">
+                  <Mail className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={20} />
+                  <input 
+                    type="email" 
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="البريد الإلكتروني للمدير"
+                    className="w-full p-5 pr-12 bg-slate-50/50 border-2 border-transparent rounded-2xl font-bold outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-50/50 transition-all text-left"
+                    dir="ltr"
+                  />
+                </div>
 
-                <input 
-                  type="password" 
-                  name="adminPassword"
-                  value={formData.adminPassword}
-                  onChange={handleInputChange}
-                  placeholder="كلمة المرور للإدارة"
-                  className="w-full p-5 bg-slate-50/50 border-2 border-transparent rounded-2xl font-bold outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-50/50 transition-all text-left"
-                  dir="ltr"
-                />
+                <div className="relative group">
+                  <Phone className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={20} />
+                  <input 
+                    type="tel" 
+                    name="adminPhone"
+                    value={formData.adminPhone}
+                    onChange={handleInputChange}
+                    placeholder="رقم جوال المدير"
+                    className="w-full p-5 pr-12 bg-slate-50/50 border-2 border-transparent rounded-2xl font-bold outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-50/50 transition-all text-left"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div className="relative group">
+                  <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={20} />
+                  <input 
+                    type="password" 
+                    name="adminPassword"
+                    value={formData.adminPassword}
+                    onChange={handleInputChange}
+                    placeholder="كلمة المرور للإدارة"
+                    className="w-full p-5 pr-12 bg-slate-50/50 border-2 border-transparent rounded-2xl font-bold outline-none focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-50/50 transition-all text-left"
+                    dir="ltr"
+                  />
+                </div>
               </div>
 
               <div className="flex gap-4">
                  <button onClick={() => setStep(1)} className="flex-1 py-5 bg-slate-100 text-slate-600 rounded-2xl font-black text-lg hover:bg-slate-200 transition-all">رجوع</button>
                  <button 
                   onClick={handleCreateEnvironment}
-                  disabled={loading || !formData.adminName || !formData.adminPassword || !formData.email}
+                  disabled={loading || !formData.adminName || !formData.adminPassword || !formData.email || !formData.adminPhone}
                   className="flex-[2] py-5 bg-indigo-600 text-white rounded-2xl font-black text-lg hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 disabled:opacity-50 flex items-center justify-center gap-3"
                 >
                   {loading ? <Loader2 size={24} className="animate-spin" /> : 'إنشاء المنصة'}
