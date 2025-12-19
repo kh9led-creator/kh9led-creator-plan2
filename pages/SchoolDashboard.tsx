@@ -25,10 +25,12 @@ const SchoolDashboard: React.FC<Props> = ({ school, onLogout }) => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // تحديث القائمة لإضافة رصد الغياب
   const menuItems = [
     { path: '/school', icon: <LayoutDashboard size={22} />, label: 'لوحة التحكم' },
     { path: '/school/students', icon: <GraduationCap size={22} />, label: 'إدارة الطلاب' },
     { path: '/school/plans', icon: <BookOpenCheck size={22} />, label: 'الخطط الأسبوعية' },
+    { path: '/school/attendance', icon: <ClipboardCheck size={22} />, label: 'رصد الغياب' }, // تمت الإضافة هنا
     { path: '/school/settings', icon: <Settings size={22} />, label: 'إعدادات النظام' },
   ];
 
