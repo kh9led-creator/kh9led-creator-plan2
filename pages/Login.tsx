@@ -1,9 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserRole } from '../types.ts';
 import { db } from '../constants.tsx';
-import { ArrowLeft, Zap, AlertCircle, Loader2, Lock, Globe, Mail, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Zap, AlertCircle, Loader2, Lock, Globe, Mail, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (role: UserRole, school: any, user: any) => void;
@@ -12,12 +12,17 @@ interface LoginProps {
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const navigate = useNavigate();
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [recoverySent, setRecoverySent] = useState(false);
+
+  const usernameRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const recoveryRef = useRef<HTMLInputElement>(null);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +31,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
     setTimeout(() => {
       const schools = db.getSchools();
-      // البحث عن المدرسة بواسطة الرابط (Slug) أو اسم المستخدم الإداري
       const school = schools.find(s => s.slug === username || s.adminUsername === username);
       
       if (school && (password === school.adminPassword || password === 'admin')) {
@@ -76,7 +80,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               {isRecoveryMode ? 'استعادة البيانات' : 'نظام خططي'}
             </h1>
             <p className="text-slate-400 font-bold mt-1 text-sm">
-              {isRecoveryMode ? 'سنقوم بإرسال بيانات الدخول لبريدك' : 'بوابة إدارة المدرسة'}
+              {isRecoveryMode ? 'سنرسل بيانات الدخول لبريدك' : 'بوابة إدارة المدرسة'}
             </p>
           </div>
 
@@ -92,8 +96,23 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             ) : (
               <form onSubmit={handleRecovery} className="space-y-6">
                 <div className="relative group">
-                  <Mail className="absolute right-5 top-5 text-slate-300 group-focus-within:text-indigo-600 transition-colors" size={20} />
-                  <input type="email" required value={recoveryEmail} onChange={(e) => setRecoveryEmail(e.target.value)} placeholder="البريد الإلكتروني المسجل (بالإنجليزي)" className="w-full p-5 pr-14 bg-slate-50/50 border-2 border-transparent rounded-2xl font-bold text-slate-800 outline-none focus:bg-white focus:border-indigo-100 transition-all text-left" dir="ltr" />
+                  <button 
+                    type="button" 
+                    onClick={() => recoveryRef.current?.focus()}
+                    className="absolute right-5 top-5 text-slate-300 group-focus-within:text-indigo-600 transition-colors"
+                  >
+                    <Mail size={20} />
+                  </button>
+                  <input 
+                    ref={recoveryRef}
+                    type="email" 
+                    required 
+                    value={recoveryEmail} 
+                    onChange={(e) => setRecoveryEmail(e.target.value)} 
+                    placeholder="البريد الإلكتروني المسجل" 
+                    className="w-full p-5 pr-14 bg-slate-50/50 border-2 border-transparent rounded-2xl font-bold text-slate-800 outline-none focus:bg-white focus:border-indigo-100 transition-all text-left shadow-sm" 
+                    dir="ltr" 
+                  />
                 </div>
                 <button type="submit" disabled={loading} className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3">
                   {loading ? <Loader2 className="animate-spin" size={24} /> : 'إرسال بيانات الاستعادة'}
@@ -104,12 +123,49 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           ) : (
             <form onSubmit={handleLogin} className="space-y-5">
               <div className="relative group">
-                <Globe className="absolute right-5 top-5 text-slate-300 group-focus-within:text-indigo-600 transition-colors" size={20} />
-                <input type="text" required value={username} onChange={(e) => setUsername(e.target.value)} placeholder="اسم المستخدم أو الرابط (بالإنجليزي)" className="w-full p-5 pr-14 bg-slate-50/50 border-2 border-transparent rounded-2xl font-bold text-slate-800 outline-none focus:bg-white focus:border-indigo-100 transition-all text-left" dir="ltr" />
+                <button 
+                  type="button" 
+                  onClick={() => usernameRef.current?.focus()}
+                  className="absolute right-5 top-5 text-slate-300 group-focus-within:text-indigo-600 transition-colors"
+                >
+                  <Globe size={20} />
+                </button>
+                <input 
+                  ref={usernameRef}
+                  type="text" 
+                  required 
+                  value={username} 
+                  onChange={(e) => setUsername(e.target.value)} 
+                  placeholder="اسم المستخدم أو الرابط" 
+                  className="w-full p-5 pr-14 bg-slate-50/50 border-2 border-transparent rounded-2xl font-bold text-slate-800 outline-none focus:bg-white focus:border-indigo-100 transition-all text-left shadow-sm" 
+                  dir="ltr" 
+                />
               </div>
               <div className="relative group">
-                <Lock className="absolute right-5 top-5 text-slate-300 group-focus-within:text-indigo-600 transition-colors" size={20} />
-                <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="كلمة المرور (بالإنجليزي)" className="w-full p-5 pr-14 bg-slate-50/50 border-2 border-transparent rounded-2xl font-bold text-slate-800 outline-none focus:bg-white focus:border-indigo-100 transition-all text-left" dir="ltr" />
+                <button 
+                  type="button" 
+                  onClick={() => passwordRef.current?.focus()}
+                  className="absolute right-5 top-5 text-slate-300 group-focus-within:text-indigo-600 transition-colors"
+                >
+                  <Lock size={20} />
+                </button>
+                <input 
+                  ref={passwordRef}
+                  type={showPassword ? "text" : "password"} 
+                  required 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  placeholder="كلمة المرور" 
+                  className="w-full p-5 pr-14 bg-slate-50/50 border-2 border-transparent rounded-2xl font-bold text-slate-800 outline-none focus:bg-white focus:border-indigo-100 transition-all text-left shadow-sm" 
+                  dir="ltr" 
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
               </div>
               <div className="text-left px-2">
                 <button type="button" onClick={() => setIsRecoveryMode(true)} className="text-[10px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest">نسيت بيانات الدخول؟</button>
