@@ -6,7 +6,7 @@ import {
   Plus, Search, Trash2, CheckCircle2, 
   Upload, X, Sparkles, Loader2, User, 
   Eraser, Phone, GraduationCap, Layout, Edit2, 
-  Users, Trash
+  Users, Trash, FileSpreadsheet, AlertCircle
 } from 'lucide-react';
 
 const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
@@ -17,10 +17,9 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [formData, setFormData] = useState({ name: '', grade: 'الأول الابتدائي', section: '1', phoneNumber: '' });
   
-  const [importStep, setImportStep] = useState<'upload' | 'preview'>('upload');
-  const [previewData, setPreviewData] = useState<any[]>([]);
+  const [importText, setImportText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importError, setImportError] = useState('');
 
   useEffect(() => {
     setStudents(db.getStudents(schoolId));
@@ -45,7 +44,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
   const handleSave = () => {
     if (!formData.name) return;
     const studentData = { ...formData, id: editingStudent ? editingStudent.id : Date.now().toString(), schoolId };
-    db.saveStudent(studentData);
+    db.saveStudent(studentData as any);
     setStudents(db.getStudents(schoolId));
     setShowForm(false);
     db.syncClassesFromStudents(schoolId);
@@ -71,6 +70,51 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     }
   };
 
+  const processImport = () => {
+    if (!importText.trim()) {
+      setImportError('يرجى لصق بيانات الطلاب أولاً');
+      return;
+    }
+
+    setIsProcessing(true);
+    setImportError('');
+
+    try {
+      const lines = importText.trim().split('\n');
+      const newStudents: any[] = [];
+
+      lines.forEach(line => {
+        // دعم الفصل بواسطة تاب (Excel) أو فاصلة
+        const parts = line.split(/\t|,/);
+        if (parts.length >= 1 && parts[0].trim()) {
+          newStudents.push({
+            id: (Date.now() + Math.random()).toString(),
+            name: parts[0].trim(),
+            grade: parts[1]?.trim() || 'الأول الابتدائي',
+            section: parts[2]?.trim() || '1',
+            phoneNumber: parts[3]?.trim() || '',
+            schoolId: schoolId
+          });
+        }
+      });
+
+      if (newStudents.length > 0) {
+        const all = JSON.parse(localStorage.getItem('madrasati_students') || '[]');
+        localStorage.setItem('madrasati_students', JSON.stringify([...all, ...newStudents]));
+        setStudents(db.getStudents(schoolId));
+        db.syncClassesFromStudents(schoolId);
+        setShowImport(false);
+        setImportText('');
+      } else {
+        setImportError('لم يتم العثور على بيانات صالحة. تأكد من أن الاسم في العمود الأول.');
+      }
+    } catch (err) {
+      setImportError('حدث خطأ أثناء معالجة البيانات. تأكد من التنسيق.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-full">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
@@ -90,7 +134,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
             <Trash2 size={18} />
           </button>
           <button onClick={() => setShowImport(true)} className="flex-1 md:flex-none bg-slate-900 text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-md text-sm">
-            <Sparkles size={18} className="text-blue-400" /> استيراد
+            <Sparkles size={18} className="text-blue-400" /> استيراد سريع
           </button>
           <button onClick={handleOpenAdd} className="flex-1 md:flex-none bg-indigo-600 text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition shadow-md text-sm">
             <Plus size={18} /> إضافة طالب
@@ -160,12 +204,69 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         </div>
       </div>
 
+      {/* Import Modal */}
+      {showImport && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+          <div className="bg-white p-8 md:p-10 rounded-[3rem] max-w-2xl w-full shadow-2xl animate-in zoom-in-95">
+             <div className="flex justify-between items-center mb-8">
+                <div className="flex items-center gap-4">
+                   <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center"><FileSpreadsheet size={24} /></div>
+                   <div>
+                      <h3 className="text-xl font-black text-slate-900">استيراد بيانات الطلاب</h3>
+                      <p className="text-xs text-slate-400 font-bold mt-1">انسخ البيانات من ملف Excel ثم الصقها هنا مباشرة.</p>
+                   </div>
+                </div>
+                <button onClick={() => setShowImport(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:text-rose-500 transition-colors"><X size={24} /></button>
+             </div>
+
+             <div className="space-y-6">
+                <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
+                   <h4 className="text-[11px] font-black text-indigo-600 uppercase tracking-widest mb-2">طريقة التنسيق المطلوبة:</h4>
+                   <p className="text-[10px] text-indigo-900/60 font-bold leading-relaxed">
+                     الاسم (عمود 1) | الصف (عمود 2) | الفصل (عمود 3) | الجوال (عمود 4) <br/>
+                     * ملاحظة: يجب أن يكون كل طالب في سطر مستقل.
+                   </p>
+                </div>
+
+                <textarea 
+                  className="w-full h-64 p-6 bg-slate-50 rounded-[2rem] border-2 border-transparent focus:border-indigo-100 outline-none font-bold text-sm leading-relaxed shadow-inner"
+                  placeholder="الصق قائمة الطلاب هنا..."
+                  value={importText}
+                  onChange={e => setImportText(e.target.value)}
+                />
+
+                {importError && (
+                  <div className="flex items-center gap-2 p-4 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 text-xs font-black animate-in shake">
+                    <AlertCircle size={16} /> {importError}
+                  </div>
+                )}
+
+                <div className="flex gap-4">
+                   <button 
+                    onClick={() => setShowImport(false)} 
+                    className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black transition-all hover:bg-slate-200"
+                   >
+                     إلغاء
+                   </button>
+                   <button 
+                    onClick={processImport}
+                    disabled={isProcessing}
+                    className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                   >
+                     {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <><CheckCircle2 size={20} /> بدء المعالجة والاستيراد</>}
+                   </button>
+                </div>
+             </div>
+          </div>
+        </div>
+      )}
+
       {/* Add/Edit Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white p-8 rounded-[2rem] max-w-md w-full shadow-2xl animate-in zoom-in-95">
              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-black text-slate-900">{editingStudent ? 'تعديل طالب' : 'إضافة طالب جديد'}</h3>
+                <h3 className="text-xl font-black text-slate-900">{editingStudent ? 'تعديل بيانات طالب' : 'إضافة طالب جديد'}</h3>
                 <button onClick={() => setShowForm(false)} className="p-2 text-slate-400"><X size={20} /></button>
              </div>
              <div className="space-y-4">
