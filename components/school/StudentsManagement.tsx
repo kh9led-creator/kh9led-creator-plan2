@@ -6,7 +6,7 @@ import {
   Plus, Search, Trash2, CheckCircle2, 
   Upload, X, Sparkles, Loader2, User, 
   Eraser, Phone, GraduationCap, Layout, Edit2, 
-  Users
+  Users, Trash
 } from 'lucide-react';
 
 const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
@@ -61,6 +61,16 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     }
   };
 
+  const handleDeleteAll = () => {
+    if (confirm('تنبيه: سيتم حذف كافة الطلاب المسجلين حالياً لهذه المدرسة. هل أنت متأكد؟')) {
+      const all = JSON.parse(localStorage.getItem('madrasati_students') || '[]');
+      const filtered = all.filter((s: any) => s.schoolId !== schoolId);
+      localStorage.setItem('madrasati_students', JSON.stringify(filtered));
+      setStudents([]);
+      db.syncClassesFromStudents(schoolId);
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-full">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
@@ -71,7 +81,14 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
             <p className="text-slate-400 font-bold text-sm">إجمالي المسجلين: {students.length} طالب</p>
           </div>
         </div>
-        <div className="flex gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap gap-3 w-full md:w-auto">
+          <button 
+            onClick={handleDeleteAll} 
+            className="p-3.5 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all border border-rose-100 flex items-center justify-center gap-2 font-bold text-sm"
+            title="حذف كافة الطلاب"
+          >
+            <Trash2 size={18} />
+          </button>
           <button onClick={() => setShowImport(true)} className="flex-1 md:flex-none bg-slate-900 text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-md text-sm">
             <Sparkles size={18} className="text-blue-400" /> استيراد
           </button>
@@ -108,7 +125,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {filteredStudents.length === 0 ? (
-                <tr><td colSpan={5} className="p-20 text-center text-slate-300 font-bold">لا توجد بيانات.</td></tr>
+                <tr><td colSpan={5} className="p-20 text-center text-slate-300 font-bold">لا توجد بيانات طلاب حالياً.</td></tr>
               ) : (
                 filteredStudents.map(s => (
                   <tr key={s.id} className="hover:bg-slate-50 transition-colors">

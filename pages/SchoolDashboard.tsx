@@ -179,7 +179,7 @@ const SchoolOverview: React.FC<{ school: School }> = ({ school }) => {
           </button>
           {showComplete && (
             <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm animate-in slide-in-from-top-2">
-              {teacherStatus.completed.length === 0 ? <p className="text-center py-4 text-slate-300 font-bold text-sm">لا يوجد معلمين.</p> : (
+              {teacherStatus.completed.length === 0 ? <p className="text-center py-4 text-slate-300 font-bold text-sm">لا يوجد معلمين حالياً.</p> : (
                 <div className="flex flex-wrap gap-2">{teacherStatus.completed.map(t => <span key={t.id} className="bg-emerald-50 text-emerald-700 px-4 py-1.5 rounded-lg text-xs font-bold border border-emerald-100">{t.name}</span>)}</div>
               )}
             </div>
@@ -199,7 +199,7 @@ const SchoolOverview: React.FC<{ school: School }> = ({ school }) => {
           </button>
           {showIncomplete && (
             <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm animate-in slide-in-from-top-2">
-              {teacherStatus.incomplete.length === 0 ? <p className="text-center py-4 text-emerald-500 font-bold text-sm">الجميع أتم الرصد.</p> : (
+              {teacherStatus.incomplete.length === 0 ? <p className="text-center py-4 text-emerald-500 font-bold text-sm">الجميع أتم الرصد بنجاح.</p> : (
                 <div className="flex flex-wrap gap-2">{teacherStatus.incomplete.map(t => <span key={t.id} className="bg-rose-50 text-rose-700 px-4 py-1.5 rounded-lg text-xs font-bold border border-rose-100">{t.name}</span>)}</div>
               )}
             </div>
