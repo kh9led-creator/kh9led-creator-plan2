@@ -72,8 +72,19 @@ const BulkStudentPlans: React.FC = () => {
               {/* Single Page A4 Frame */}
               <div className="a4-page bg-white shadow-2xl p-[10mm] relative flex flex-col overflow-hidden" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
                 
-                {/* Header Section */}
+                {/* Header Section - Order Adjusted */}
                 <div className="grid grid-cols-3 gap-2 mb-3 border-b-2 border-black pb-3">
+                  {/* Right: School Info */}
+                  <div className="text-right space-y-0.5 font-black text-[9pt] leading-tight">
+                    {headerLines.map((line, i) => <p key={i}>{line}</p>)}
+                  </div>
+
+                  {/* Center: Logo */}
+                  <div className="flex flex-col items-center justify-center">
+                    {school.logoUrl && <img src={school.logoUrl} className="w-16 h-16 object-contain" />}
+                  </div>
+
+                  {/* Left: Student Info */}
                   <div className="text-right space-y-0.5 font-bold text-[8.5pt]">
                     <p>الصف: <span className="font-black underline">{classTitle}</span></p>
                     <p>الأسبوع: الأسبوع الأول</p>
@@ -81,12 +92,6 @@ const BulkStudentPlans: React.FC = () => {
                     <p className="mt-1 text-slate-900 bg-slate-50 p-1 px-2 border-r-4 border-blue-600 inline-block text-[10pt] font-black">
                       اسم الطالب: {student.name}
                     </p>
-                  </div>
-                  <div className="flex flex-col items-center justify-center">
-                    {school.logoUrl && <img src={school.logoUrl} className="w-16 h-16 object-contain" />}
-                  </div>
-                  <div className="text-right space-y-0.5 font-black text-[9pt] leading-tight">
-                    {headerLines.map((line, i) => <p key={i}>{line}</p>)}
                   </div>
                 </div>
 

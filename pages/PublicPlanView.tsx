@@ -86,19 +86,17 @@ const PublicPlanView: React.FC = () => {
             </div>
           </div>
         ) : (
-          /* A4 Report Simulation */
+          /* A4 Report Simulation - Exact Order of Header */
           <div className="a4-page bg-white shadow-2xl border p-[10mm] relative flex flex-col text-[10pt] overflow-hidden" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
             
-            {/* Header Branding */}
+            {/* Header Branding - Kingdom on the RIGHT */}
             <div className="grid grid-cols-3 gap-2 mb-4 border-b-2 border-black pb-3">
-              <div className="text-right space-y-0.5 font-bold text-[8.5pt]">
-                <p>من: ....................</p>
-                <p>إلى: ....................</p>
-                <p>الأسبوع: الأسبوع الأول</p>
-                <p>الصف: <span className="font-black underline">{selectedClass}</span></p>
-                <p>الفصل الدراسي الأول</p>
+              {/* Right Side (Index 0 in RTL is Right): School Info */}
+              <div className="text-right space-y-0.5 font-black text-[9pt] leading-tight">
+                {headerLines.map((line, i) => <p key={i}>{line}</p>)}
               </div>
 
+              {/* Center Side: Logo */}
               <div className="flex flex-col items-center justify-center">
                 {school.logoUrl ? (
                   <img src={school.logoUrl} alt="Logo" className="w-20 h-20 object-contain" />
@@ -107,8 +105,13 @@ const PublicPlanView: React.FC = () => {
                 )}
               </div>
 
-              <div className="text-right space-y-0.5 font-black text-[9pt] leading-tight">
-                {headerLines.map((line, i) => <p key={i}>{line}</p>)}
+              {/* Left Side (Index 2 in RTL is Left): Class Info */}
+              <div className="text-right space-y-0.5 font-bold text-[8.5pt]">
+                <p>من: ....................</p>
+                <p>إلى: ....................</p>
+                <p>الأسبوع: الأسبوع الأول</p>
+                <p>الصف: <span className="font-black underline">{selectedClass}</span></p>
+                <p>الفصل الدراسي الأول</p>
               </div>
             </div>
 
