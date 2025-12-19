@@ -113,7 +113,9 @@ export const db = {
   },
   saveStudent: (student: Student & { schoolId: string }) => {
     const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.STUDENTS) || '[]');
-    all.push(student);
+    const index = all.findIndex((s: any) => s.id === student.id);
+    if (index > -1) all[index] = student;
+    else all.push(student);
     localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(all));
   },
 

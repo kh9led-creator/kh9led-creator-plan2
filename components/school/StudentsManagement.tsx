@@ -1,19 +1,21 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { db } from '../../constants.tsx';
 import { Student } from '../../types.ts';
 import { 
   FileUp, Plus, Search, Trash2, CheckCircle2, 
   Upload, FileSpreadsheet, AlertCircle, X, 
   Sparkles, ClipboardPaste, Loader2, User, RefreshCw,
-  Eraser, Phone, GraduationCap, Layout
+  Eraser, Phone, GraduationCap, Layout, Edit2
 } from 'lucide-react';
 
 const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
   const [students, setStudents] = useState<Student[]>([]);
-  const [showAdd, setShowAdd] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  const [newStudent, setNewStudent] = useState({ name: '', grade: 'الأول الابتدائي', section: '1', phoneNumber: '' });
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [formData, setFormData] = useState({ name: '', grade: 'الأول الابتدائي', section: '1', phoneNumber: '' });
   
   const [importStep, setImportStep] = useState<'upload' | 'preview'>('upload');
   const [previewData, setPreviewData] = useState<any[]>([]);
@@ -24,13 +26,38 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     setStudents(db.getStudents(schoolId));
   }, [schoolId]);
 
-  const handleAdd = () => {
-    if (!newStudent.name) return;
-    const student = { ...newStudent, id: Date.now().toString(), schoolId };
-    db.saveStudent(student);
+  const filteredStudents = useMemo(() => {
+    return students.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [students, searchTerm]);
+
+  const handleOpenAdd = () => {
+    setEditingStudent(null);
+    setFormData({ name: '', grade: 'الأول الابتدائي', section: '1', phoneNumber: '' });
+    setShowForm(true);
+  };
+
+  const handleOpenEdit = (student: Student) => {
+    setEditingStudent(student);
+    setFormData({ 
+      name: student.name, 
+      grade: student.grade, 
+      section: student.section, 
+      phoneNumber: student.phoneNumber 
+    });
+    setShowForm(true);
+  };
+
+  const handleSave = () => {
+    if (!formData.name) return;
+    const studentData = { 
+      ...formData, 
+      id: editingStudent ? editingStudent.id : Date.now().toString(), 
+      schoolId 
+    };
+    db.saveStudent(studentData);
     setStudents(db.getStudents(schoolId));
-    setShowAdd(false);
-    setNewStudent({ name: '', grade: 'الأول الابتدائي', section: '1', phoneNumber: '' });
+    setShowForm(false);
+    db.syncClassesFromStudents(schoolId);
   };
 
   const deleteStudent = (id: string) => {
@@ -39,6 +66,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
       const filtered = all.filter((s: any) => s.id !== id);
       localStorage.setItem('madrasati_students', JSON.stringify(filtered));
       setStudents(db.getStudents(schoolId));
+      db.syncClassesFromStudents(schoolId);
     }
   };
 
@@ -48,17 +76,15 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
       const filtered = all.filter((s: any) => s.schoolId !== schoolId);
       localStorage.setItem('madrasati_students', JSON.stringify(filtered));
       setStudents([]);
+      db.syncClassesFromStudents(schoolId);
     }
   };
 
-  // معالج البيانات الذكي المحدث بناءً على طلب المستخدم
   const processRawData = (text: string) => {
     setIsProcessing(true);
     setTimeout(() => {
       const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-      
       const parsed = lines.map(line => {
-        // تحديد الفواصل (تبويب Excel، فاصلة، أو مسافات متعددة)
         const delimiter = line.includes('\t') ? '\t' : (line.includes(',') ? ',' : (line.includes('  ') ? '  ' : ' '));
         const parts = line.split(delimiter).map(p => p.trim()).filter(p => p !== '');
         
@@ -69,48 +95,36 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
 
         parts.forEach((part, index) => {
           if (!part) return;
-
-          // 1. كشف الجوال (يبدأ بـ 05 أو 966 أو يحتوي على 9-10 أرقام)
           const cleanPhone = part.replace(/[\s\+\-]/g, '');
           if (/^(05|966|5)\d{8,10}$/.test(cleanPhone)) {
             phoneNumber = cleanPhone;
           } 
-          // 2. كشف رقم الفصل (أرقام مجردة فقط 1-2 أرقام وغالباً ليست في العمود الأول)
           else if (/^\d{1,2}$/.test(part) && index > 0) {
             sectionDetected = part;
           }
-          // 3. كشف الصف (يحتوي على كلمات تدل على المرحلة)
           else if (part.includes('ابتدائي') || part.includes('متوسط') || part.includes('ثانوي') || part.includes('الصف')) {
             gradeRaw = part;
           }
-          // 4. كشف الاسم (نص طويل بدون أرقام وغالباً في العمود الأول أو الثاني)
           else if (part.split(' ').length >= 2 && !/\d/.test(part)) {
             if (!name || index < 2) name = part;
           }
         });
 
-        // تنسيق مسمى الصف: استيراد أول كلمتين فقط
         let formattedGrade = 'غير محدد';
         let section = sectionDetected || '1';
 
         if (gradeRaw) {
-          // إزالة كلمة "الصف" إذا وجدت في البداية
           let cleanGrade = gradeRaw.replace(/^الصف\s+/g, '').trim();
-          
-          // إذا كان التنسيق يحتوي على واصلة (مثل: الأول ابتدائي -1)
           if (cleanGrade.includes('-')) {
             const [gPart, sPart] = cleanGrade.split('-');
             formattedGrade = gPart.trim().split(/\s+/).slice(0, 2).join(' ');
-            if (!sectionDetected) section = sPart.trim().replace(/\D/g, ''); // أخذ الأرقام فقط من جزء الفصل
+            if (!sectionDetected) section = sPart.trim().replace(/\D/g, '');
           } else {
-            // أخذ أول كلمتين فقط من مسمى الصف
             formattedGrade = cleanGrade.split(/\s+/).slice(0, 2).join(' ');
           }
         }
 
-        // محاولة نهائية لاستنتاج الاسم إذا لم يكتشف
         if (!name && parts[0] && !/\d/.test(parts[0])) name = parts[0];
-
         return { name, grade: formattedGrade, section: section || '1', phoneNumber };
       }).filter(s => s.name.length > 3);
 
@@ -155,7 +169,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
           <button onClick={clearAllStudents} className="p-4 bg-rose-50 text-rose-500 rounded-2xl border border-rose-100 hover:bg-rose-500 hover:text-white transition group" title="حذف الكل"><Eraser size={22} /></button>
           <button onClick={() => setShowImport(true)} className="flex-1 md:flex-none bg-slate-900 text-white px-8 py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl hover:scale-105 transition"><Sparkles size={20} className="text-blue-400" /> استيراد ذكي</button>
-          <button onClick={() => setShowAdd(true)} className="flex-1 md:flex-none bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl hover:scale-105 transition"><Plus size={20} /> إضافة طالب</button>
+          <button onClick={handleOpenAdd} className="flex-1 md:flex-none bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl hover:scale-105 transition"><Plus size={20} /> إضافة طالب</button>
         </div>
       </div>
 
@@ -163,7 +177,13 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         <div className="p-6 border-b bg-slate-50/50">
           <div className="relative max-w-md">
             <Search size={18} className="absolute right-4 top-3.5 text-slate-400" />
-            <input type="text" placeholder="بحث باسم الطالب..." className="w-full bg-white border border-slate-100 rounded-xl py-3 pr-12 pl-4 text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-indigo-100" />
+            <input 
+              type="text" 
+              placeholder="بحث باسم الطالب..." 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full bg-white border border-slate-100 rounded-xl py-3 pr-12 pl-4 text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-indigo-100" 
+            />
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -177,10 +197,10 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
               </tr>
             </thead>
             <tbody>
-              {students.length === 0 ? (
-                <tr><td colSpan={4} className="p-20 text-center text-slate-300 font-bold">قائمة الطلاب فارغة.</td></tr>
+              {filteredStudents.length === 0 ? (
+                <tr><td colSpan={4} className="p-20 text-center text-slate-300 font-bold">لا توجد نتائج للبحث.</td></tr>
               ) : (
-                students.map(s => (
+                filteredStudents.map(s => (
                   <tr key={s.id} className="border-b last:border-0 hover:bg-slate-50 transition group">
                     <td className="p-6">
                       <div className="flex items-center gap-3">
@@ -194,8 +214,9 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                       </span>
                     </td>
                     <td className="p-6 font-mono font-bold text-slate-500">{s.phoneNumber || '---'}</td>
-                    <td className="p-6 text-left">
-                      <button onClick={() => deleteStudent(s.id)} className="p-3 text-rose-500 hover:bg-rose-50 rounded-xl transition opacity-0 group-hover:opacity-100"><Trash2 size={18} /></button>
+                    <td className="p-6 text-left flex justify-end gap-2">
+                      <button onClick={() => handleOpenEdit(s)} className="p-3 text-indigo-500 hover:bg-indigo-50 rounded-xl transition opacity-0 group-hover:opacity-100" title="تعديل"><Edit2 size={18} /></button>
+                      <button onClick={() => deleteStudent(s.id)} className="p-3 text-rose-500 hover:bg-rose-50 rounded-xl transition opacity-0 group-hover:opacity-100" title="حذف"><Trash2 size={18} /></button>
                     </td>
                   </tr>
                 ))
@@ -290,36 +311,60 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         </div>
       )}
 
-      {showAdd && (
+      {showForm && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white p-10 rounded-[3rem] max-w-md w-full shadow-2xl animate-in slide-in-from-bottom-8">
              <div className="flex justify-between items-center mb-8">
-               <h3 className="text-2xl font-black text-slate-900">إضافة طالب يدوياً</h3>
-               <button onClick={() => setShowAdd(false)} className="p-2 text-slate-400 hover:text-slate-900"><X size={24} /></button>
+               <h3 className="text-2xl font-black text-slate-900">{editingStudent ? 'تعديل بيانات الطالب' : 'إضافة طالب يدوياً'}</h3>
+               <button onClick={() => setShowForm(false)} className="p-2 text-slate-400 hover:text-slate-900"><X size={24} /></button>
              </div>
              <div className="space-y-5">
                 <div className="space-y-2">
                   <label className="text-xs font-black text-slate-400 mr-2 flex items-center gap-1"><User size={12}/> اسم الطالب</label>
-                  <input placeholder="الاسم الكامل..." className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-sm focus:ring-2 focus:ring-indigo-100" value={newStudent.name} onChange={e => setNewStudent({...newStudent, name: e.target.value})} />
+                  <input 
+                    placeholder="الاسم الكامل..." 
+                    className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-sm focus:ring-2 focus:ring-indigo-100" 
+                    value={formData.name} 
+                    onChange={e => setFormData({...formData, name: e.target.value})} 
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-xs font-black text-slate-400 mr-2 flex items-center gap-1"><GraduationCap size={12}/> الصف</label>
-                    <select className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-sm" value={newStudent.grade} onChange={e => setNewStudent({...newStudent, grade: e.target.value})}>
+                    <select 
+                      className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-sm" 
+                      value={formData.grade} 
+                      onChange={e => setFormData({...formData, grade: e.target.value})}
+                    >
                       <option>الأول الابتدائي</option><option>الثاني الابتدائي</option><option>الثالث الابتدائي</option><option>الرابع الابتدائي</option><option>الخامس الابتدائي</option><option>السادس الابتدائي</option>
                       <option>الأول المتوسط</option><option>الثاني المتوسط</option><option>الثالث المتوسط</option>
                     </select>
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-black text-slate-400 mr-2 flex items-center gap-1"><Layout size={12}/> الفصل</label>
-                    <input placeholder="1" className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-sm" value={newStudent.section} onChange={e => setNewStudent({...newStudent, section: e.target.value})} />
+                    <input 
+                      placeholder="1" 
+                      className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-sm" 
+                      value={formData.section} 
+                      onChange={e => setFormData({...formData, section: e.target.value})} 
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-black text-slate-400 mr-2 flex items-center gap-1"><Phone size={12}/> رقم الجوال</label>
-                  <input placeholder="05xxxxxxxx" className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-sm focus:ring-2 focus:ring-indigo-100" value={newStudent.phoneNumber} onChange={e => setNewStudent({...newStudent, phoneNumber: e.target.value})} />
+                  <input 
+                    placeholder="05xxxxxxxx" 
+                    className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-sm focus:ring-2 focus:ring-indigo-100" 
+                    value={formData.phoneNumber} 
+                    onChange={e => setFormData({...formData, phoneNumber: e.target.value})} 
+                  />
                 </div>
-                <button onClick={handleAdd} className="w-full bg-indigo-600 text-white py-5 rounded-[1.5rem] font-black text-lg shadow-xl hover:bg-indigo-700 transition active:scale-95 mt-4">حفظ بيانات الطالب</button>
+                <button 
+                  onClick={handleSave} 
+                  className="w-full bg-indigo-600 text-white py-5 rounded-[1.5rem] font-black text-lg shadow-xl hover:bg-indigo-700 transition active:scale-95 mt-4"
+                >
+                  {editingStudent ? 'تحديث البيانات' : 'حفظ بيانات الطالب'}
+                </button>
              </div>
           </div>
         </div>
