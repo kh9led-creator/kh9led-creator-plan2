@@ -5,7 +5,8 @@ import { Student } from '../../types.ts';
 import { 
   FileUp, Plus, Search, Trash2, CheckCircle2, 
   Upload, FileSpreadsheet, AlertCircle, X, 
-  Sparkles, ClipboardPaste, Loader2, User 
+  Sparkles, ClipboardPaste, Loader2, User, RefreshCw,
+  Eraser
 } from 'lucide-react';
 
 const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
@@ -42,6 +43,17 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     }
   };
 
+  const clearAllStudents = () => {
+    if (confirm('⚠️ تحذير نهائي: هل أنت متأكد من حذف جميع بيانات الطلاب لهذه المدرسة؟ لا يمكن التراجع عن هذه الخطوة.')) {
+      const all = JSON.parse(localStorage.getItem('madrasati_students') || '[]');
+      // نحذف فقط الطلاب التابعين لهذه المدرسة
+      const filtered = all.filter((s: any) => s.schoolId !== schoolId);
+      localStorage.setItem('madrasati_students', JSON.stringify(filtered));
+      setStudents([]);
+    }
+  };
+
+  // وظيفة معالجة البيانات الذكية
   const processRawData = (text: string) => {
     setIsProcessing(true);
     setTimeout(() => {
@@ -55,11 +67,26 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
       
       const parsed = lines.map(line => {
         const parts = line.split(delimiter).map(p => p.trim());
+        
+        let nameCandidate = parts[0] || '';
+        let phoneCandidate = parts[3] || '';
+
+        // ذكاء اصطناعي مبسط: إذا كان العمود الأول رقمياً والثالث/الرابع نصياً، قم بالتبديل
+        const isFirstPartPhone = /^[0-9+ ]{5,}$/.test(nameCandidate);
+        const isLaterPartName = phoneCandidate && !/^[0-9+ ]+$/.test(phoneCandidate);
+
+        if (isFirstPartPhone && isLaterPartName) {
+            // تبديل تلقائي للأعمدة المعكوسة
+            const temp = nameCandidate;
+            nameCandidate = phoneCandidate;
+            phoneCandidate = temp;
+        }
+
         return {
-          name: parts[0] || '', // يجب أن يكون الاسم الرباعي في العمود الأول
+          name: nameCandidate,
           grade: parts[1] || 'الأول الابتدائي',
           section: parts[2] || '1',
-          phoneNumber: parts[3] || ''
+          phoneNumber: phoneCandidate
         };
       }).filter(s => s.name && s.name.length > 2);
 
@@ -67,6 +94,14 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
       setImportStep('preview');
       setIsProcessing(false);
     }, 1000);
+  };
+
+  const swapColumnsInPreview = () => {
+      setPreviewData(prev => prev.map(item => ({
+          ...item,
+          name: item.phoneNumber,
+          phoneNumber: item.name
+      })));
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,7 +138,16 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
           <h2 className="text-3xl font-black text-slate-900">إدارة الطلاب</h2>
           <p className="text-slate-500 font-bold">لديك {students.length} طالب مسجل في النظام حالياً.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
+          {/* زر حذف الكل الجديد */}
+          <button 
+            onClick={clearAllStudents}
+            title="حذف جميع البيانات المستوردة"
+            className="p-4 bg-rose-50 text-rose-500 rounded-2xl border border-rose-100 hover:bg-rose-500 hover:text-white transition shadow-sm flex items-center justify-center group"
+          >
+            <Eraser size={22} className="group-hover:rotate-12 transition-transform" />
+          </button>
+
           <button 
             onClick={() => setShowImport(true)}
             className="bg-slate-900 text-white px-6 py-4 rounded-2xl font-black flex items-center gap-2 shadow-xl shadow-slate-200 hover:scale-105 transition active:scale-95"
@@ -176,7 +220,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         </table>
       </div>
 
-      {/* مودال الاستيراد الذكي */}
+      {/* مودال الاستيراد الذكي المطور */}
       {showImport && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-[3.5rem] w-full max-w-4xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
@@ -187,7 +231,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                  </div>
                  <div>
                     <h3 className="text-2xl font-black text-slate-900">المعالج الذكي لاستيراد الطلاب</h3>
-                    <p className="text-sm text-slate-500 font-bold">تأكد أن العمود الأول يحتوي على **الاسم الرباعي** للطالب.</p>
+                    <p className="text-sm text-slate-500 font-bold">يقوم النظام تلقائياً بتمييز الأسماء من أرقام الجوال.</p>
                  </div>
               </div>
               <button onClick={() => setShowImport(false)} className="p-3 bg-white text-slate-400 rounded-2xl hover:text-rose-500 transition shadow-sm">
@@ -207,63 +251,75 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                        <div className="w-24 h-24 bg-blue-50 text-blue-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-500">
                           <Upload size={48} />
                        </div>
-                       <h4 className="text-xl font-black text-slate-800">اسحب الملف هنا أو انقر للإرفاق</h4>
+                       <h4 className="text-xl font-black text-slate-800">اسحب ملف Excel/CSV هنا</h4>
                        <p className="text-slate-400 mt-2 font-bold">يجب أن يحتوي الملف على (الاسم الرباعي، الصف، الفصل، الجوال)</p>
                     </div>
                   </div>
 
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
-                    <div className="relative flex justify-center text-sm"><span className="px-4 bg-white text-slate-400 font-bold uppercase tracking-widest">أو اللصق المباشر</span></div>
+                    <div className="relative flex justify-center text-sm"><span className="px-4 bg-white text-slate-400 font-bold uppercase tracking-widest">أو اللصق المباشر من Excel</span></div>
                   </div>
 
                   <div className="space-y-4">
                     <textarea 
                       onPaste={handlePaste}
-                      placeholder="الصق بيانات الطلاب من Excel هنا..."
+                      placeholder="الصق البيانات هنا... سيقوم المعالج بترتيبها تلقائياً"
                       className="w-full h-32 p-6 bg-slate-50 rounded-[2rem] border-none outline-none font-bold text-slate-600 focus:ring-4 focus:ring-blue-50 transition-all"
                     ></textarea>
                     {isProcessing && (
                       <div className="flex items-center gap-2 text-blue-600 font-black animate-pulse px-4">
                         <Loader2 size={18} className="animate-spin" />
-                        جاري فحص الأسماء وتحليلها...
+                        جاري تحليل البيانات وفصل الأسماء عن الأرقام...
                       </div>
                     )}
                   </div>
                 </div>
               ) : (
                 <div className="space-y-6 animate-in slide-in-from-left-4">
-                  <div className="bg-emerald-50 text-emerald-700 p-6 rounded-3xl border border-emerald-100 flex items-center justify-between">
+                  <div className="bg-blue-50 text-blue-700 p-6 rounded-3xl border border-blue-100 flex items-center justify-between">
                      <div className="flex items-center gap-3">
                         <CheckCircle2 size={24} />
-                        <span className="font-black">تم اكتشاف {previewData.length} طالب بنجاح!</span>
+                        <span className="font-black">تم تمييز {previewData.length} طالب. يرجى مراجعة الأسماء أدناه:</span>
                      </div>
+                     <button 
+                        onClick={swapColumnsInPreview}
+                        className="bg-white text-blue-600 px-4 py-2 rounded-xl font-black text-xs flex items-center gap-2 shadow-sm hover:bg-blue-600 hover:text-white transition"
+                     >
+                        <RefreshCw size={14} /> تبديل الأعمدة يدوياً
+                     </button>
                   </div>
                   
                   <div className="max-h-[350px] overflow-y-auto rounded-3xl border border-slate-100 shadow-inner">
                     <table className="w-full text-right text-sm">
                       <thead className="sticky top-0 bg-slate-100 font-black">
                         <tr>
-                          <th className="p-4">الاسم الرباعي (سيظهر في الخطة)</th>
-                          <th className="p-4">الصف</th>
-                          <th className="p-4">الجوال</th>
+                          <th className="p-4">الاسم الرباعي المكتشف</th>
+                          <th className="p-4">رقم الجوال</th>
+                          <th className="p-4">الصف / الفصل</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {previewData.map((p, i) => (
-                          <tr key={i} className="border-b last:border-0 hover:bg-slate-50 transition">
-                            <td className="p-4 font-bold">{p.name}</td>
-                            <td className="p-4">{p.grade}</td>
-                            <td className="p-4 font-mono text-slate-400">{p.phoneNumber}</td>
-                          </tr>
-                        ))}
+                        {previewData.map((p, i) => {
+                          const isLikelyPhoneInName = /^[0-9+ ]+$/.test(p.name);
+                          return (
+                            <tr key={i} className={`border-b last:border-0 transition ${isLikelyPhoneInName ? 'bg-rose-50' : 'hover:bg-slate-50'}`}>
+                              <td className="p-4 font-black flex items-center gap-2">
+                                 {isLikelyPhoneInName && <AlertCircle size={14} className="text-rose-500" />}
+                                 {p.name}
+                              </td>
+                              <td className="p-4 font-mono font-bold text-slate-400">{p.phoneNumber}</td>
+                              <td className="p-4 font-bold text-slate-500">{p.grade} - {p.section}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
 
                   <div className="flex gap-4 pt-4">
-                    <button onClick={confirmImport} className="flex-1 py-5 bg-blue-600 text-white rounded-[2rem] font-black text-xl shadow-xl shadow-blue-100 hover:scale-[1.02] transition">تأكيد وحفظ الكل</button>
-                    <button onClick={() => setImportStep('upload')} className="px-10 py-5 bg-slate-100 text-slate-500 rounded-[2rem] font-black text-xl hover:bg-slate-200 transition">تعديل الملف</button>
+                    <button onClick={confirmImport} className="flex-1 py-5 bg-blue-600 text-white rounded-[2rem] font-black text-xl shadow-xl shadow-blue-100 hover:scale-[1.02] transition">حفظ الطلاب في النظام</button>
+                    <button onClick={() => setImportStep('upload')} className="px-10 py-5 bg-slate-100 text-slate-500 rounded-[2rem] font-black text-xl hover:bg-slate-200 transition">إلغاء وإعادة المحاولة</button>
                   </div>
                 </div>
               )}
@@ -282,8 +338,8 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
              </div>
              <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-400 px-2 flex items-center gap-1"><User size={12} /> اسم الطالب الرباعي الكامل</label>
-                  <input placeholder="مثال: أحمد محمد علي القحطاني" className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold focus:ring-2 focus:ring-blue-100" value={newStudent.name} onChange={e => setNewStudent({...newStudent, name: e.target.value})} />
+                  <label className="text-xs font-black text-slate-400 px-2 flex items-center gap-1"><User size={12} /> الاسم الرباعي الرسمي</label>
+                  <input placeholder="مثال: خالد بن محمد بن عبدالعزيز آل سعود" className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold focus:ring-2 focus:ring-blue-100" value={newStudent.name} onChange={e => setNewStudent({...newStudent, name: e.target.value})} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
