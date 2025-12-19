@@ -34,7 +34,6 @@ const SchoolDashboard: React.FC<Props> = ({ school, onLogout }) => {
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden">
-      {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[90] lg:hidden" 
@@ -42,7 +41,6 @@ const SchoolDashboard: React.FC<Props> = ({ school, onLogout }) => {
         ></div>
       )}
 
-      {/* Sidebar Navigation */}
       <aside className={`
         fixed lg:static inset-y-0 right-0 w-72 bg-white border-l border-slate-100 flex flex-col z-[100] transition-transform duration-300
         ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
@@ -86,7 +84,6 @@ const SchoolDashboard: React.FC<Props> = ({ school, onLogout }) => {
         </div>
       </aside>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="lg:hidden bg-white border-b px-6 py-4 flex justify-between items-center shrink-0 z-50">
            <div className="flex items-center gap-2">
@@ -115,33 +112,150 @@ const SchoolDashboard: React.FC<Props> = ({ school, onLogout }) => {
 };
 
 const SchoolOverview: React.FC<{ school: School }> = ({ school }) => {
+  const [showIncomplete, setShowIncomplete] = useState(false);
+  const [showComplete, setShowComplete] = useState(false);
+
   const activeWeek = db.getActiveWeek(school.id);
-  const teachersCount = db.getTeachers(school.id).length;
+  const teachers = db.getTeachers(school.id);
   const studentsCount = db.getStudents(school.id).length;
 
+  const teacherStatus = useMemo(() => {
+    if (!activeWeek) return { completed: [], incomplete: [] };
+    
+    const plans = db.getPlans(school.id, activeWeek.id);
+    const classes = db.getClasses(school.id);
+    const completed: Teacher[] = [];
+    const incomplete: Teacher[] = [];
+
+    teachers.forEach(teacher => {
+      let sessions: any[] = [];
+      classes.forEach(cls => {
+        const classTitle = `${cls.grade} - فصل ${cls.section}`;
+        const schedule = db.getSchedule(school.id, classTitle);
+        Object.entries(schedule).forEach(([key, val]: [string, any]) => {
+          if (val.teacherId === teacher.id) {
+            sessions.push({ classTitle, key });
+          }
+        });
+      });
+
+      if (sessions.length === 0) return; // المعلم ليس لديه حصص
+
+      const isAllDone = sessions.every(s => {
+        const plan = plans[`${s.classTitle}_${s.key}`];
+        return plan && plan.lesson && plan.lesson.trim().length > 0;
+      });
+
+      if (isAllDone) completed.push(teacher);
+      else incomplete.push(teacher);
+    });
+
+    return { completed, incomplete };
+  }, [school.id, teachers, activeWeek]);
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <header>
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">نظرة عامة</h1>
-        <p className="text-slate-400 font-bold mt-1 text-base">مدرسة {school.name} - الإحصائيات المباشرة</p>
+    <div className="space-y-8 animate-in fade-in duration-500 max-w-full">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">نظرة عامة</h1>
+          <p className="text-slate-400 font-bold mt-1 text-base">مدرسة {school.name} - حالة الرصد المباشر</p>
+        </div>
+        <div className="bg-white px-5 py-3 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
+           <Calendar size={18} className="text-indigo-600" />
+           <span className="text-sm font-black text-slate-700">الأسبوع: {activeWeek ? activeWeek.name : 'غير محدد'}</span>
+        </div>
       </header>
 
+      {/* بطاقات الإحصاء الرئيسية */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
           { label: 'الطلاب', value: studentsCount, icon: <GraduationCap size={24} />, color: 'indigo' },
-          { label: 'المعلمون', value: teachersCount, icon: <Users size={24} />, color: 'blue' },
-          { label: 'الأسبوع الدراسي', value: activeWeek ? activeWeek.name : 'لا يوجد', icon: <Calendar size={24} />, color: 'emerald' },
+          { label: 'المعلمون', value: teachers.length, icon: <Users size={24} />, color: 'blue' },
+          { label: 'الغياب المرصود', value: db.getAttendance(school.id).length, icon: <ClipboardCheck size={24} />, color: 'amber' },
         ].map((stat, i) => (
-          <div key={i} className="card-neo p-8 flex items-center gap-6 hover:translate-y-[-2px] transition-transform">
-             <div className={`w-14 h-14 bg-${stat.color}-50 text-${stat.color}-600 rounded-2xl flex items-center justify-center`}>
+          <div key={i} className="card-neo p-6 flex items-center gap-5">
+             <div className={`w-12 h-12 bg-${stat.color}-50 text-${stat.color}-600 rounded-xl flex items-center justify-center`}>
                 {stat.icon}
              </div>
              <div>
-                <div className="text-2xl font-black text-slate-900">{stat.value}</div>
-                <div className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-0.5">{stat.label}</div>
+                <div className="text-2xl font-black text-slate-900 leading-none">{stat.value}</div>
+                <div className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1.5">{stat.label}</div>
              </div>
           </div>
         ))}
+      </div>
+
+      {/* ميزة متابعة المعلمين (تمت إعادتها وتنسيقها) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* أتموا الرصد */}
+        <div className="space-y-3">
+          <button 
+            onClick={() => setShowComplete(!showComplete)}
+            className="w-full card-neo p-6 flex items-center justify-between hover:border-emerald-200 transition-colors"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+                <CheckCircle2 size={24} />
+              </div>
+              <div className="text-right">
+                <div className="text-xl font-black text-slate-800 leading-none">{teacherStatus.completed.length}</div>
+                <div className="text-emerald-600 font-bold text-[10px] uppercase tracking-widest mt-1.5">أتموا رصد الخطط</div>
+              </div>
+            </div>
+            {showComplete ? <ChevronUp size={20} className="text-slate-300" /> : <ChevronDown size={20} className="text-slate-300" />}
+          </button>
+          
+          {showComplete && (
+            <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm animate-in slide-in-from-top-2">
+              {teacherStatus.completed.length === 0 ? (
+                <p className="text-center py-4 text-slate-300 font-bold text-sm">لا يوجد معلمين في هذه القائمة.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {teacherStatus.completed.map(t => (
+                    <span key={t.id} className="bg-emerald-50 text-emerald-700 px-4 py-1.5 rounded-lg text-xs font-bold border border-emerald-100">
+                      {t.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* لم يتموا الرصد */}
+        <div className="space-y-3">
+          <button 
+            onClick={() => setShowIncomplete(!showIncomplete)}
+            className="w-full card-neo p-6 flex items-center justify-between hover:border-rose-200 transition-colors"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center">
+                <AlertCircle size={24} />
+              </div>
+              <div className="text-right">
+                <div className="text-xl font-black text-slate-800 leading-none">{teacherStatus.incomplete.length}</div>
+                <div className="text-rose-600 font-bold text-[10px] uppercase tracking-widest mt-1.5">بانتظار رصد الخطط</div>
+              </div>
+            </div>
+            {showIncomplete ? <ChevronUp size={20} className="text-slate-300" /> : <ChevronDown size={20} className="text-slate-300" />}
+          </button>
+
+          {showIncomplete && (
+            <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm animate-in slide-in-from-top-2">
+              {teacherStatus.incomplete.length === 0 ? (
+                <p className="text-center py-4 text-emerald-500 font-bold text-sm">أحسنت! جميع المعلمين أتموا الرصد.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {teacherStatus.incomplete.map(t => (
+                    <span key={t.id} className="bg-rose-50 text-rose-700 px-4 py-1.5 rounded-lg text-xs font-bold border border-rose-100">
+                      {t.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <CommunicationHub schoolId={school.id} />
