@@ -43,6 +43,7 @@ export interface Student {
   grade: string;
   section: string;
   phoneNumber: string;
+  schoolId: string;
 }
 
 export interface SchoolClass {

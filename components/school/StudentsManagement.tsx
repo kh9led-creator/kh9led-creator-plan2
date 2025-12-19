@@ -20,6 +20,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
   const [formData, setFormData] = useState({ name: '', grade: 'الأول الابتدائي', section: '1', phoneNumber: '' });
   
   const [isProcessing, setIsProcessing] = useState(false);
+  const [tempImportData, setTempImportData] = useState<Student[] | null>(null);
   const [importSummary, setImportSummary] = useState<{count: number, samples: string[]} | null>(null);
   const [importError, setImportError] = useState('');
   const [dragActive, setDragActive] = useState(false);
@@ -36,7 +37,6 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     );
   }, [students, searchTerm]);
 
-  // قاموس ذكي لمسميات الأعمدة الممكنة
   const HEADER_MAP = {
     name: ['اسم', 'طالب', 'الاسم', 'Name', 'Student', 'الرباعي', 'الكامل'],
     phone: ['جوال', 'هاتف', 'تواصل', 'رقم', 'Mobile', 'Phone', 'اتصال'],
@@ -47,11 +47,9 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
   const cleanPhoneNumber = (val: any): string => {
     if (!val) return '';
     let str = String(val).replace(/\s+/g, '');
-    // معالجة الأرقام العلمية من إكسل (مثل 5.5E+9)
     if (str.includes('E') || str.includes('e')) {
       str = Number(val).toLocaleString('fullwide', {useGrouping:false});
     }
-    // تنظيف من أي رموز غير رقمية
     str = str.replace(/[^0-9+]/g, '');
     if (str.startsWith('5') && str.length === 9) return '0' + str;
     return str;
@@ -72,6 +70,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     setIsProcessing(true);
     setImportError('');
     setImportSummary(null);
+    setTempImportData(null);
     
     try {
       const data = await file.arrayBuffer();
@@ -84,7 +83,6 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
       let colMap = { name: -1, phone: -1, grade: -1, section: -1 };
       let startRow = -1;
 
-      // البحث الذكي عن الترويسة
       for (let i = 0; i < Math.min(rows.length, 50); i++) {
         const row = rows[i];
         row.forEach((cell, idx) => {
@@ -101,7 +99,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         }
       }
 
-      const tempStudents: any[] = [];
+      const tempStudents: Student[] = [];
       const dataToProcess = startRow !== -1 ? rows.slice(startRow) : rows;
 
       dataToProcess.forEach(row => {
@@ -113,7 +111,6 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
           grade = standardizeGrade(row[colMap.grade]);
           section = String(row[colMap.section] || '1').trim();
         } else {
-          // تخمين ذكي إذا لم توجد ترويسة
           row.forEach(cell => {
             const val = String(cell).trim();
             if (/^(966|05|5|00966)[0-9]+/.test(val.replace(/\s/g, ''))) phone = cleanPhoneNumber(val);
@@ -125,7 +122,11 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         if (name && name.length > 3 && !HEADER_MAP.name.some(h => name.includes(h))) {
           tempStudents.push({
             id: (Date.now() + Math.random()).toString(),
-            name, phone, grade: grade || 'الأول الابتدائي', section, schoolId
+            name, 
+            phoneNumber: phone, 
+            grade: grade || 'الأول الابتدائي', 
+            section: section || '1', 
+            schoolId: schoolId
           });
         }
       });
@@ -135,8 +136,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
           count: tempStudents.length,
           samples: tempStudents.slice(0, 3).map(s => s.name)
         });
-        // تخزين مؤقت للطلاب في الـ state ليتم حفظهم عند الضغط على زر التأكيد
-        (window as any)._tempImport = tempStudents;
+        setTempImportData(tempStudents);
       } else {
         setImportError('لم نستطع التعرف على بيانات الطلاب. تأكد أن الملف يحتوي على أسماء واضحة.');
       }
@@ -148,26 +148,30 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
   };
 
   const confirmImport = () => {
-    const temp = (window as any)._tempImport;
-    if (temp && temp.length > 0) {
+    if (tempImportData && tempImportData.length > 0) {
       const currentAll = JSON.parse(localStorage.getItem('madrasati_students') || '[]');
-      localStorage.setItem('madrasati_students', JSON.stringify([...currentAll, ...temp]));
+      const updatedAll = [...currentAll, ...tempImportData];
+      localStorage.setItem('madrasati_students', JSON.stringify(updatedAll));
+      
+      // تحديث الواجهة فوراً
       setStudents(db.getStudents(schoolId));
       db.syncClassesFromStudents(schoolId);
+      
+      // إغلاق النافذة وتنظيف الحالة
       setShowImport(false);
       setImportSummary(null);
-      delete (window as any)._tempImport;
+      setTempImportData(null);
+      alert(`تم بنجاح حفظ ${tempImportData.length} طالباً.`);
     }
   };
 
-  // إضافة دالة الحفظ اليدوي للطلاب (إضافة وتعديل)
   const handleSave = () => {
     if (!formData.name || !formData.grade || !formData.section) {
       alert('يرجى تعبئة كافة الحقول الأساسية (الاسم، الصف، الفصل)');
       return;
     }
 
-    const student: Student & { schoolId: string } = {
+    const student: Student = {
       id: editingStudent ? editingStudent.id : Date.now().toString(),
       name: formData.name,
       grade: formData.grade,
@@ -220,7 +224,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
           >
             <Trash2 size={18} />
           </button>
-          <button onClick={() => setShowImport(true)} className="flex-1 md:flex-none bg-emerald-600 text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition shadow-md text-sm border border-emerald-500/20">
+          <button onClick={() => { setShowImport(true); setImportSummary(null); setTempImportData(null); }} className="flex-1 md:flex-none bg-emerald-600 text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition shadow-md text-sm border border-emerald-500/20">
             <FileSpreadsheet size={18} /> استيراد ذكي (Excel)
           </button>
           <button onClick={() => { setEditingStudent(null); setFormData({ name: '', grade: 'الأول الابتدائي', section: '1', phoneNumber: '' }); setShowForm(true); }} className="flex-1 md:flex-none bg-indigo-600 text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition shadow-md text-sm">
@@ -298,7 +302,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                       <p className="text-xs text-slate-400 font-bold mt-1">ارفع ملف إكسل وسنتولى نحن الباقي.</p>
                    </div>
                 </div>
-                <button onClick={() => {setShowImport(false); setImportSummary(null);}} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:text-rose-500 transition-colors"><X size={24} /></button>
+                <button onClick={() => {setShowImport(false); setImportSummary(null); setTempImportData(null);}} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:text-rose-500 transition-colors"><X size={24} /></button>
              </div>
 
              <div className="space-y-6">
@@ -342,7 +346,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                         </div>
                      </div>
                      <div className="flex gap-4">
-                        <button onClick={() => setImportSummary(null)} className="flex-1 py-4 bg-white text-slate-600 rounded-2xl font-black border border-slate-200">إلغاء</button>
+                        <button onClick={() => { setImportSummary(null); setTempImportData(null); }} className="flex-1 py-4 bg-white text-slate-600 rounded-2xl font-black border border-slate-200">إلغاء</button>
                         <button onClick={confirmImport} className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-black shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all">تأكيد وحفظ البيانات</button>
                      </div>
                   </div>
