@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { School, Teacher, Subject, Student, AcademicWeek } from '../types.ts';
-import { DAYS, PERIODS, db } from '../constants.tsx';
+import { DAYS, PERIODS, db, formatToHijri } from '../constants.tsx';
 import { LogOut, BookOpen, ClipboardCheck, MessageSquare, Save, Book, Edit2, Home, Sparkles, StickyNote, CheckCircle, UserX, Users, CheckCircle2, ChevronLeft, Calendar, Info, AlertTriangle, UserCheck } from 'lucide-react';
 import CommunicationHub from '../components/school/CommunicationHub.tsx';
 
@@ -80,7 +81,7 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
   const submitAttendance = () => {
     const report = {
       id: Date.now().toString(),
-      date: new Date().toLocaleDateString('ar-SA'),
+      date: formatToHijri(new Date()), // تخزين التاريخ بصيغة هجرية
       day: selectedDay.label,
       teacherName: teacher.name,
       className: selectedClassForAttendance,
@@ -91,13 +92,14 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
     };
     
     db.saveAttendance(school.id, report);
-    alert('تم رصد الغياب وإرساله للإدارة بنجاح');
+    alert('تم رصد الغياب وإرساله للإدارة بنجاح بالتقويم الهجري');
     setAttendanceStep('class-select');
     setSelectedClassForAttendance(null);
   };
 
   const todaysSessions = teacherSessions.filter(s => s.dayId === selectedDay.id);
-  const todaysUniqueClasses = Array.from(new Set(todaysSessions.map(s => s.classTitle)));
+  // Fix: Explicitly cast classTitle to string to ensure the Set is correctly typed
+  const todaysUniqueClasses = Array.from(new Set(todaysSessions.map(s => s.classTitle as string)));
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-['Tajawal']">
@@ -136,11 +138,12 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
                  <h3 className={`text-xl font-black ${activeWeek ? 'text-indigo-900' : 'text-rose-900'}`}>
                     {activeWeek ? `أسبوع الرصد: ${activeWeek.name}` : 'لا يوجد أسبوع نشط حالياً'}
                  </h3>
-                 <p className="text-sm font-bold opacity-70">من {activeWeek?.startDate || '--'} إلى {activeWeek?.endDate || '--'}</p>
+                 <p className="text-sm font-bold opacity-70">من {activeWeek ? formatToHijri(activeWeek.startDate) : '--'} إلى {activeWeek ? formatToHijri(activeWeek.endDate) : '--'}</p>
               </div>
            </div>
         </div>
 
+        {/* باقي واجهة المعلم ... */}
         {activeTab === 'plans' && (
           <div className="space-y-12 animate-in fade-in">
              <div className="flex flex-wrap gap-2">
@@ -182,13 +185,14 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
 
         {activeTab === 'attendance' && (
           <div className="space-y-12 animate-in fade-in">
-             <header><h1 className="text-4xl font-black text-slate-900">رصد غياب اليوم</h1></header>
+             <header><h1 className="text-4xl font-black text-slate-900">رصد غياب اليوم (هجري)</h1></header>
              {attendanceStep === 'class-select' ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   {todaysUniqueClasses.map(cls => (
-                    <button key={cls} onClick={() => startAttendance(cls)} className="bg-white p-12 rounded-[3.5rem] border shadow-sm hover:shadow-xl transition-all flex flex-col items-center gap-6">
+                    // Fix: Ensure cls is treated as a string to avoid type errors in button handlers
+                    <button key={cls as string} onClick={() => startAttendance(cls as string)} className="bg-white p-12 rounded-[3.5rem] border shadow-sm hover:shadow-xl transition-all flex flex-col items-center gap-6">
                        <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center"><Users size={32} /></div>
-                       <h3 className="text-2xl font-black">{cls}</h3>
+                       <h3 className="text-2xl font-black">{cls as string}</h3>
                        <span className="text-indigo-600 font-black text-sm">ابدأ الرصد الآن</span>
                     </button>
                   ))}
@@ -202,12 +206,12 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
                       </div>
                       <div className="flex gap-4">
                         <div className="bg-rose-50 text-rose-600 px-6 py-2 rounded-full font-black text-sm border border-rose-100">الغائبون: {absentStudents.length}</div>
-                        <button onClick={submitAttendance} className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black">إرسال التقرير للإدارة</button>
+                        <button onClick={submitAttendance} className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black">إرسال التقرير للهجري</button>
                       </div>
                    </div>
                    <div className="p-10 grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Fix: Added explicit Student type to the map callback to resolve "Argument of type 'unknown' is not assignable to parameter of type 'string'" */}
-                      {db.getStudents(school.id).filter(s => `${s.grade} - فصل ${s.section}` === selectedClassForAttendance).map((student: Student) => {
+                      {/* Fix: Handled potential null value for selectedClassForAttendance to ensure comparison with a string works correctly */}
+                      {db.getStudents(school.id).filter(s => `${s.grade} - فصل ${s.section}` === (selectedClassForAttendance || '')).map((student: Student) => {
                         const isAbsent = absentStudents.includes(student.name);
                         return (
                           <button key={student.id} onClick={() => toggleStudentAttendance(student.name)} className={`flex items-center justify-between p-5 rounded-2xl font-black transition-all border-2 ${isAbsent ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-white border-slate-50 hover:border-indigo-100'}`}>

@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { DAYS, PERIODS, db } from '../constants.tsx';
+import { DAYS, PERIODS, db, formatToHijri } from '../constants.tsx';
 import { Printer, User, GraduationCap } from 'lucide-react';
 import { School, Subject, Student, AcademicWeek } from '../types.ts';
 
@@ -23,7 +23,6 @@ const BulkStudentPlans: React.FC = () => {
       const s = db.getSchoolBySlug(schoolSlug);
       if (s) {
         setSchool(s);
-        // Fix: getPlans requires schoolId and weekId. We fetch the active week first.
         const week = db.getActiveWeek(s.id);
         setActiveWeek(week);
         if (week) {
@@ -92,10 +91,11 @@ const BulkStudentPlans: React.FC = () => {
                     <p>الصف: <span className="font-black underline">{classTitle}</span></p>
                     <p className="text-blue-600 font-black">الطالب: {student.name}</p>
                     <p>الأسبوع: <span className="font-black">{activeWeek?.name || "---"}</span></p>
+                    <p className="text-[7pt]">الفترة: {activeWeek ? `${formatToHijri(activeWeek.startDate)} إلى ${formatToHijri(activeWeek.endDate)}` : '--'}</p>
                   </div>
                 </div>
 
-                {/* Table - 35 Rows Logic */}
+                {/* باقي الجدول والمحتوى ... */}
                 <div className="flex-1 overflow-hidden border-2 border-black rounded-sm mb-2">
                   <table className="w-full border-collapse table-fixed h-full text-center">
                     <thead className="bg-slate-100 border-b-2 border-black font-black">
@@ -138,7 +138,6 @@ const BulkStudentPlans: React.FC = () => {
                   </table>
                 </div>
 
-                {/* Footer */}
                 <div className="grid grid-cols-2 gap-4 h-[38mm]">
                    <div className="border-2 border-black p-2 bg-white">
                      <h3 className="text-[8.5pt] font-black mb-1 border-b border-black pb-0.5 text-center bg-slate-50">توجيهات ولي الأمر</h3>
@@ -161,36 +160,6 @@ const BulkStudentPlans: React.FC = () => {
           );
         })}
       </div>
-
-      <style>{`
-        @page { size: A4 portrait; margin: 0; }
-        @media print {
-          .no-print { display: none !important; }
-          body { background: white !important; margin: 0 !important; padding: 0 !important; overflow: hidden; }
-          .student-page-container { 
-            margin: 0 !important; 
-            padding: 0 !important; 
-            page-break-after: always !important; 
-            break-after: page !important;
-            height: 297mm;
-          }
-          .a4-page { 
-            box-shadow: none !important; 
-            border: none !important; 
-            margin: 0 auto !important; 
-            padding: 8mm !important;
-            width: 210mm !important;
-            height: 297mm !important;
-            display: flex !important;
-            flex-direction: column !important;
-            overflow: hidden !important;
-            -webkit-print-color-adjust: exact;
-          }
-          table { border: 2px solid black !important; border-collapse: collapse !important; height: auto !important; }
-          .border-black { border-color: black !important; }
-          tr { page-break-inside: avoid; }
-        }
-      `}</style>
     </div>
   );
 };

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { DAYS, PERIODS, db } from '../constants.tsx';
+import { DAYS, PERIODS, db, formatToHijri } from '../constants.tsx';
 import { Printer, Book, LayoutGrid, School as SchoolIcon, ArrowLeft, ArrowRight, GraduationCap, Calendar } from 'lucide-react';
 import { School, Subject, AcademicWeek } from '../types.ts';
 
@@ -92,7 +92,7 @@ const PublicPlanView: React.FC = () => {
             <div className="text-center mb-16 space-y-4">
                <h2 className="text-5xl font-black text-slate-900">أهلاً بكم في فصولنا</h2>
                <p className="text-slate-400 font-bold text-xl max-w-xl mx-auto leading-relaxed">
-                  {activeWeek ? `عرض خطة ${activeWeek.name} - الفترة من ${activeWeek.startDate} إلى ${activeWeek.endDate}` : 'يرجى اختيار الفصل الدراسي لعرض وتحميل الخطة الأسبوعية المعتمدة.'}
+                  {activeWeek ? `عرض خطة ${activeWeek.name} - الفترة من ${formatToHijri(activeWeek.startDate)} إلى ${formatToHijri(activeWeek.endDate)}` : 'يرجى اختيار الفصل الدراسي لعرض وتحميل الخطة الأسبوعية المعتمدة.'}
                </p>
             </div>
             
@@ -137,12 +137,12 @@ const PublicPlanView: React.FC = () => {
 
               <div className="text-right space-y-0.5 font-bold text-[8pt]">
                 <p>الأسبوع: <span className="font-black">{activeWeek?.name || "---"}</span></p>
-                <p>الفترة: {activeWeek ? `${activeWeek.startDate} إلى ${activeWeek.endDate}` : "---"}</p>
+                <p>الفترة: {activeWeek ? `${formatToHijri(activeWeek.startDate)} إلى ${formatToHijri(activeWeek.endDate)}` : "---"}</p>
                 <p>الصف: <span className="font-black underline">{selectedClass}</span></p>
               </div>
             </div>
 
-            {/* Main Table */}
+            {/* باقي محتوى الخطة يظل كما هو ... */}
             <div className="flex-1 overflow-hidden border-2 border-black rounded-sm">
               <table className="w-full border-collapse table-fixed h-full text-center">
                 <thead className="border-b-2 border-black font-black bg-slate-50">
@@ -185,7 +185,6 @@ const PublicPlanView: React.FC = () => {
               </table>
             </div>
 
-            {/* Footer boxes */}
             <div className="grid grid-cols-2 gap-4 mt-3 h-[42mm]">
                <div className="border-2 border-black p-3 bg-white flex flex-col">
                   <h3 className="text-[9pt] font-black border-b border-black pb-1 mb-2 text-center bg-slate-50">توجيهات لولي الأمر</h3>
@@ -212,32 +211,6 @@ const PublicPlanView: React.FC = () => {
           </div>
         )}
       </main>
-
-      <style>{`
-        @page { size: A4 portrait; margin: 0; }
-        @media print {
-          .no-print { display: none !important; }
-          body { background: white !important; margin: 0 !important; padding: 0 !important; overflow: hidden; }
-          .a4-page { 
-            box-shadow: none !important; 
-            border: none !important; 
-            margin: 0 auto !important; 
-            padding: 8mm !important;
-            width: 210mm !important;
-            height: 297mm !important;
-            page-break-after: always;
-            display: flex !important;
-            flex-direction: column !important;
-            overflow: hidden !important;
-            -webkit-print-color-adjust: exact;
-          }
-          table { border-collapse: collapse !important; border: 2px solid black !important; height: auto !important; }
-          .border-black { border-color: black !important; }
-          .border-l-2 { border-left-width: 2px !important; }
-          .border-b-2 { border-bottom-width: 2px !important; }
-          tr { page-break-inside: avoid; }
-        }
-      `}</style>
     </div>
   );
 };

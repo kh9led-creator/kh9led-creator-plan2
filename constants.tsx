@@ -16,6 +16,21 @@ const STORAGE_KEYS = {
   SUBJECTS: 'madrasati_subjects'
 };
 
+// دالة تحويل التاريخ إلى هجري
+export const formatToHijri = (dateString: string | Date): string => {
+  if (!dateString) return '';
+  try {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-uma', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }).format(date);
+  } catch (e) {
+    return String(dateString);
+  }
+};
+
 if (!localStorage.getItem(STORAGE_KEYS.SYSTEM_ADMIN)) {
   localStorage.setItem(STORAGE_KEYS.SYSTEM_ADMIN, JSON.stringify({ username: 'admin', password: '123' }));
 }
@@ -93,12 +108,9 @@ export const db = {
     localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(all));
   },
 
-  // إدارة الفصول تلقائياً بناءً على الطلاب
   getClasses: (schoolId: string): SchoolClass[] => {
     const manualClasses = JSON.parse(localStorage.getItem(`${STORAGE_KEYS.CLASSES}_${schoolId}`) || '[]');
     if (manualClasses.length > 0) return manualClasses;
-
-    // إذا لم تكن هناك فصول يدوية، استخرجها من الطلاب
     const students = db.getStudents(schoolId);
     const uniqueClasses = Array.from(new Set(students.map(s => `${s.grade}|${s.section}`)));
     return uniqueClasses.map(str => {
@@ -162,7 +174,6 @@ export const db = {
     localStorage.setItem(`${STORAGE_KEYS.PLANS}_${schoolId}_${weekId}`, JSON.stringify(plans));
   },
   
-  // أرشفة الخطط
   archiveWeekPlans: (schoolId: string, week: AcademicWeek) => {
     const currentPlans = db.getPlans(schoolId, week.id);
     const archives = JSON.parse(localStorage.getItem(`${STORAGE_KEYS.ARCHIVED_PLANS}_${schoolId}`) || '[]');
