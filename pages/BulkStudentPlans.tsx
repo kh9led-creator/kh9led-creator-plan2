@@ -71,15 +71,15 @@ const BulkStudentPlans: React.FC = () => {
             <div key={student.id} className="student-page-container print:m-0 print:shadow-none">
               <div className="a4-page bg-white shadow-2xl p-[8mm] relative flex flex-col overflow-hidden border border-slate-100" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
                 
-                {/* العلامة المائية - رفع الوضوح */}
+                {/* العلامة المائية - Watermark مرئية بوضوح أكبر */}
                 {school.logoUrl && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-0 overflow-hidden">
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.08] z-0 overflow-hidden">
                     <img src={school.logoUrl} className="w-[500px] h-[500px] object-contain grayscale" alt="خلفية" />
                   </div>
                 )}
 
-                {/* الترويسة - إزالة الألوان الزرقاء */}
-                <div className="relative z-10 grid grid-cols-3 gap-3 mb-4 border-b-2 border-slate-900 pb-3 items-center">
+                {/* الترويسة - إزالة اللون الأزرق ودمج التاريخ */}
+                <div className="relative z-10 grid grid-cols-3 gap-3 mb-3 border-b-2 border-slate-900 pb-3 items-center">
                   <div className="text-right space-y-0.5 font-black text-[7.5pt] leading-tight text-slate-800">
                     {headerLines.map((line, i) => <p key={i}>{line}</p>)}
                   </div>
@@ -100,14 +100,17 @@ const BulkStudentPlans: React.FC = () => {
                         {finalDisplayName}
                       </h4>
                     </div>
-                    <div className="text-[8.5pt] font-bold space-y-0.5 pr-2 border-r-2 border-slate-300">
-                      <p className="flex items-center gap-1.5"><CalendarDays size={10} className="text-slate-500" /> الأسبوع: <span className="font-black text-slate-900">{activeWeek?.name || "---"}</span></p>
-                      <p className="flex items-center gap-1.5"><Bookmark size={10} className="text-slate-500" /> الصف: <span className="font-black text-slate-900">{classTitle}</span></p>
+                    <div className="text-[8.5pt] font-bold space-y-0.5 pr-2 border-r-2 border-slate-300 text-slate-900">
+                      <p className="flex items-center gap-1.5">
+                        <CalendarDays size={10} className="text-slate-500" /> الأسبوع: <span className="font-black">{activeWeek?.name || "---"}</span>
+                        <span className="text-[6.5pt] text-slate-400 font-bold mr-0.5">({activeWeek ? formatToHijri(activeWeek.startDate) : '--'})</span>
+                      </p>
+                      <p className="flex items-center gap-1.5"><Bookmark size={10} className="text-slate-500" /> الصف: <span className="font-black">{classTitle}</span></p>
                     </div>
                   </div>
                 </div>
 
-                {/* الجدول - ضبط الارتفاع لظهور حصص الخميس كاملة */}
+                {/* الجدول - حصص الخميس كاملة */}
                 <div className="relative z-10 flex-1 overflow-hidden border-[2.5px] border-slate-900 rounded-sm mb-4">
                   <table className="w-full border-collapse table-fixed h-full text-center">
                     <thead className="bg-slate-50 border-b-[2.5px] border-slate-900 font-black text-slate-900">
@@ -152,7 +155,7 @@ const BulkStudentPlans: React.FC = () => {
                 {/* التذييل الإضافي */}
                 <div className="relative z-10 grid grid-cols-2 gap-6 h-[40mm]">
                    <div className="border-[1.5px] border-slate-900 p-3.5 bg-white rounded-xl shadow-sm">
-                     <h3 className="text-[9.5pt] font-black mb-2 border-b border-slate-900 pb-1 text-center bg-slate-50 rounded-md">توجيهات الشراكة الأسرية</h3>
+                     <h3 className="text-[9.5pt] font-black mb-2 border-b border-slate-900 pb-1 text-center bg-slate-50 rounded-md">توجيهات ولي الأمر</h3>
                      <p className="text-[8.5pt] font-bold leading-relaxed text-slate-700 whitespace-pre-wrap pr-2 overflow-hidden">
                        {school.generalMessages || "١. المتابعة المستمرة لمنصة مدرستي لتعزيز التحصيل العلمي.\n٢. الالتزام بالحضور الصباحي.\n٣. إحضار الكتب المدرسية يومياً."}
                      </p>
@@ -168,7 +171,7 @@ const BulkStudentPlans: React.FC = () => {
                    </div>
                 </div>
                 
-                {/* تم حذف سطر التذييل النهائي لضمان بقاء حصص الخميس كاملة في صفحة واحدة */}
+                {/* تم حذف سطر التذييل النهائي لضمان المساحة */}
               </div>
             </div>
           );

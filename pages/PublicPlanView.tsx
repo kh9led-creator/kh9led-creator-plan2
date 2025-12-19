@@ -89,15 +89,15 @@ const PublicPlanView: React.FC = () => {
             <div className="origin-top scale-[0.45] sm:scale-[0.7] md:scale-100 mb-[-550px] sm:mb-[-150px] md:mb-0">
                <div className="a4-page bg-white shadow-2xl border p-[8mm] relative flex flex-col overflow-hidden" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
                 
-                {/* العلامة المائية - رفع الوضوح قليلاً */}
+                {/* العلامة المائية - Watermark مرئية بوضوح أكبر */}
                 {school.logoUrl && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-0 overflow-hidden">
-                    <img src={school.logoUrl} className="w-[480px] h-[480px] object-contain grayscale" alt="علامة مائية" />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.08] z-0 overflow-hidden">
+                    <img src={school.logoUrl} className="w-[500px] h-[500px] object-contain grayscale" alt="علامة مائية" />
                   </div>
                 )}
 
-                {/* الترويسة - إزالة النصوص الزرقاء وتصغير الخط */}
-                <div className="relative z-10 grid grid-cols-3 gap-2 mb-3 border-b-2 border-slate-900 pb-2 items-center">
+                {/* الترويسة - إزالة اللون الأزرق ودمج التاريخ */}
+                <div className="relative z-10 grid grid-cols-3 gap-2 mb-2.5 border-b-2 border-slate-900 pb-2 items-center">
                   <div className="text-right space-y-0.5 font-black text-[7pt] leading-tight text-slate-800">
                     {headerLines.map((line, i) => <p key={i}>{line}</p>)}
                   </div>
@@ -109,14 +109,16 @@ const PublicPlanView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="text-left space-y-0.5 font-bold text-[8.5pt]">
-                    <p className="flex items-center justify-end gap-1">الأسبوع الدراسي: <span className="font-black text-slate-900">{activeWeek?.name || "---"}</span></p>
+                  <div className="text-left space-y-0.5 font-bold text-[8.5pt] text-slate-900">
+                    <p className="flex items-center justify-end gap-1">
+                        الأسبوع: <span className="font-black">{activeWeek?.name || "---"}</span>
+                        <span className="text-[7pt] text-slate-500 font-bold mr-1">({activeWeek ? formatToHijri(activeWeek.startDate) : '--'})</span>
+                    </p>
                     <p className="flex items-center justify-end gap-1">الصف الدراسي: <span className="font-black">{selectedClass}</span></p>
-                    <p className="text-[7pt] text-slate-500 text-left font-black">التاريخ: {activeWeek ? `${formatToHijri(activeWeek.startDate)}` : '--'}</p>
                   </div>
                 </div>
 
-                {/* الجدول الدراسي - ضبط الارتفاع لظهور الخميس كاملاً */}
+                {/* الجدول الدراسي - ارتفاع الصفوف لضمان احتواء الخميس كاملاً */}
                 <div className="relative z-10 flex-1 overflow-hidden border-[2px] border-slate-900 rounded-sm mb-3">
                   <table className="w-full border-collapse table-fixed h-full text-center">
                     <thead className="bg-slate-50 border-b-[2px] border-slate-900 font-black">
@@ -138,7 +140,7 @@ const PublicPlanView: React.FC = () => {
                             const plan = plans[planKey] || {};
                             const subject = subjects.find(s => s.id === sched.subjectId)?.name || '-';
                             return (
-                              <tr key={`${day.id}-${period}`} className={`h-[17.8px] border-b ${pIdx === 6 ? 'border-b-[2px] border-slate-900' : 'border-slate-200'}`}>
+                              <tr key={`${day.id}-${period}`} className={`h-[18px] border-b ${pIdx === 6 ? 'border-b-[2px] border-slate-900' : 'border-slate-200'}`}>
                                 {pIdx === 0 && (
                                   <td rowSpan={7} className="border-l-[1.5px] border-slate-900 font-black rotate-180 [writing-mode:vertical-rl] bg-slate-50 text-[9.5pt] tracking-[0.1em] border-b-[2px] border-slate-900 leading-none">
                                     {day.label}
@@ -177,7 +179,7 @@ const PublicPlanView: React.FC = () => {
                    </div>
                 </div>
                 
-                {/* تم حذف سطر التذييل السفلي نهائياً لضمان المساحة كما طلبت */}
+                {/* تم حذف سطر التذييل السفلي نهائياً لضمان المساحة */}
               </div>
             </div>
           </div>
