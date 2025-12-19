@@ -1,14 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { School } from '../types.ts';
+import { School, Teacher, AcademicWeek } from '../types.ts';
 import { db } from '../constants.tsx';
 import { 
   LayoutDashboard, GraduationCap, Calendar, 
   Settings, LogOut, Link as LinkIcon, 
   BookOpenCheck, MessageSquare, ClipboardCheck, Users,
   CheckCircle, AlertCircle, ArrowRight, Copy, Check, Zap, ChevronRight,
-  UserCircle, ExternalLink, Menu, X
+  UserCircle, ExternalLink, Menu, X, CheckCircle2, Info
 } from 'lucide-react';
 import StudentsManagement from '../components/school/StudentsManagement.tsx';
 import SchoolSettings from '../components/school/SchoolSettings.tsx';
@@ -136,9 +136,49 @@ const SchoolDashboard: React.FC<Props> = ({ school, onLogout }) => {
 };
 
 const SchoolOverview: React.FC<{ school: School }> = ({ school }) => {
-  const teachersCount = db.getTeachers(school.id).length;
-  const studentsCount = db.getStudents(school.id).length;
   const [copied, setCopied] = useState(false);
+  const activeWeek = db.getActiveWeek(school.id);
+  const teachers = db.getTeachers(school.id);
+  const studentsCount = db.getStudents(school.id).length;
+
+  const teacherStatus = useMemo(() => {
+    if (!activeWeek) return { completed: [], incomplete: [] };
+    
+    const plans = db.getPlans(school.id, activeWeek.id);
+    const classes = db.getClasses(school.id);
+    const classTitles = classes.map(c => `${c.grade} - فصل ${c.section}`);
+    
+    const completed: Teacher[] = [];
+    const incomplete: Teacher[] = [];
+
+    teachers.forEach(teacher => {
+      let teacherSessions: any[] = [];
+      classTitles.forEach(title => {
+        const schedule = db.getSchedule(school.id, title);
+        Object.entries(schedule).forEach(([key, val]: [string, any]) => {
+          if (val.teacherId === teacher.id) {
+            teacherSessions.push({ title, key }); // key is day_period
+          }
+        });
+      });
+
+      if (teacherSessions.length === 0) {
+        // Teacher has no classes assigned
+        completed.push(teacher);
+        return;
+      }
+
+      const allSessionsDone = teacherSessions.every(session => {
+        const plan = plans[`${session.title}_${session.key}`];
+        return plan && plan.lesson && plan.lesson.trim().length > 0;
+      });
+
+      if (allSessionsDone) completed.push(teacher);
+      else incomplete.push(teacher);
+    });
+
+    return { completed, incomplete };
+  }, [school.id, teachers, activeWeek]);
 
   const teacherLoginLink = `${window.location.origin}/#/school/${school.slug}/teacher-login`;
 
@@ -161,8 +201,53 @@ const SchoolOverview: React.FC<{ school: School }> = ({ school }) => {
         </div>
       </header>
 
+      {/* Achievement Monitor Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in slide-in-from-top-4">
+         <div className="bg-white p-8 rounded-[2.5rem] border border-emerald-100 shadow-sm flex items-center gap-6 relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-2 h-full bg-emerald-500"></div>
+            <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0">
+               <CheckCircle2 size={32} />
+            </div>
+            <div>
+               <div className="text-3xl font-black text-slate-900">{teacherStatus.completed.length}</div>
+               <div className="text-emerald-600 font-black text-sm">معلمون أتموا الرصد</div>
+               <p className="text-[10px] text-slate-400 font-bold mt-1">تم رصد جميع الدروس للأسبوع الحالي بنجاح.</p>
+            </div>
+         </div>
+
+         <div className="bg-white p-8 rounded-[2.5rem] border border-rose-100 shadow-sm flex items-center gap-6 relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-2 h-full bg-rose-500"></div>
+            <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center shrink-0">
+               <AlertCircle size={32} />
+            </div>
+            <div>
+               <div className="text-3xl font-black text-slate-900">{teacherStatus.incomplete.length}</div>
+               <div className="text-rose-600 font-black text-sm">معلمون لم يكملوا الرصد</div>
+               <p className="text-[10px] text-slate-400 font-bold mt-1">توجد حصص مجدولة لم يتم رصد دروسها بعد.</p>
+            </div>
+         </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+        {[
+          { label: 'الطلاب المسجلون', value: studentsCount, icon: <GraduationCap size={28} />, color: 'blue' },
+          { label: 'المعلمون المسجلون', value: teachers.length, icon: <Users size={28} />, color: 'indigo' },
+          { label: 'الأسبوع النشط', value: activeWeek ? activeWeek.name : 'لا يوجد', icon: <Calendar size={28} />, color: 'emerald' },
+        ].map((stat, i) => (
+          <div key={i} className="bg-white p-8 md:p-10 rounded-[2.5rem] md:rounded-[3rem] shadow-sm border border-slate-100 flex items-center gap-6 md:gap-8 hover:shadow-xl transition-shadow duration-500 group">
+             <div className={`w-16 h-16 md:w-20 md:h-20 bg-${stat.color}-50 text-${stat.color}-600 rounded-[1.5rem] md:rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                {stat.icon}
+             </div>
+             <div>
+                <div className="text-3xl md:text-4xl font-black text-slate-900">{stat.value}</div>
+                <div className="text-slate-400 font-bold text-xs md:text-sm mt-1">{stat.label}</div>
+             </div>
+          </div>
+        ))}
+      </div>
+
       {/* Quick Links Section */}
-      <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-indigo-100 flex flex-col md:flex-row items-center gap-6 md:gap-8 animate-in slide-in-from-top-4">
+      <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-indigo-100 flex flex-col md:flex-row items-center gap-6 md:gap-8">
          <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
             <LinkIcon size={32} />
          </div>
@@ -180,24 +265,6 @@ const SchoolOverview: React.FC<{ school: School }> = ({ school }) => {
                </button>
             </div>
          </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-        {[
-          { label: 'الطلاب المسجلون', value: studentsCount, icon: <GraduationCap size={28} />, color: 'blue' },
-          { label: 'المعلمون النشطون', value: teachersCount, icon: <Users size={28} />, color: 'indigo' },
-          { label: 'الأسابيع الدراسية', value: 1, icon: <Calendar size={28} />, color: 'emerald' },
-        ].map((stat, i) => (
-          <div key={i} className="bg-white p-8 md:p-10 rounded-[2.5rem] md:rounded-[3rem] shadow-sm border border-slate-100 flex items-center gap-6 md:gap-8 hover:shadow-xl transition-shadow duration-500 group">
-             <div className={`w-16 h-16 md:w-20 md:h-20 bg-${stat.color}-50 text-${stat.color}-600 rounded-[1.5rem] md:rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                {stat.icon}
-             </div>
-             <div>
-                <div className="text-3xl md:text-4xl font-black text-slate-900">{stat.value}</div>
-                <div className="text-slate-400 font-bold text-xs md:text-sm mt-1">{stat.label}</div>
-             </div>
-          </div>
-        ))}
       </div>
       
       <div className="grid grid-cols-1 gap-10">
