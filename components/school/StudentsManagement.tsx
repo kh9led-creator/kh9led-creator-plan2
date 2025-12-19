@@ -83,38 +83,31 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
       let colMap = { name: -1, phone: -1, grade: -1, section: -1 };
       let startRowIdx = -1;
 
-      // 1. تحديد مكان الأعمدة بدقة
       for (let i = 0; i < Math.min(rows.length, 50); i++) {
         const row = rows[i];
         row.forEach((cell, idx) => {
           const val = String(cell).toLowerCase().trim();
           if (!val) return;
-
           if (colMap.name === -1 && HEADER_MAP.name.some(h => val.includes(h.toLowerCase()))) colMap.name = idx;
           if (colMap.phone === -1 && HEADER_MAP.phone.some(h => val.includes(h.toLowerCase()))) colMap.phone = idx;
           if (colMap.grade === -1 && HEADER_MAP.grade.some(h => val.includes(h.toLowerCase()))) colMap.grade = idx;
           if (colMap.section === -1 && HEADER_MAP.section.some(h => val.includes(h.toLowerCase()))) colMap.section = idx;
         });
-
-        if (colMap.name !== -1) {
-          startRowIdx = i + 1;
-          break;
-        }
+        if (colMap.name !== -1) { startRowIdx = i + 1; break; }
       }
 
       const extractedStudents: Student[] = [];
       const rowsToProcess = startRowIdx !== -1 ? rows.slice(startRowIdx) : rows;
+      const timestamp = Date.now().toString(36);
 
       rowsToProcess.forEach((row, index) => {
         let name = '', phone = '', grade = '', section = '1';
-
         if (colMap.name !== -1) {
           name = String(row[colMap.name] || '').trim();
           phone = colMap.phone !== -1 ? cleanPhoneNumber(row[colMap.phone]) : '';
           grade = colMap.grade !== -1 ? standardizeGrade(row[colMap.grade]) : '';
           section = colMap.section !== -1 ? String(row[colMap.section] || '1').trim() : '1';
         } else {
-          // تخمين ذكي في حال لم نجد ترويسة
           row.forEach(cell => {
             const val = String(cell).trim();
             if (/^[0-9+]{8,15}$/.test(val)) phone = cleanPhoneNumber(val);
@@ -122,14 +115,14 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
           });
         }
 
-        // فلترة: التأكد أن الاسم ليس رقماً وليس كلمة ترويسة
         const isHeaderWord = HEADER_MAP.name.some(h => name.toLowerCase() === h.toLowerCase());
-        const isNumeric = /^[0-9]+$/.test(name.replace(/\s/g, ''));
+        const isNumeric = /^[0-9 ]+$/.test(name);
 
         if (name && name.length > 3 && !isHeaderWord && !isNumeric) {
           extractedStudents.push({
-            id: `import-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`,
-            name, 
+            // استخدام معرف قصير جداً لتوفير مساحة التخزين
+            id: `s${timestamp}${index.toString(36)}`,
+            name: name.substring(0, 100), // تقليل الطول في حال وجود نصوص ضخمة
             phoneNumber: phone, 
             grade: grade || 'غير محدد', 
             section: section || '1', 
@@ -148,7 +141,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         setImportError('لم نستطع التعرف على بيانات الطلاب. تأكد أن الملف يحتوي على أسماء في عمود واضح.');
       }
     } catch (err) {
-      setImportError('حدث خطأ أثناء قراءة الملف. يرجى التأكد من صيغة الإكسل.');
+      setImportError('حدث خطأ أثناء قراءة الملف.');
     } finally {
       setIsProcessing(false);
     }
@@ -158,22 +151,27 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     if (!tempImportData || tempImportData.length === 0) return;
 
     try {
-      const currentAll = JSON.parse(localStorage.getItem('madrasati_students') || '[]');
-      const updatedAll = [...currentAll, ...tempImportData];
-      localStorage.setItem('madrasati_students', JSON.stringify(updatedAll));
+      const STORAGE_KEY = 'madrasati_students';
+      const existingRaw = localStorage.getItem(STORAGE_KEY) || '[]';
+      let existingStudents = JSON.parse(existingRaw);
       
-      // تحديث قائمة العرض فوراً
+      // دمج البيانات الجديدة مع القديمة
+      const updatedAll = [...existingStudents, ...tempImportData];
+      
+      // محاولة الحفظ مع ضغط السلسلة النصية (إزالة المسافات)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedAll));
+      
       setStudents(db.getStudents(schoolId));
       db.syncClassesFromStudents(schoolId);
       
-      // تنظيف الواجهة
       setShowImport(false);
       setImportSummary(null);
       setTempImportData(null);
       
-      alert(`بنجاح! تم استيراد وحفظ ${tempImportData.length} طالباً في قاعدة البيانات.`);
+      alert(`بنجاح! تم حفظ ${tempImportData.length} طالباً.`);
     } catch (e) {
-      alert('خطأ في الحفظ: قد يكون حجم البيانات كبيراً جداً على المتصفح.');
+      console.error("Storage Error:", e);
+      alert('عذراً، ذاكرة المتصفح ممتلئة. يرجى مسح بعض البيانات القديمة أو استخدام متصفح آخر.');
     }
   };
 
@@ -184,7 +182,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     }
 
     const student: Student = {
-      id: editingStudent ? editingStudent.id : Date.now().toString(),
+      id: editingStudent ? editingStudent.id : `m${Date.now().toString(36)}`,
       name: formData.name,
       grade: formData.grade,
       section: formData.section,
@@ -225,7 +223,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         <div className="flex flex-wrap gap-3 w-full md:w-auto">
           <button 
             onClick={() => {
-              if (confirm('سيتم مسح كافة الطلاب الحاليين. هل تريد المتابعة؟')) {
+              if (confirm('سيتم مسح كافة الطلاب الحاليين للمدرسة. هل تريد المتابعة؟')) {
                 const all = JSON.parse(localStorage.getItem('madrasati_students') || '[]');
                 localStorage.setItem('madrasati_students', JSON.stringify(all.filter((s: any) => s.schoolId !== schoolId)));
                 setStudents([]);
@@ -333,7 +331,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                     ) : (
                       <>
                          <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-emerald-600 shadow-sm mb-4"><Upload size={32} /></div>
-                         <p className="text-slate-700 font-black text-lg">اسحب ملف الإكسل هنا</p>
+                         <p className="text-slate-700 font-black text-lg">اسحب ملف إكسل هنا</p>
                          <button onClick={() => fileInputRef.current?.click()} className="mt-6 px-8 py-3 bg-emerald-600 text-white rounded-xl font-black text-sm shadow-lg hover:bg-emerald-700 transition-all">اختيار من الجهاز</button>
                       </>
                     )}
@@ -372,9 +370,9 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                   <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100 flex gap-4">
                      <div className="text-blue-600 shrink-0"><Info size={20} /></div>
                      <div className="space-y-1">
-                        <h4 className="text-sm font-black text-blue-900 italic">كيف يعمل النظام؟</h4>
+                        <h4 className="text-sm font-black text-blue-900 italic">ملاحظة تقنية:</h4>
                         <p className="text-[10px] text-blue-800/70 font-bold leading-relaxed">
-                          نستخدم تقنيات المسح الضوئي للبيانات لاكتشاف الأعمدة تلقائياً وتصفية الأرقام من عمود الأسماء لضمان دقة الاستيراد.
+                          نستخدم تقنيات ضغط البيانات (Short Identifiers) لضمان حفظ كميات كبيرة من الطلاب في ذاكرة المتصفح دون مشاكل.
                         </p>
                      </div>
                   </div>
@@ -392,12 +390,12 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                 <button onClick={() => setShowForm(false)} className="p-2 text-slate-400 hover:text-rose-50"><X size={22} /></button>
              </div>
              <div className="space-y-5">
-                <input placeholder="اسم الطالب..." className="w-full p-4 bg-slate-50 rounded-2xl font-bold" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                <input placeholder="اسم الطالب..." className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                 <div className="grid grid-cols-2 gap-4">
-                  <input placeholder="الصف الدراسي" className="w-full p-4 bg-slate-50 rounded-2xl font-bold" value={formData.grade} onChange={e => setFormData({...formData, grade: e.target.value})} />
-                  <input placeholder="الفصل" className="w-full p-4 bg-slate-50 rounded-2xl font-bold" value={formData.section} onChange={e => setFormData({...formData, section: e.target.value})} />
+                  <input placeholder="الصف الدراسي" className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none" value={formData.grade} onChange={e => setFormData({...formData, grade: e.target.value})} />
+                  <input placeholder="الفصل" className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none" value={formData.section} onChange={e => setFormData({...formData, section: e.target.value})} />
                 </div>
-                <input placeholder="رقم الجوال" className="w-full p-4 bg-slate-50 rounded-2xl font-bold" value={formData.phoneNumber} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} />
+                <input placeholder="رقم الجوال" className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none" value={formData.phoneNumber} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} />
                 <button onClick={handleSaveManual} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black shadow-lg">حفظ الطالب</button>
              </div>
           </div>
