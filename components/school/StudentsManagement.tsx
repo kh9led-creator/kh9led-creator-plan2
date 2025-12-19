@@ -73,7 +73,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     }
   };
 
-  // وظيفة التحليل الذكي للبيانات
+  // وظيفة التحليل الذكي المتقدمة - متوافقة مع الصورة المرفقة
   const processImport = () => {
     if (!importText.trim()) {
       setImportError('يرجى لصق بيانات الطلاب أولاً');
@@ -84,58 +84,61 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     setImportError('');
 
     try {
-      const lines = importText.trim().split(/\n/);
+      // تفكيك الأسطر مع إزالة الأسطر الفارغة
+      const lines = importText.split(/\r?\n/).filter(line => line.trim() !== "");
       const newStudents: any[] = [];
-      const gradesKeywords = ['ابتدائي', 'متوسط', 'ثانوي', 'أول', 'ثاني', 'ثالث', 'رابع', 'خامس', 'سادس'];
+      
+      const gradesKeywords = ['ابتدائي', 'متوسط', 'ثانوي', 'روضة', 'تمهيدي'];
 
-      lines.forEach(line => {
-        if (!line.trim()) return;
+      lines.forEach((line, index) => {
+        try {
+          // تفكيك السطر بناءً على المسافات المتعددة أو الـ Tab أو الفاصلة
+          // استخدام regex يدعم المسافات الطويلة التي تنتج عن النسخ من الجداول
+          const parts = line.split(/\t|,|\s{2,}/).map(p => p.trim()).filter(p => p !== "");
+          
+          // إذا لم ينجح التفكيك بالمسافات الطويلة، نجرب المسافة الواحدة كملجأ أخير
+          let workingParts = parts.length > 1 ? parts : line.split(/\s+/).map(p => p.trim()).filter(p => p !== "");
 
-        // فصل الأعمدة (دعم Tab من الإكسل، أو الفاصلة)
-        const parts = line.split(/\t|,/).map(p => p.trim()).filter(p => p !== "");
-        
-        if (parts.length > 0) {
-          let name = '';
-          let grade = 'الأول الابتدائي'; // القيمة الافتراضية
+          let nameParts: string[] = [];
+          let grade = 'الأول الابتدائي';
           let section = '1';
           let phone = '';
 
-          // تحليل كل جزء ذكياً
-          parts.forEach((part) => {
-            // هل هو رقم جوال؟ (يبدأ بـ 05 أو 5 أو يحتوي على 9-10 أرقام)
-            if (/^(05|5|\+966|966)[0-9]+$/.test(part.replace(/\s/g, '')) || (part.length >= 9 && /^[0-9]+$/.test(part.replace(/\s/g, '')))) {
-              phone = part;
+          workingParts.forEach((part) => {
+            // 1. فحص هل هو رقم جوال (يبدأ بـ 966 أو 05 أو 5 وطوله مناسب)
+            const cleanPart = part.replace(/[\s\-\(\)]/g, '');
+            if (/^(966|05|5|00966)[0-9]{8,12}$/.test(cleanPart)) {
+              phone = cleanPart;
             } 
-            // هل هو صف دراسي؟ (يحتوي على كلمات دالة)
+            // 2. فحص هل هو صف دراسي (يحتوي على كلمات دالة)
             else if (gradesKeywords.some(k => part.includes(k))) {
               grade = part;
             } 
-            // هل هو رقم فصل؟ (رقم صغير أو حرف واحد)
-            else if (/^[0-9]$/.test(part) || (part.length === 1 && !/^[0-9]$/.test(part))) {
+            // 3. فحص هل هو رقم فصل (رقم واحد أو صغير)
+            else if (/^[0-9]$/.test(part)) {
               section = part;
             } 
-            // إذا لم يكن مما سبق، فهو غالباً الاسم (نأخذ أطول نص غير مصنف كاسم)
-            else if (part.length > 2) {
-              if (!name || part.length > name.length) {
-                if (name) { 
-                   // إذا كان لدينا اسم سابق، ربما يكون الجزء الحالي هو الصف إذا كان يحتوي على أرقام
-                   if (/\d/.test(part)) section = part; 
-                }
-                name = part;
-              }
+            // 4. إذا لم يكن أي مما سبق، نعتبره جزءاً من الاسم
+            else {
+              nameParts.push(part);
             }
           });
 
-          if (name) {
+          // تجميع الاسم: عادة ما يكون هو الأجزاء المتبقية
+          const fullName = nameParts.join(' ').trim();
+
+          if (fullName && fullName.length > 2) {
             newStudents.push({
               id: (Date.now() + Math.random()).toString(),
-              name: name,
+              name: fullName,
               grade: grade,
               section: section,
               phoneNumber: phone,
               schoolId: schoolId
             });
           }
+        } catch (lineErr) {
+          console.error(`Error processing line ${index + 1}:`, lineErr);
         }
       });
 
@@ -146,12 +149,12 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         db.syncClassesFromStudents(schoolId);
         setShowImport(false);
         setImportText('');
-        alert(`تم استيراد ${newStudents.length} طالب بنجاح!`);
+        alert(`بنجاح! تم استيراد ${newStudents.length} طالب وتصنيف بياناتهم.`);
       } else {
-        setImportError('لم نتمكن من التعرف على أي أسماء طلاب. تأكد من أن البيانات تحتوي على أسماء واضحة.');
+        setImportError('لم نتمكن من تحليل البيانات. يرجى التأكد من وجود أسماء الطلاب بوضوح.');
       }
     } catch (err) {
-      setImportError('حدث خطأ فني أثناء المعالجة. يرجى مراجعة تنسيق البيانات الملصقة.');
+      setImportError('حدث خطأ فني أثناء المعالجة. يرجى محاولة نسخ البيانات مرة أخرى.');
     } finally {
       setIsProcessing(false);
     }
@@ -254,8 +257,8 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                 <div className="flex items-center gap-4">
                    <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100"><Wand2 size={28} /></div>
                    <div>
-                      <h3 className="text-xl font-black text-slate-900">الاستيراد الذكي للطلاب</h3>
-                      <p className="text-xs text-slate-400 font-bold mt-1">انسخ الجدول من ملف الإكسل والصقه هنا مباشرة.</p>
+                      <h3 className="text-xl font-black text-slate-900">المعالج الذكي للبيانات</h3>
+                      <p className="text-xs text-slate-400 font-bold mt-1">يدعم النسخ المباشر من الإكسل، الورد، أو ملفات PDF.</p>
                    </div>
                 </div>
                 <button onClick={() => setShowImport(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:text-rose-500 transition-colors"><X size={24} /></button>
@@ -264,21 +267,19 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
              <div className="space-y-6">
                 <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100">
                    <h4 className="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2">
-                     <Sparkles size={14} /> ملاحظات الاستيراد:
+                     <Sparkles size={14} /> ملاحظات المعالجة الذكية:
                    </h4>
                    <ul className="text-[11px] text-blue-900/70 font-bold space-y-1 list-disc list-inside">
-                     <li>لا يشترط ترتيب معين للأعمدة.</li>
-                     <li>سيقوم النظام تلقائياً بتمييز (الاسم، الجوال، الصف، الفصل).</li>
-                     <li>تأكد من أن كل طالب في سطر منفصل.</li>
+                     <li>سيتم تمييز أرقام الجوال تلقائياً (تبدأ بـ 966 أو 05).</li>
+                     <li>سيتم تمييز الصفوف الدراسية (ابتدائي، متوسط، ثانوي..).</li>
+                     <li>تأكد من أن كل طالب يظهر في سطر مستقل.</li>
                    </ul>
                 </div>
 
                 <div className="relative">
                   <textarea 
                     className="w-full h-72 p-6 bg-slate-50 rounded-[2rem] border-2 border-slate-100 focus:border-blue-400 outline-none font-bold text-sm leading-relaxed shadow-inner transition-all"
-                    placeholder="مثال:
-محمد أحمد  الأول الابتدائي  1  0512345678
-سعد علي  الثاني الابتدائي  2"
+                    placeholder="الصق البيانات هنا كما هي..."
                     value={importText}
                     onChange={e => setImportText(e.target.value)}
                   />
@@ -311,7 +312,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                     disabled={isProcessing || !importText.trim()}
                     className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                    >
-                     {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <><CheckCircle2 size={20} /> معالجة ذكية واستيراد</>}
+                     {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <><CheckCircle2 size={20} /> بدء التحليل والاستيراد</>}
                    </button>
                 </div>
              </div>
