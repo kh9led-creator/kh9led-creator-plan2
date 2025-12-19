@@ -6,7 +6,7 @@ import {
   Plus, Search, Trash2, CheckCircle2, 
   X, Sparkles, Loader2, User, 
   Eraser, Phone, GraduationCap, Layout, Edit2, 
-  Users, AlertCircle, Wand2
+  Users, AlertCircle, Wand2, FileSpreadsheet
 } from 'lucide-react';
 
 const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
@@ -51,69 +51,77 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     setImportError('');
 
     try {
-      const lines = importText.split(/\r?\n/).filter(line => line.trim() !== "" && !line.startsWith(";;;"));
-      const newStudents: any[] = [];
+      // 1. تنظيف النص من رموز التحكم والـ BOM
+      const cleanText = importText.replace(/[\uFEFF\u200B\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+      const lines = cleanText.split(/\r?\n/).map(l => l.trim()).filter(l => l !== "");
       
+      const newStudents: any[] = [];
       let headerIndices = { phone: -1, section: -1, grade: -1, name: -1 };
+      let headersFound = false;
 
-      lines.forEach((line, index) => {
-        // تحديد الفاصل (يدعم الفاصلة المنقوطة، التاب، أو المسافات المتعددة)
+      for (const line of lines) {
+        // تحديد الفاصل (CSV عادة يستخدم ; أو , أو Tab)
         let delimiter = ';';
         if (!line.includes(';')) {
-            if (line.includes('\t')) delimiter = '\t';
-            else delimiter = '|'; // fallback
+          if (line.includes('\t')) delimiter = '\t';
+          else if (line.includes(',')) delimiter = ',';
+          else delimiter = ' '; 
         }
 
         const parts = line.split(delimiter).map(p => p.trim());
 
-        // 1. اكتشاف الترويسة (السطر الذي يحتوي على مسميات الأعمدة)
-        if (line.includes("الجوال") || line.includes("اسم الطالب") || line.includes("رقم الصف")) {
+        // اكتشاف الترويسة (السطر الذي يحتوي مسميات الأعمدة)
+        if (!headersFound && (line.includes("الجوال") || line.includes("اسم الطالب") || line.includes("رقم الصف"))) {
           parts.forEach((part, i) => {
-            if (part.includes("الجوال")) headerIndices.phone = i;
+            if (part.includes("الجوال") || part.includes("الهاتف")) headerIndices.phone = i;
             if (part.includes("الفصل")) headerIndices.section = i;
             if (part.includes("الصف")) headerIndices.grade = i;
-            if (part.includes("اسم الطالب")) headerIndices.name = i;
+            if (part.includes("اسم الطالب") || part.includes("الطالب")) headerIndices.name = i;
           });
-          return; // انتقل للسطر التالي بعد معالجة الترويسة
+          headersFound = true;
+          continue; 
         }
 
-        // 2. معالجة بيانات الطالب
-        let phone = '';
-        let section = '1';
-        let grade = 'الأول الابتدائي';
-        let name = '';
+        // إذا وجدنا الترويسة، نقوم بمعالجة الأسطر كبيانات طلاب
+        if (headersFound) {
+          const name = parts[headerIndices.name] || '';
+          const phone = parts[headerIndices.phone] || '';
+          const section = parts[headerIndices.section] || '1';
+          const grade = (parts[headerIndices.grade] || '').replace(/_/g, ' ');
 
-        if (headerIndices.name !== -1) {
-          // إذا تم اكتشاف الترويسة، نستخدم الترتيب المكتشف
-          phone = parts[headerIndices.phone] || '';
-          section = parts[headerIndices.section] || '1';
-          grade = (parts[headerIndices.grade] || '').replace(/_/g, ' '); // تحويل _ لمسافة
-          name = parts[headerIndices.name] || '';
+          if (name && name.length > 2 && !name.includes("اسم الطالب")) {
+            newStudents.push({
+              id: (Date.now() + Math.random()).toString(),
+              name: name,
+              grade: grade || 'الأول الابتدائي',
+              section: section,
+              phoneNumber: phone,
+              schoolId: schoolId
+            });
+          }
         } else {
-          // محاولة ذكية إذا لم توجد ترويسة (بناءً على النمط)
-          parts.forEach(part => {
-             const clean = part.replace(/[\s\-_]/g, '');
-             if (/^(966|05|5)[0-9]{8,12}$/.test(clean)) phone = clean;
-             else if (/^[0-9]{1,2}$/.test(part) && !phone) section = part;
-             else if (part.includes("ابتدائي") || part.includes("متوسط") || part.includes("ثانوي") || part.includes("_")) grade = part.replace(/_/g, ' ');
-             else if (part.length > 5) name = part;
-          });
+          // استراتيجية بديلة في حال عدم وجود ترويسة واضحة (التخمين الذكي)
+          if (parts.length >= 3) {
+            let dName = '', dPhone = '', dGrade = '', dSection = '1';
+            parts.forEach(p => {
+              if (/^(966|05|5)[0-9]{8,12}$/.test(p.replace(/\s/g, ''))) dPhone = p;
+              else if (/^[0-9]{1,2}$/.test(p)) dSection = p;
+              else if (p.includes("ابتدائي") || p.includes("متوسط") || p.includes("_")) dGrade = p.replace(/_/g, ' ');
+              else if (p.length > 5) dName = p;
+            });
+            if (dName) {
+              newStudents.push({
+                id: (Date.now() + Math.random()).toString(),
+                name: dName,
+                grade: dGrade || 'الأول الابتدائي',
+                section: dSection,
+                phoneNumber: dPhone,
+                schoolId: schoolId
+              });
+            }
+          }
         }
-
-        // تنظيف نهائي للاسم
-        name = name.replace(/[0-9\-_;]/g, ' ').replace(/\s+/g, ' ').trim();
-
-        if (name && name.length > 3) {
-          newStudents.push({
-            id: (Date.now() + Math.random()).toString(),
-            name: name,
-            grade: grade || 'الأول الابتدائي',
-            section: section,
-            phoneNumber: phone,
-            schoolId: schoolId
-          });
-        }
-      });
+      }
 
       if (newStudents.length > 0) {
         const currentAll = JSON.parse(localStorage.getItem('madrasati_students') || '[]');
@@ -122,13 +130,13 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         db.syncClassesFromStudents(schoolId);
         setShowImport(false);
         setImportText('');
-        alert(`تم بنجاح! استيراد ${newStudents.length} طالب بنظام المحلل الذكي لملفات CSV.`);
+        alert(`تم بنجاح استيراد ${newStudents.length} طالباً.`);
       } else {
-        setImportError('لم نتمكن من العثور على بيانات طلاب. تأكد من أنك نسخت الجدول بشكل صحيح.');
+        setImportError('لم يتم العثور على بيانات. تأكد من نسخ محتوى الجدول كاملاً.');
       }
     } catch (err) {
       console.error(err);
-      setImportError('حدث خطأ أثناء تحليل الملف. يرجى التأكد من أن التنسيق مطابق لما في الصورة.');
+      setImportError('حدث خطأ أثناء تحليل البيانات. يرجى محاولة النسخ مرة أخرى.');
     } finally {
       setIsProcessing(false);
     }
@@ -160,7 +168,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
             <Trash2 size={18} />
           </button>
           <button onClick={() => setShowImport(true)} className="flex-1 md:flex-none bg-slate-900 text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-md text-sm border border-slate-700">
-            <Wand2 size={18} className="text-blue-400" /> استيراد ذكي (CSV/Excel)
+            <FileSpreadsheet size={18} className="text-blue-400" /> استيراد Excel / CSV
           </button>
           <button onClick={() => { setEditingStudent(null); setFormData({ name: '', grade: 'الأول الابتدائي', section: '1', phoneNumber: '' }); setShowForm(true); }} className="flex-1 md:flex-none bg-indigo-600 text-white px-6 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition shadow-md text-sm">
             <Plus size={18} /> إضافة طالب
@@ -231,10 +239,10 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
           <div className="bg-white p-8 md:p-10 rounded-[3rem] max-w-2xl w-full shadow-2xl animate-in zoom-in-95">
              <div className="flex justify-between items-center mb-8">
                 <div className="flex items-center gap-4">
-                   <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100"><Wand2 size={28} /></div>
+                   <div className="w-14 h-14 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100"><Wand2 size={28} /></div>
                    <div>
-                      <h3 className="text-xl font-black text-slate-900">المحلل الذكي للبيانات</h3>
-                      <p className="text-xs text-slate-400 font-bold mt-1">يدعم التنسيقات العربية (CSV) والنسخ من الإكسل.</p>
+                      <h3 className="text-xl font-black text-slate-900">المعالج الشامل للبيانات</h3>
+                      <p className="text-xs text-slate-400 font-bold mt-1">يدعم الفواصل المنقوطة (;) ورموز الإكسل الخاصة.</p>
                    </div>
                 </div>
                 <button onClick={() => setShowImport(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:text-rose-500 transition-colors"><X size={24} /></button>
@@ -242,19 +250,18 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
 
              <div className="space-y-6">
                 <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100">
-                   <h4 className="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2"><Sparkles size={14} /> مميزات المحلل المحدث:</h4>
+                   <h4 className="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2"><Sparkles size={14} /> تعليمات الملف المزود:</h4>
                    <ul className="text-[11px] text-blue-900/70 font-bold space-y-1 list-disc list-inside">
-                     <li>يدعم الفاصلة المنقوطة ( ; ) الناتجة عن تصدير الإكسل.</li>
-                     <li>يتعرف تلقائياً على الترويسة (الجوال، الفصل، اسم الطالب).</li>
-                     <li>يقوم بتنظيف الرموز مثل (_) في أسماء الصفوف تلقائياً.</li>
-                     <li>يتجاهل الأسطر التعريفية في بداية ونهاية الملف.</li>
+                     <li>انسخ محتوى ملف الـ CSV كاملاً والصقه في المربع أدناه.</li>
+                     <li>سيقوم النظام تلقائياً بتحديد أعمدة (الاسم، الجوال، الصف، الفصل).</li>
+                     <li>تمت معالجة الفواصل المنقوطة والشرطات السفلية (_) في أسماء الصفوف.</li>
                    </ul>
                 </div>
 
                 <div className="relative">
                   <textarea 
-                    className="w-full h-72 p-6 bg-slate-50 rounded-[2rem] border-2 border-slate-100 focus:border-blue-400 outline-none font-bold text-sm leading-relaxed shadow-inner transition-all"
-                    placeholder="الصق محتوى الملف هنا..."
+                    className="w-full h-72 p-6 bg-slate-50 rounded-[2rem] border-2 border-slate-100 focus:border-indigo-400 outline-none font-bold text-sm leading-relaxed shadow-inner transition-all"
+                    placeholder="الصق بيانات الملف هنا..."
                     value={importText}
                     onChange={e => setImportText(e.target.value)}
                   />
@@ -270,7 +277,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                     disabled={isProcessing || !importText.trim()}
                     className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                    >
-                     {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <><CheckCircle2 size={20} /> بدء المعالجة والاستيراد</>}
+                     {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <><CheckCircle2 size={20} /> معالجة واستيراد</>}
                    </button>
                 </div>
              </div>
