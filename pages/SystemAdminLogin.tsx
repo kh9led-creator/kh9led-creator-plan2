@@ -14,22 +14,31 @@ const SystemAdminLogin: React.FC<Props> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   // Recovery States
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const [recoveryStatus, setRecoveryStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
-    const admin = db.getSystemAdmin();
-    if (username === admin.username && password === admin.password) {
-      onLogin('SYSTEM_ADMIN', null, { name: 'المشرف العام' });
-      navigate('/admin');
-    } else {
-      setError('إذن الوصول مرفوض. بيانات الاعتماد غير صالحة.');
+    try {
+      const admin = await db.getSystemAdmin();
+      // تحقق من البيانات الافتراضية أو المخزنة
+      if (username === admin.username && password === admin.password) {
+        onLogin('SYSTEM_ADMIN', null, { name: 'المشرف العام' });
+        navigate('/admin');
+      } else {
+        setError('إذن الوصول مرفوض. بيانات الاعتماد غير صالحة.');
+      }
+    } catch (err) {
+      setError('حدث خطأ تقني أثناء التحقق من النظام.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -148,10 +157,10 @@ const SystemAdminLogin: React.FC<Props> = ({ onLogin }) => {
               
               <button 
                 type="submit"
-                className="w-full mt-6 py-6 bg-blue-600 text-white rounded-2xl font-black text-xl hover:bg-blue-500 shadow-[0_10px_40px_rgba(37,99,235,0.3)] transition-all active:scale-95 flex items-center justify-center gap-3"
+                disabled={loading}
+                className="w-full mt-6 py-6 bg-blue-600 text-white rounded-2xl font-black text-xl hover:bg-blue-500 shadow-[0_10px_40px_rgba(37,99,235,0.3)] transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
               >
-                بدء جلسة الإدارة
-                <ArrowLeft size={20} />
+                {loading ? <Loader2 className="animate-spin" /> : <>بدء جلسة الإدارة <ArrowLeft size={20} /></>}
               </button>
             </form>
           </>

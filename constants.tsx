@@ -131,8 +131,6 @@ export const db = {
     if (!db.isBiometricsSupported()) return false;
     
     try {
-      // محاكاة طلب تسجيل بصمة من المتصفح
-      // في الواقع سنستخدم navigator.credentials.create
       const credentialId = 'biom_' + btoa(userId + Math.random());
       const biometricsRaw = localStorage.getItem(STORAGE_KEYS.BIOMETRICS) || '{}';
       const biometrics = JSON.parse(biometricsRaw);
@@ -140,7 +138,6 @@ export const db = {
       biometrics[credentialId] = { userId, type, date: new Date().toISOString() };
       localStorage.setItem(STORAGE_KEYS.BIOMETRICS, JSON.stringify(biometrics));
       
-      // حفظ المفتاح في الجهاز الحالي للمستخدم
       localStorage.setItem('local_biometric_key', credentialId);
       return true;
     } catch (e) { return false; }
@@ -348,12 +345,14 @@ export const db = {
   },
 
   // --- مدير النظام ---
-  getSystemAdmin: () => {
+  getSystemAdmin: async () => {
+    await delay(200);
     const data = localStorage.getItem(STORAGE_KEYS.SYSTEM);
     return data ? Security.decrypt(data) : { username: 'admin', password: 'password' };
   },
 
-  updateSystemAdmin: (admin: any) => {
+  updateSystemAdmin: async (admin: any) => {
+    await delay(500);
     localStorage.setItem(STORAGE_KEYS.SYSTEM, Security.encrypt(admin));
   }
 };

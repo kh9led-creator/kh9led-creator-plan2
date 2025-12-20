@@ -6,32 +6,44 @@ import {
   LayoutDashboard, ShieldCheck, School, 
   CreditCard, Settings, LogOut, CheckCircle2, 
   XCircle, ArrowUpRight, Plus, Globe, User, Lock, Save, Check, Key,
-  Mail, Phone
+  Mail, Phone, Loader2
 } from 'lucide-react';
 
 const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'home' | 'schools' | 'profile'>('home');
   const [schools, setSchools] = useState<SchoolType[]>([]);
+  const [loading, setLoading] = useState(true);
   
   // بيانات الملف الشخصي
-  const [adminData, setAdminData] = useState(db.getSystemAdmin());
-  const [newUsername, setNewUsername] = useState(adminData.username);
-  const [newPassword, setNewPassword] = useState(adminData.password);
+  const [adminData, setAdminData] = useState({ username: '', password: '' });
+  const [newUsername, setNewUsername] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const fetchSchools = async () => {
-      const data = await db.getSchools();
-      setSchools(data);
+    const fetchData = async () => {
+      setLoading(true);
+      const [schoolsData, adminInfo] = await Promise.all([
+        db.getSchools(),
+        db.getSystemAdmin()
+      ]);
+      setSchools(schoolsData);
+      setAdminData(adminInfo);
+      setNewUsername(adminInfo.username);
+      setNewPassword(adminInfo.password);
+      setLoading(false);
     };
-    fetchSchools();
+    fetchData();
   }, []);
 
-  const handleUpdateProfile = (e: React.FormEvent) => {
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
     const updated = { username: newUsername, password: newPassword };
-    db.updateSystemAdmin(updated);
+    await db.updateSystemAdmin(updated);
     setAdminData(updated);
+    setIsSaving(false);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
   };
@@ -43,12 +55,21 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
     }
   };
 
+  if (loading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-slate-900 flex-col gap-4">
+         <Loader2 size={48} className="text-blue-500 animate-spin" />
+         <span className="text-white font-black">جاري تهيئة مركز التحكم...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden font-['Tajawal']">
       {/* Sidebar */}
       <aside className="w-80 bg-slate-900 text-white flex flex-col p-8 shrink-0">
         <div className="flex items-center gap-3 mb-12">
-          <div className="bg-blue-500 p-2 rounded-xl"><ShieldCheck /></div>
+          <div className="bg-blue-500 p-2 rounded-xl shadow-lg shadow-blue-500/20"><ShieldCheck /></div>
           <span className="text-2xl font-black">إدارة النظام</span>
         </div>
 
@@ -145,9 +166,10 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
 
                    <button 
                     type="submit"
-                    className={`w-full py-6 rounded-[2rem] font-black text-xl transition-all flex items-center justify-center gap-3 ${saveSuccess ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white hover:bg-black'}`}
+                    disabled={isSaving}
+                    className={`w-full py-6 rounded-[2rem] font-black text-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 ${saveSuccess ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white hover:bg-black'}`}
                    >
-                     {saveSuccess ? <><Check /> تم حفظ التغييرات</> : <><Save /> حفظ البيانات الجديدة</>}
+                     {isSaving ? <Loader2 className="animate-spin" /> : (saveSuccess ? <><Check /> تم حفظ التغييرات</> : <><Save /> حفظ البيانات الجديدة</>)}
                    </button>
                 </form>
              </div>
