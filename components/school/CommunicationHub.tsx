@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { MessageSquare, Send, User, Bell, Search, Users } from 'lucide-react';
+import { MessageSquare, Send, User, Bell, Search, Users, Loader2 } from 'lucide-react';
+import { Teacher } from '../../types.ts';
 import { db } from '../../constants.tsx';
 
 const CommunicationHub: React.FC<{ schoolId: string }> = ({ schoolId }) => {
@@ -8,10 +9,21 @@ const CommunicationHub: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     { id: '1', sender: 'الإدارة', content: 'نرجو من الجميع إنهاء رصد الخطط قبل يوم الخميس الساعة ١٢ ظهراً.', time: 'منذ ساعتين', isOwn: false },
     { id: '2', sender: 'الإدارة', content: 'تم تفعيل ميزة رصد الغياب اليومي، نرجو الالتزام.', time: 'أمس', isOwn: false }
   ]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const teachers = useMemo(() => db.getTeachers(schoolId), [schoolId]);
+  // @google/genai: جلب المعلمين بشكل غير متزامن لتجنب الشاشة البيضاء
+  useEffect(() => {
+    const fetchTeachers = async () => {
+      setLoading(true);
+      const data = await db.getTeachers(schoolId);
+      setTeachers(data);
+      setLoading(false);
+    };
+    fetchTeachers();
+  }, [schoolId]);
 
   const filteredTeachers = useMemo(() => {
     return teachers.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -63,11 +75,13 @@ const CommunicationHub: React.FC<{ schoolId: string }> = ({ schoolId }) => {
               </div>
               <div className="text-right">
                 <div className="font-black text-sm">غرفة التعميمات العامة</div>
-                <div className="text-[10px] opacity-70">المعلمون: {teachers.length}</div>
+                <div className="text-[10px] opacity-70">المعلمون: {loading ? '...' : teachers.length}</div>
               </div>
             </button>
             <div className="h-px bg-slate-100 my-2 mx-2"></div>
-            {filteredTeachers.map(t => (
+            {loading ? (
+              <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-indigo-300" /></div>
+            ) : filteredTeachers.map(t => (
               <button key={t.id} className="w-full p-3.5 rounded-xl hover:bg-white transition flex items-center gap-3 text-right group">
                 <div className="w-9 h-9 bg-slate-100 text-slate-500 rounded-lg flex items-center justify-center font-bold text-sm group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">{t.name[0]}</div>
                 <div>

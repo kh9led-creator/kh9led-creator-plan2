@@ -24,6 +24,16 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
   const logoInputRef = useRef<HTMLInputElement>(null);
   const weeklyImageRef = useRef<HTMLInputElement>(null);
 
+  // @google/genai: إصلاح جلب البيانات ليكون غير متزامن بالكامل لتجنب الشاشة البيضاء
+  const refreshData = async () => {
+    const [weeksData, archivesData] = await Promise.all([
+      db.getWeeks(initialSchool.id),
+      db.getArchivedPlans(initialSchool.id)
+    ]);
+    setWeeks(weeksData);
+    setArchivedPlans(archivesData);
+  };
+
   useEffect(() => {
     setHeaderContent(initialSchool.headerContent || "");
     setGeneralMessages(initialSchool.generalMessages || "");
@@ -31,11 +41,10 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
     setWeeklyNotesImage(initialSchool.weeklyNotesImage || null);
     setLogoUrl(initialSchool.logoUrl || null);
     setSchool(initialSchool);
-    setWeeks(db.getWeeks(initialSchool.id));
-    setArchivedPlans(db.getArchivedPlans(initialSchool.id));
+    refreshData();
   }, [initialSchool]);
 
-  const handleSaveBranding = () => {
+  const handleSaveBranding = async () => {
     const updated: School = { 
       ...school, 
       headerContent, 
@@ -44,26 +53,27 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
       weeklyNotesImage: weeklyNotesImage || undefined, 
       logoUrl: logoUrl || undefined 
     };
-    db.saveSchool(updated);
+    await db.saveSchool(updated);
     setSchool(updated);
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
   };
 
-  const handleArchiveActiveWeek = () => {
+  const handleArchiveActiveWeek = async () => {
     const active = weeks.find(w => w.isActive);
     if (!active) {
       alert('لا يوجد أسبوع نشط لأرشفته');
       return;
     }
     if (confirm(`هل أنت متأكد من أرشفة خطط "${active.name}"؟ سيتم الاحتفاظ بنسخة دائمة في الأرشيف.`)) {
-      db.archiveWeekPlans(school.id, active);
-      setArchivedPlans(db.getArchivedPlans(school.id));
+      await db.archiveWeekPlans(school.id, active);
+      const archivesData = await db.getArchivedPlans(school.id);
+      setArchivedPlans(archivesData);
       alert('تمت الأرشفة بنجاح.');
     }
   };
 
-  const handleClearActiveWeekPlans = () => {
+  const handleClearActiveWeekPlans = async () => {
     const active = weeks.find(w => w.isActive);
     if (!active) {
       alert('لا يوجد أسبوع نشط لتفريغه');
@@ -76,12 +86,12 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
 هل تريد الاستمرار في عملية التفريغ؟`;
 
     if (confirm(warningMessage)) {
-      db.clearWeekPlans(school.id, active.id);
+      await db.clearWeekPlans(school.id, active.id);
       alert('تم تفريغ خطط الأسبوع بنجاح.');
     }
   };
 
-  const handleAddWeek = () => {
+  const handleAddWeek = async () => {
     if (!newWeek.name || !newWeek.startDate || !newWeek.endDate) {
       alert('يرجى إكمال بيانات الأسبوع');
       return;
@@ -93,20 +103,23 @@ const WeeklyPlansManagement: React.FC<{ school: School }> = ({ school: initialSc
       endDate: newWeek.endDate,
       isActive: weeks.length === 0 
     };
-    db.saveWeek(school.id, week);
-    setWeeks(db.getWeeks(school.id));
+    await db.saveWeek(school.id, week);
+    const weeksData = await db.getWeeks(school.id);
+    setWeeks(weeksData);
     setNewWeek({ name: '', startDate: '', endDate: '' });
   };
 
-  const toggleWeekActive = (id: string) => {
-    db.setActiveWeek(school.id, id);
-    setWeeks(db.getWeeks(school.id));
+  const toggleWeekActive = async (id: string) => {
+    await db.setActiveWeek(school.id, id);
+    const weeksData = await db.getWeeks(school.id);
+    setWeeks(weeksData);
   };
 
-  const deleteWeek = (id: string) => {
+  const deleteWeek = async (id: string) => {
     if (confirm('هل أنت متأكد من حذف هذا الأسبوع؟ سيتم حذف جميع الخطط المرتبطة به.')) {
-      db.deleteWeek(school.id, id);
-      setWeeks(db.getWeeks(school.id));
+      await db.deleteWeek(school.id, id);
+      const weeksData = await db.getWeeks(school.id);
+      setWeeks(weeksData);
     }
   };
 
