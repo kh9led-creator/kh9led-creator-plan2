@@ -1,12 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { School, Subject, Teacher, SchoolClass } from '../../types.ts';
-import { BookOpen, UserPlus, Trash2, Key, User, Save, ListChecks, Edit2, Calendar, Plus, Book, LayoutGrid, X, GraduationCap, RefreshCw } from 'lucide-react';
+import { 
+  BookOpen, UserPlus, Trash2, Key, User, Save, ListChecks, 
+  Edit2, Calendar, Plus, Book, LayoutGrid, X, 
+  GraduationCap, RefreshCw, Fingerprint, ShieldCheck,
+  CheckCircle2, Loader2
+} from 'lucide-react';
 import { db } from '../../constants.tsx';
 import ScheduleManagement from './ScheduleManagement.tsx';
 
 const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
-  const [activeTab, setActiveTab] = useState<'accounts' | 'subjects' | 'schedule'>('accounts');
+  const [activeTab, setActiveTab] = useState<'accounts' | 'subjects' | 'schedule' | 'security'>('accounts');
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
@@ -19,17 +24,40 @@ const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
   const [editingClass, setEditingClass] = useState<SchoolClass | null>(null);
   const [newClass, setNewClass] = useState({ grade: 'الأول الابتدائي', section: '1' });
   const [newSubjectName, setNewSubjectName] = useState('');
+  
+  const [isBioLoading, setIsBioLoading] = useState(false);
+  const [isBioEnabled, setIsBioEnabled] = useState(false);
 
-  // @google/genai guidelines: Use async functions for data fetching.
   const loadData = async () => {
     setTeachers(await db.getTeachers(school.id));
     setSubjects(await db.getSubjects(school.id));
     setClasses(await db.getClasses(school.id));
+    setIsBioEnabled(localStorage.getItem('local_biometric_key') !== null);
   };
 
   useEffect(() => {
     loadData();
   }, [school.id]);
+
+  const handleToggleBiometric = async () => {
+    if (isBioEnabled) {
+      if (confirm('هل تريد إلغاء ربط هذا الجهاز بالبصمة؟')) {
+        localStorage.removeItem('local_biometric_key');
+        setIsBioEnabled(false);
+      }
+      return;
+    }
+
+    setIsBioLoading(true);
+    const success = await db.registerBiometric(school.id, 'SCHOOL');
+    if (success) {
+      alert('تم ربط هذا الجهاز بنجاح! يمكنك الآن الدخول بالبصمة.');
+      setIsBioEnabled(true);
+    } else {
+      alert('عذراً، جهازك لا يدعم هذه الميزة أو تم رفض الطلب.');
+    }
+    setIsBioLoading(false);
+  };
 
   const addTeacher = async () => {
     if (!teacherName || !teacherUsername) return;
@@ -68,7 +96,7 @@ const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
   };
 
   const handleDeleteClass = async (id: string) => {
-    if (confirm('هل أنت متأكد من حذف هذا الفصل؟ قد يؤثر ذلك على الجداول المرتبطة.')) {
+    if (confirm('هل أنت متأكد من حذف هذا الفصل؟')) {
       await db.deleteClass(school.id, id);
       await loadData();
     }
@@ -99,23 +127,28 @@ const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
 
   return (
     <div className="space-y-10 max-w-6xl pb-20 font-['Tajawal']">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <h2 className="text-3xl font-black text-slate-900">إعدادات المدرسة</h2>
           <p className="text-slate-500 mt-1">المعلمون، الفصول، المواد، والجدول.</p>
         </div>
-        <div className="flex gap-2 p-1 bg-white border rounded-2xl shadow-sm">
-          {['accounts', 'subjects', 'schedule'].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab as any)} className={`px-6 py-2 rounded-xl font-bold transition ${activeTab === tab ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
-              {tab === 'accounts' ? 'المعلمون' : tab === 'subjects' ? 'المواد' : 'الجدول'}
+        <div className="flex gap-2 p-1 bg-white border rounded-2xl shadow-sm overflow-x-auto no-scrollbar max-w-full">
+          {[
+            { id: 'accounts', label: 'المعلمون' },
+            { id: 'subjects', label: 'المواد' },
+            { id: 'schedule', label: 'الجدول' },
+            { id: 'security', label: 'الأمان' }
+          ].map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-6 py-2 rounded-xl font-bold transition whitespace-nowrap ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}>
+              {tab.label}
             </button>
           ))}
         </div>
       </div>
 
       {activeTab === 'accounts' && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center bg-white p-6 rounded-[2rem] border shadow-sm">
+        <div className="space-y-6 animate-in fade-in">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-[2rem] border shadow-sm gap-4">
              <div className="flex items-center gap-4">
                 <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-blue-100"><User size={24} /></div>
                 <div>
@@ -123,17 +156,17 @@ const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
                    <p className="text-xs text-slate-400 font-bold">لديك {teachers.length} معلم و {classes.length} فصل</p>
                 </div>
              </div>
-             <div className="flex gap-2">
-                <button onClick={syncClasses} className="bg-emerald-50 text-emerald-600 px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-600 hover:text-white transition shadow-sm border border-emerald-100">
-                  <RefreshCw size={20} /> مزامنة من الطلاب
+             <div className="flex gap-2 w-full md:w-auto">
+                <button onClick={syncClasses} className="flex-1 md:flex-none bg-emerald-50 text-emerald-600 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-600 hover:text-white transition shadow-sm border border-emerald-100">
+                  <RefreshCw size={20} /> مزامنة
                 </button>
-                <button onClick={() => setShowClassesModal(true)} className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-black transition shadow-lg">
-                  <LayoutGrid size={20} className="text-blue-400" /> إدارة الفصول
+                <button onClick={() => setShowClassesModal(true)} className="flex-1 md:flex-none bg-slate-900 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg">
+                  <LayoutGrid size={20} className="text-blue-400" /> الفصول
                 </button>
              </div>
           </div>
 
-          <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm space-y-8 animate-in fade-in">
+          <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <input placeholder="اسم المعلم" className="p-4 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-blue-100 transition" value={teacherName} onChange={e => setTeacherName(e.target.value)} />
               <input placeholder="اسم المستخدم" className="p-4 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-blue-100 transition" value={teacherUsername} onChange={e => setTeacherUsername(e.target.value)} />
@@ -181,6 +214,38 @@ const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
 
       {activeTab === 'schedule' && <ScheduleManagement school={school} />}
 
+      {activeTab === 'security' && (
+        <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4">
+           <div className="bg-white p-10 md:p-14 rounded-[3.5rem] border border-slate-100 shadow-xl flex flex-col items-center text-center">
+              <div className={`w-24 h-24 rounded-[2rem] flex items-center justify-center mb-8 shadow-2xl transition-all duration-700 ${isBioEnabled ? 'bg-emerald-500 text-white rotate-[360deg]' : 'bg-indigo-600 text-white'}`}>
+                 {isBioEnabled ? <ShieldCheck size={48} /> : <Fingerprint size={48} />}
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-4">الدخول السريع بالبصمة</h3>
+              <p className="text-slate-500 font-bold text-base leading-relaxed mb-10 px-6">
+                بإمكانك ربط هذا المتصفح بحسابك لتسجيل الدخول مستقبلاً باستخدام البصمة أو التعرف على الوجه دون الحاجة لكتابة كلمة المرور.
+              </p>
+              
+              <div className="w-full space-y-4">
+                <button 
+                  onClick={handleToggleBiometric} 
+                  disabled={isBioLoading}
+                  className={`w-full py-5 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-4 active:scale-95 ${isBioEnabled ? 'bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-600 hover:text-white' : 'bg-indigo-600 text-white shadow-xl shadow-indigo-100 hover:bg-indigo-700'}`}
+                >
+                  {isBioLoading ? <Loader2 className="animate-spin" /> : (isBioEnabled ? <Trash2 size={20} /> : <CheckCircle2 size={20} />)}
+                  {isBioEnabled ? 'إلغاء ربط هذا الجهاز' : 'تفعيل البصمة لهذا الجهاز'}
+                </button>
+                
+                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 text-right">
+                   <h4 className="text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">معلومات الأمان:</h4>
+                   <p className="text-[10px] text-slate-500 font-bold leading-relaxed">
+                     نحن لا نخزن بياناتك البيومترية أبداً. نستخدم تقنية WebAuthn لربط مفتاح تشفير آمن بين متصفحك ونظامنا، ويتم التحقق من هويتك من خلال نظام الأمان الخاص بجهازك.
+                   </p>
+                </div>
+              </div>
+           </div>
+        </div>
+      )}
+
       {showClassesModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-[3.5rem] w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95">
@@ -189,10 +254,10 @@ const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
                  <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><LayoutGrid size={24} /></div>
                  <div>
                     <h3 className="text-2xl font-black text-slate-900">الفصول الدراسية</h3>
-                    <p className="text-sm text-slate-500 font-bold">تم استخراج {classes.length} فصل تلقائياً.</p>
+                    <p className="text-sm text-slate-500 font-bold">إجمالي الفصول: {classes.length}</p>
                  </div>
               </div>
-              <button onClick={() => {setShowClassesModal(false); setEditingClass(null);}} className="p-3 bg-white text-slate-400 rounded-2xl hover:text-rose-500 shadow-sm"><X size={24} /></button>
+              <button onClick={() => {setShowClassesModal(false); setEditingClass(null);}} className="p-3 bg-white text-slate-400 rounded-2xl hover:text-rose-500 shadow-sm transition-colors"><X size={24} /></button>
             </div>
             <div className="p-8">
               <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100 mb-8 space-y-4">
@@ -205,7 +270,7 @@ const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
                  </div>
                  <button onClick={handleSaveClass} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-100 hover:bg-blue-700 transition">{editingClass ? 'تحديث الفصل' : 'إضافة الفصل للقائمة'}</button>
               </div>
-              <div className="max-h-[300px] overflow-y-auto space-y-3 px-2">
+              <div className="max-h-[300px] overflow-y-auto space-y-3 px-2 custom-scrollbar">
                 {classes.map(c => (
                   <div key={c.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border hover:border-blue-100 transition group">
                     <div className="flex items-center gap-4">

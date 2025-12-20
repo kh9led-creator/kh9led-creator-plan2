@@ -20,7 +20,11 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
-    setSchools(db.getSchools());
+    const fetchSchools = async () => {
+      const data = await db.getSchools();
+      setSchools(data);
+    };
+    fetchSchools();
   }, []);
 
   const handleUpdateProfile = (e: React.FormEvent) => {
@@ -32,12 +36,10 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
-  const deleteSchool = (id: string) => {
+  const deleteSchool = async (id: string) => {
     if (confirm('هل أنت متأكد من حذف هذه المدرسة نهائياً؟ سيتم حذف كافة البيانات المرتبطة بها.')) {
-      const all = db.getSchools();
-      const filtered = all.filter(s => s.id !== id);
-      localStorage.setItem('madrasati_schools', JSON.stringify(filtered));
-      setSchools(db.getSchools());
+      await db.deleteSchool(id);
+      setSchools(await db.getSchools());
     }
   };
 

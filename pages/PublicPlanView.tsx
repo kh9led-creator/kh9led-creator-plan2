@@ -28,19 +28,24 @@ const PublicPlanView: React.FC = () => {
   const [scale, setScale] = useState(1);
 
   useEffect(() => {
-    if (schoolSlug) {
-      const s = db.getSchoolBySlug(schoolSlug);
-      if (s) {
-        setSchool(s);
-        const week = db.getActiveWeek(s.id);
-        setActiveWeek(week);
-        setSubjects(db.getSubjects(s.id));
-        if (week) setPlans(db.getPlans(s.id, week.id));
-        const students = db.getStudents(s.id);
-        const classes = Array.from(new Set(students.map(std => `${std.grade} - فصل ${std.section}`)));
-        setAvailableClasses(classes);
+    const loadSchoolData = async () => {
+      if (schoolSlug) {
+        const s = await db.getSchoolBySlug(schoolSlug);
+        if (s) {
+          setSchool(s);
+          const week = await db.getActiveWeek(s.id);
+          setActiveWeek(week);
+          setSubjects(await db.getSubjects(s.id));
+          if (week) {
+            setPlans(await db.getPlans(s.id, week.id));
+          }
+          const students = await db.getStudents(s.id);
+          const classes = Array.from(new Set(students.map(std => `${std.grade} - فصل ${std.section}`)));
+          setAvailableClasses(classes);
+        }
       }
-    }
+    };
+    loadSchoolData();
 
     const handleResize = () => {
       const width = window.innerWidth;
@@ -55,7 +60,12 @@ const PublicPlanView: React.FC = () => {
   }, [schoolSlug]);
 
   useEffect(() => {
-    if (school && selectedClass) setSchedule(db.getSchedule(school.id, selectedClass));
+    const loadSchedule = async () => {
+      if (school && selectedClass) {
+        setSchedule(await db.getSchedule(school.id, selectedClass));
+      }
+    };
+    loadSchedule();
   }, [school, selectedClass]);
 
   const getClassIcon = (classTitle: string) => {

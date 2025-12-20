@@ -16,22 +16,31 @@ const AttendanceManagement: React.FC<{ school: School }> = ({ school }) => {
   const [printingReport, setPrintingReport] = useState<any>(null);
 
   useEffect(() => {
-    setReports(db.getAttendance(school.id));
-    setArchivedReports(db.getArchivedAttendance(school.id));
+    const fetchAttendanceData = async () => {
+      setReports(await db.getAttendance(school.id));
+      setArchivedReports(await db.getArchivedAttendance(school.id));
+    };
+    fetchAttendanceData();
   }, [school.id]);
 
   const handleArchiveReport = (id: string) => {
     if (confirm('هل تريد نقل هذا التقرير إلى الأرشيف التاريخي؟')) {
       db.archiveAttendance(school.id, id);
-      setReports(db.getAttendance(school.id));
-      setArchivedReports(db.getArchivedAttendance(school.id));
+      const updateData = async () => {
+        setReports(await db.getAttendance(school.id));
+        setArchivedReports(await db.getArchivedAttendance(school.id));
+      };
+      updateData();
     }
   };
 
   const handleRestoreReport = (id: string) => {
-    db.restoreAttendance(school.id, id);
-    setReports(db.getAttendance(school.id));
-    setArchivedReports(db.getArchivedAttendance(school.id));
+    const restoreData = async () => {
+      await db.restoreAttendance(school.id, id);
+      setReports(await db.getAttendance(school.id));
+      setArchivedReports(await db.getArchivedAttendance(school.id));
+    };
+    restoreData();
   };
 
   const handlePrint = (report: any) => {

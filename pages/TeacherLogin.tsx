@@ -1,9 +1,9 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../constants';
 import { UserRole } from '../types';
-import { ArrowRight, AlertCircle, Loader2, User, Lock } from 'lucide-react';
+import { ArrowRight, AlertCircle, Loader2, User, Lock, Fingerprint } from 'lucide-react';
 
 interface Props {
   onLogin: (role: UserRole, school: any, user: any) => void;
@@ -16,11 +16,19 @@ const TeacherLogin: React.FC<Props> = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+  const [hasBiometric, setHasBiometric] = useState(false);
 
   const school = useMemo(() => {
-    const schools = db.getSchools();
-    return schools.find(s => s.slug === schoolSlug);
+    const schoolsRaw = localStorage.getItem('madrasati_schools_secure');
+    if (!schoolsRaw) return null;
+    const schools = JSON.parse(decodeURIComponent(atob(schoolsRaw)));
+    return (schools as any[]).find(s => s.slug === schoolSlug);
   }, [schoolSlug]);
+
+  useEffect(() => {
+    setHasBiometric(localStorage.getItem('local_biometric_key') !== null);
+  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,8 +42,9 @@ const TeacherLogin: React.FC<Props> = ({ onLogin }) => {
         return;
       }
 
-      const teachers = db.getTeachers(school.id);
-      const teacher = teachers.find(t => t.username === username);
+      const teachersRaw = localStorage.getItem('madrasati_teachers_secure');
+      const teachers = teachersRaw ? JSON.parse(decodeURIComponent(atob(teachersRaw))) : [];
+      const teacher = (teachers as any[]).find(t => t.username === username && t.schoolId === school.id);
 
       if (teacher) {
         onLogin('TEACHER', school, teacher);
@@ -45,6 +54,24 @@ const TeacherLogin: React.FC<Props> = ({ onLogin }) => {
         setLoading(false);
       }
     }, 800);
+  };
+
+  const handleBiometricLogin = async () => {
+    setBiometricLoading(true);
+    setError('');
+    try {
+      const result = await db.authenticateBiometric();
+      if (result && result.type === 'TEACHER' && result.data.schoolId === school?.id) {
+        onLogin('TEACHER', school, result.data);
+        navigate('/teacher');
+      } else {
+        setError('فشل التعرف على البصمة أو البصمة غير مرتبطة بهذا الحساب');
+      }
+    } catch (err) {
+      setError('حدث خطأ أثناء مسح البصمة');
+    } finally {
+      setBiometricLoading(false);
+    }
   };
 
   if (!school) return <div className="min-h-screen flex items-center justify-center font-black text-slate-400 animate-pulse">جاري التحقق من الرابط...</div>;
@@ -100,13 +127,27 @@ const TeacherLogin: React.FC<Props> = ({ onLogin }) => {
               />
             </div>
 
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-lg hover:bg-black shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3"
-            >
-              {loading ? <Loader2 className="animate-spin" size={24} /> : 'دخول للمنصة'}
-            </button>
+            <div className="flex gap-3">
+              <button 
+                type="submit" 
+                disabled={loading || biometricLoading}
+                className="flex-1 py-5 bg-slate-900 text-white rounded-2xl font-black text-lg hover:bg-black shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3"
+              >
+                {loading ? <Loader2 className="animate-spin" size={24} /> : 'دخول المعلم'}
+              </button>
+              
+              {hasBiometric && (
+                <button 
+                  type="button" 
+                  onClick={handleBiometricLogin} 
+                  disabled={loading || biometricLoading}
+                  className={`p-5 rounded-2xl font-black transition-all flex items-center justify-center relative overflow-hidden ${biometricLoading ? 'bg-indigo-50 text-indigo-600' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+                  title="الدخول بالبصمة"
+                >
+                   {biometricLoading ? <Loader2 className="animate-spin" size={24} /> : <Fingerprint size={24} />}
+                </button>
+              )}
+            </div>
           </form>
         </div>
 

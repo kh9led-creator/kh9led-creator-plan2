@@ -33,25 +33,34 @@ const BulkStudentPlans: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (schoolSlug) {
-      const s = db.getSchoolBySlug(schoolSlug);
-      if (s) {
-        setSchool(s);
-        const week = db.getActiveWeek(s.id);
-        setActiveWeek(week);
-        if (week) setAllPlans(db.getPlans(s.id, week.id));
-        setSubjects(db.getSubjects(s.id));
-        let students = db.getStudents(s.id);
-        if (filterClass) students = students.filter(std => `${std.grade} - فصل ${std.section}` === filterClass);
-        setStudentsToPrint(students);
-        
-        const classes = Array.from(new Set(students.map(std => `${std.grade} - فصل ${std.section}`)));
-        const schedules: any = {};
-        classes.forEach(cls => schedules[cls] = db.getSchedule(s.id, cls));
-        setAllSchedules(schedules);
+    const loadBulkData = async () => {
+      if (schoolSlug) {
+        const s = await db.getSchoolBySlug(schoolSlug);
+        if (s) {
+          setSchool(s);
+          const week = await db.getActiveWeek(s.id);
+          setActiveWeek(week);
+          if (week) {
+            setAllPlans(await db.getPlans(s.id, week.id));
+          }
+          setSubjects(await db.getSubjects(s.id));
+          let students = await db.getStudents(s.id);
+          if (filterClass) {
+            students = students.filter(std => `${std.grade} - فصل ${std.section}` === filterClass);
+          }
+          setStudentsToPrint(students);
+          
+          const classes = Array.from(new Set(students.map(std => `${std.grade} - فصل ${std.section}`)));
+          const schedules: any = {};
+          for (const cls of classes) {
+            schedules[cls] = await db.getSchedule(s.id, cls);
+          }
+          setAllSchedules(schedules);
+        }
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    }
+    };
+    loadBulkData();
   }, [schoolSlug, filterClass]);
 
   // دالة ذكية لاختيار أيقونة ثابتة للفصل بناءً على اسمه

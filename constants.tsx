@@ -1,6 +1,4 @@
 
-// @google/genai guidelines: import {GoogleGenAI} from "@google/genai";
-
 import { School, Teacher, Student, Subject, SchoolClass, AcademicWeek } from './types.ts';
 
 const STORAGE_KEYS = {
@@ -12,19 +10,14 @@ const STORAGE_KEYS = {
   PLANS: 'madrasati_plans_secure',
   WEEKS: 'madrasati_weeks_secure',
   SUBJECTS: 'madrasati_subjects_secure',
-  SYSTEM: 'madrasati_sys_secure'
+  SYSTEM: 'madrasati_sys_secure',
+  BIOMETRICS: 'madrasati_biometric_keys' // مفاتيح البصمة
 };
 
-/** 
- * Security Provider: طبقة تشفير لمحاكاة أمن قواعد البيانات 
- * في الإنتاج الحقيقي، يتم استبدال هذه الوظائف بطلبات HTTPS إلى Backend 
- */
 const Security = {
-  // تشفير بسيط لمنع القراءة المباشرة من LocalStorage
   encrypt: (data: any) => btoa(encodeURIComponent(JSON.stringify(data))),
   decrypt: (cipher: string) => JSON.parse(decodeURIComponent(atob(cipher))),
   
-  // محاكاة Hashing لكلمات المرور
   hashPassword: async (pwd: string) => {
     const encoder = new TextEncoder();
     const data = encoder.encode(pwd + "MADRASATI_SALT");
@@ -51,7 +44,6 @@ export const DAYS = [
 
 export const PERIODS = [1, 2, 3, 4, 5, 6, 7];
 
-// محاكاة تأخير الشبكة (Latency) لجعل التجربة واقعية
 const delay = (ms: number = 400) => new Promise(res => setTimeout(res, ms));
 
 export const db = {
@@ -69,12 +61,18 @@ export const db = {
     localStorage.setItem(STORAGE_KEYS.SCHOOLS, Security.encrypt(schools));
   },
 
+  deleteSchool: async (id: string) => {
+    const schools = await db.getSchools();
+    const filtered = schools.filter(s => s.id !== id);
+    localStorage.setItem(STORAGE_KEYS.SCHOOLS, Security.encrypt(filtered));
+  },
+
   getSchoolBySlug: async (slug: string) => {
     const schools = await db.getSchools();
     return schools.find(s => s.slug === slug);
   },
 
-  // --- الطلاب (تحسين للأمن والسرعة) ---
+  // --- الطلاب ---
   getStudents: async (schoolId: string): Promise<Student[]> => {
     await delay(300);
     const data = localStorage.getItem(STORAGE_KEYS.STUDENTS);
@@ -113,14 +111,64 @@ export const db = {
     localStorage.setItem(storageKey, Security.encrypt(current));
   },
 
-  // --- التحقق من الهوية (Authentication) ---
+  // --- التحقق من الهوية ---
   authenticateSchool: async (username: string, passwordPlain: string) => {
     const schools = await db.getSchools();
     const hashed = await Security.hashPassword(passwordPlain);
-    
     const school = schools.find(s => s.adminUsername === username || s.slug === username);
     if (school && (school.adminPassword === hashed || passwordPlain === 'admin')) {
       return { ...school, token: 'JWT_' + btoa(school.id + Date.now()) };
+    }
+    return null;
+  },
+
+  // --- التوثيق بالبصمة (Biometrics) ---
+  isBiometricsSupported: () => {
+    return !!(window.PublicKeyCredential && window.navigator.credentials);
+  },
+
+  registerBiometric: async (userId: string, type: 'SCHOOL' | 'TEACHER') => {
+    if (!db.isBiometricsSupported()) return false;
+    
+    try {
+      // محاكاة طلب تسجيل بصمة من المتصفح
+      // في الواقع سنستخدم navigator.credentials.create
+      const credentialId = 'biom_' + btoa(userId + Math.random());
+      const biometricsRaw = localStorage.getItem(STORAGE_KEYS.BIOMETRICS) || '{}';
+      const biometrics = JSON.parse(biometricsRaw);
+      
+      biometrics[credentialId] = { userId, type, date: new Date().toISOString() };
+      localStorage.setItem(STORAGE_KEYS.BIOMETRICS, JSON.stringify(biometrics));
+      
+      // حفظ المفتاح في الجهاز الحالي للمستخدم
+      localStorage.setItem('local_biometric_key', credentialId);
+      return true;
+    } catch (e) { return false; }
+  },
+
+  authenticateBiometric: async () => {
+    if (!db.isBiometricsSupported()) return null;
+    
+    const localKey = localStorage.getItem('local_biometric_key');
+    if (!localKey) return null;
+
+    await delay(1000); // محاكاة وقت مسح البصمة
+    
+    const biometricsRaw = localStorage.getItem(STORAGE_KEYS.BIOMETRICS) || '{}';
+    const biometrics = JSON.parse(biometricsRaw);
+    const record = biometrics[localKey];
+    
+    if (record) {
+      if (record.type === 'SCHOOL') {
+        const schools = await db.getSchools();
+        const school = schools.find(s => s.id === record.userId);
+        return school ? { type: 'SCHOOL_ADMIN', data: school } : null;
+      } else {
+        const data = localStorage.getItem(STORAGE_KEYS.TEACHERS);
+        const all = data ? Security.decrypt(data) : [];
+        const teacher = all.find((t: any) => t.id === record.userId);
+        return teacher ? { type: 'TEACHER', data: teacher } : null;
+      }
     }
     return null;
   },
@@ -138,6 +186,12 @@ export const db = {
     localStorage.setItem(`${STORAGE_KEYS.WEEKS}_${schoolId}`, Security.encrypt(weeks));
   },
 
+  deleteWeek: async (schoolId: string, id: string) => {
+    const weeks = await db.getWeeks(schoolId);
+    const filtered = weeks.filter(w => w.id !== id);
+    localStorage.setItem(`${STORAGE_KEYS.WEEKS}_${schoolId}`, Security.encrypt(filtered));
+  },
+
   setActiveWeek: async (schoolId: string, id: string) => {
     const weeks = await db.getWeeks(schoolId);
     const updated = weeks.map(w => ({ ...w, isActive: w.id === id }));
@@ -147,12 +201,6 @@ export const db = {
   getActiveWeek: async (schoolId: string) => {
     const weeks = await db.getWeeks(schoolId);
     return weeks.find(w => w.isActive);
-  },
-
-  deleteWeek: async (schoolId: string, id: string) => {
-    const weeks = await db.getWeeks(schoolId);
-    const filtered = weeks.filter(w => w.id !== id);
-    localStorage.setItem(`${STORAGE_KEYS.WEEKS}_${schoolId}`, Security.encrypt(filtered));
   },
 
   // --- المعلمون ---
@@ -203,7 +251,6 @@ export const db = {
     const students = await db.getStudents(schoolId);
     const uniqueClasses = Array.from(new Set(students.map(s => `${s.grade}|${s.section}`)));
     const existingClasses = await db.getClasses(schoolId);
-    
     for (const uc of uniqueClasses) {
       const [grade, section] = uc.split('|');
       if (!existingClasses.find(c => c.grade === grade && c.section === section)) {
@@ -228,7 +275,7 @@ export const db = {
   deleteSubject: async (schoolId: string, id: string) => {
     const subjects = await db.getSubjects(schoolId);
     const filtered = subjects.filter(s => s.id !== id);
-    localStorage.setItem(`${STORAGE_KEYS.SUBJECTS}_${schoolId}`, Security.encrypt(subjects));
+    localStorage.setItem(`${STORAGE_KEYS.SUBJECTS}_${schoolId}`, Security.encrypt(filtered));
   },
 
   // --- الجداول ---
@@ -247,11 +294,6 @@ export const db = {
     return data ? Security.decrypt(data) : [];
   },
 
-  getArchivedAttendance: async (schoolId: string) => {
-    const data = localStorage.getItem(`attendance_archived_${schoolId}`);
-    return data ? Security.decrypt(data) : [];
-  },
-
   saveAttendance: async (schoolId: string, report: any) => {
     const current = await db.getAttendance(schoolId);
     current.push(report);
@@ -263,11 +305,17 @@ export const db = {
     const report = current.find((r: any) => r.id === id);
     const filtered = current.filter((r: any) => r.id !== id);
     if (report) {
-      const archived = await db.getArchivedAttendance(schoolId);
+      const archivedData = localStorage.getItem(`attendance_archived_${schoolId}`);
+      const archived = archivedData ? Security.decrypt(archivedData) : [];
       archived.push(report);
       localStorage.setItem(`attendance_archived_${schoolId}`, Security.encrypt(archived));
     }
     localStorage.setItem(`attendance_${schoolId}`, Security.encrypt(filtered));
+  },
+
+  getArchivedAttendance: async (schoolId: string) => {
+    const data = localStorage.getItem(`attendance_archived_${schoolId}`);
+    return data ? Security.decrypt(data) : [];
   },
 
   restoreAttendance: async (schoolId: string, id: string) => {

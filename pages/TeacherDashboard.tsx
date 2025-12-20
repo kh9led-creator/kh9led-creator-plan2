@@ -39,7 +39,7 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
   const [absentStudents, setAbsentStudents] = useState<string[]>([]);
   const [attendanceStep, setAttendanceStep] = useState<'class-select' | 'student-list'>('class-select');
 
-  // @google/genai guidelines: Fetch data asynchronously within useEffect.
+  // Handle initial data loading asynchronously as per @google/genai guidelines.
   useEffect(() => {
     const loadInitialData = async () => {
       const currentActiveWeek = await db.getActiveWeek(school.id);
@@ -347,4 +347,42 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
                   <div className="bg-white rounded-[4rem] border border-slate-100 shadow-xl overflow-hidden animate-in zoom-in-95 duration-500">
                      <div className="p-8 md:p-12 border-b bg-slate-50/50 flex flex-col md:flex-row justify-between items-center gap-8">
                         <div className="flex items-center gap-5">
-                          <
+                           <div className="w-16 h-16 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg"><Users size={32} /></div>
+                           <div>
+                              <h3 className="text-2xl font-black text-slate-800">{selectedClassForAttendance}</h3>
+                              <p className="text-sm font-bold text-slate-400">حدد الطلاب الغائبين من القائمة أدناه</p>
+                           </div>
+                        </div>
+                        <div className="flex gap-4">
+                           <button onClick={() => setAttendanceStep('class-select')} className="px-8 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black transition-all hover:bg-slate-200">إلغاء</button>
+                           <button onClick={submitAttendance} className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all">إرسال التقرير للإدارة</button>
+                        </div>
+                     </div>
+                     <div className="p-8 md:p-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {classStudents.filter(s => `${s.grade} - فصل ${s.section}` === selectedClassForAttendance).map(student => {
+                           const isAbsent = absentStudents.includes(student.name);
+                           return (
+                             <button 
+                               key={student.id} 
+                               onClick={() => toggleStudentAttendance(student.name)}
+                               className={`p-6 rounded-3xl border-2 flex items-center justify-between transition-all ${isAbsent ? 'bg-rose-50 border-rose-500 shadow-inner' : 'bg-white border-slate-100 hover:border-indigo-100'}`}
+                             >
+                               <span className={`font-black ${isAbsent ? 'text-rose-700' : 'text-slate-700'}`}>{student.name}</span>
+                               {isAbsent ? <UserX size={20} className="text-rose-600" /> : <UserCheck size={20} className="text-slate-200" />}
+                             </button>
+                           );
+                        })}
+                     </div>
+                  </div>
+               )}
+            </div>
+          )}
+
+          {activeTab === 'messages' && <CommunicationHub schoolId={school.id} />}
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default TeacherDashboard;
