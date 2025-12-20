@@ -32,43 +32,52 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
   const [planData, setPlanData] = useState<any>({});
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [activeWeek, setActiveWeek] = useState<AcademicWeek | undefined>(undefined);
+  const [teacherSessions, setTeacherSessions] = useState<any[]>([]);
+  const [classStudents, setClassStudents] = useState<Student[]>([]);
   
   const [selectedClassForAttendance, setSelectedClassForAttendance] = useState<string | null>(null);
   const [absentStudents, setAbsentStudents] = useState<string[]>([]);
   const [attendanceStep, setAttendanceStep] = useState<'class-select' | 'student-list'>('class-select');
 
+  // @google/genai guidelines: Fetch data asynchronously within useEffect.
   useEffect(() => {
-    const currentActiveWeek = db.getActiveWeek(school.id);
-    setActiveWeek(currentActiveWeek);
-    setSubjects(db.getSubjects(school.id));
-    
-    if (currentActiveWeek) {
-      setPlanData(db.getPlans(school.id, currentActiveWeek.id));
-    }
-  }, [school.id]);
-
-  // استخراج حصص المعلم فقط من جداول الفصول
-  const teacherSessions = useMemo(() => {
-    const sessions: any[] = [];
-    const classes = db.getClasses(school.id);
-    
-    classes.forEach(cls => {
-      const classTitle = `${cls.grade} - فصل ${cls.section}`;
-      const schedule = db.getSchedule(school.id, classTitle);
+    const loadInitialData = async () => {
+      const currentActiveWeek = await db.getActiveWeek(school.id);
+      setActiveWeek(currentActiveWeek);
+      const allSubjects = await db.getSubjects(school.id);
+      setSubjects(allSubjects);
       
-      Object.entries(schedule).forEach(([key, val]: [string, any]) => {
-        if (val.teacherId === teacher.id) {
-          const [dayId, period] = key.split('_');
-          sessions.push({ 
-            classTitle, 
-            dayId, 
-            period: parseInt(period), 
-            subjectId: val.subjectId 
-          });
-        }
-      });
-    });
-    return sessions;
+      if (currentActiveWeek) {
+        const plans = await db.getPlans(school.id, currentActiveWeek.id);
+        setPlanData(plans);
+      }
+
+      // استخراج حصص المعلم فقط من جداول الفصول
+      const sessions: any[] = [];
+      const classes = await db.getClasses(school.id);
+      
+      for (const cls of classes) {
+        const classTitle = `${cls.grade} - فصل ${cls.section}`;
+        const schedule = await db.getSchedule(school.id, classTitle);
+        
+        Object.entries(schedule).forEach(([key, val]: [string, any]) => {
+          if (val.teacherId === teacher.id) {
+            const [dayId, period] = key.split('_');
+            sessions.push({ 
+              classTitle, 
+              dayId, 
+              period: parseInt(period), 
+              subjectId: val.subjectId 
+            });
+          }
+        });
+      }
+      setTeacherSessions(sessions);
+
+      const allStudents = await db.getStudents(school.id);
+      setClassStudents(allStudents);
+    };
+    loadInitialData();
   }, [school.id, teacher.id]);
 
   const handlePlanChange = (classId: string, dayId: string, period: number, field: string, value: string) => {
@@ -86,8 +95,8 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
     setPlanData(newPlanData);
     
     // حفظ في قاعدة البيانات مع تأخير بسيط لمحاكاة الحفظ السحابي
-    setTimeout(() => {
-      db.savePlan(school.id, activeWeek.id, planKey, updatedEntry);
+    setTimeout(async () => {
+      await db.savePlan(school.id, activeWeek.id, planKey, updatedEntry);
       setSavingStatus('saved');
       setTimeout(() => setSavingStatus('idle'), 2000);
     }, 500);
@@ -107,7 +116,7 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
     );
   };
 
-  const submitAttendance = () => {
+  const submitAttendance = async () => {
     if (!activeWeek) return;
     
     const report = {
@@ -122,7 +131,7 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
       weekName: activeWeek.name
     };
     
-    db.saveAttendance(school.id, report);
+    await db.saveAttendance(school.id, report);
     alert('✅ تم رصد الغياب وإرساله بنجاح للإدارة.');
     setAttendanceStep('class-select');
     setSelectedClassForAttendance(null);
@@ -338,51 +347,4 @@ const TeacherDashboard: React.FC<Props> = ({ teacher, school, onLogout }) => {
                   <div className="bg-white rounded-[4rem] border border-slate-100 shadow-xl overflow-hidden animate-in zoom-in-95 duration-500">
                      <div className="p-8 md:p-12 border-b bg-slate-50/50 flex flex-col md:flex-row justify-between items-center gap-8">
                         <div className="flex items-center gap-5">
-                          <button onClick={() => setAttendanceStep('class-select')} className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 shadow-sm hover:text-indigo-600 transition-all"><X size={24} /></button>
-                          <div>
-                            <h3 className="text-2xl md:text-3xl font-black text-slate-900">{selectedClassForAttendance}</h3>
-                            <p className="text-xs text-slate-400 font-bold mt-1 tracking-widest uppercase">قائمة طلاب الفصل</p>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap justify-center gap-4 w-full md:w-auto">
-                          <div className="bg-rose-50 text-rose-600 px-8 py-3 rounded-2xl font-black text-sm border border-rose-100 shadow-sm">إجمالي الغائبين: {absentStudents.length}</div>
-                          <button onClick={submitAttendance} className="flex-1 md:flex-none bg-slate-900 text-white px-10 py-3.5 rounded-2xl font-black text-base hover:bg-black shadow-xl active:scale-95 transition-all">إرسال التقرير للإدارة</button>
-                        </div>
-                     </div>
-                     <div className="p-8 md:p-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {db.getStudents(school.id).filter(s => `${s.grade} - فصل ${s.section}` === (selectedClassForAttendance || '')).map((student: Student) => {
-                          const isAbsent = absentStudents.includes(student.name);
-                          return (
-                            <button 
-                              key={student.id} 
-                              onClick={() => toggleStudentAttendance(student.name)} 
-                              className={`flex items-center justify-between p-5 rounded-2xl font-black transition-all border-2 ${isAbsent ? 'bg-rose-50 border-rose-400 text-rose-700 shadow-lg shadow-rose-50' : 'bg-white border-slate-50 hover:border-indigo-100'}`}
-                            >
-                               <div className="flex items-center gap-4">
-                                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black transition-colors ${isAbsent ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                                    {isAbsent ? <UserX size={18} /> : <UserCheck size={18} />}
-                                  </div>
-                                  <span className="text-sm md:text-base">{student.name}</span>
-                               </div>
-                               {isAbsent && <CheckCircle2 size={20} className="text-rose-600 animate-in zoom-in" />}
-                            </button>
-                          );
-                        })}
-                     </div>
-                  </div>
-               )}
-            </div>
-          )}
-
-          {activeTab === 'messages' && (
-            <div className="animate-in fade-in slide-in-from-left-4 duration-500">
-               <CommunicationHub schoolId={school.id} />
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
-  );
-};
-
-export default TeacherDashboard;
+                          <

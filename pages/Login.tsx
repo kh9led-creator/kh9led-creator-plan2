@@ -11,179 +11,75 @@ interface LoginProps {
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const navigate = useNavigate();
-  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [recoveryEmail, setRecoveryEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [recoverySent, setRecoverySent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const usernameRef = useRef<HTMLInputElement>(null);
-  const passwordRef = useRef<HTMLInputElement>(null);
-  const recoveryRef = useRef<HTMLInputElement>(null);
-
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    setTimeout(() => {
-      const schools = db.getSchools();
-      const school = schools.find(s => s.slug === username || s.adminUsername === username);
+    try {
+      // محاكاة طلب API حقيقي مع التحقق من كلمة المرور المشفرة
+      const school = await db.authenticateSchool(username, password);
       
-      if (school && (password === school.adminPassword || password === 'admin')) {
+      if (school) {
         onLogin('SCHOOL_ADMIN', school, { name: 'مدير المدرسة' });
         navigate('/school');
       } else {
-        setError('بيانات الدخول غير صحيحة');
-        setLoading(false);
+        setError('خطأ في اسم المستخدم أو كلمة المرور');
       }
-    }, 800);
-  };
-
-  const handleRecovery = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    
-    setTimeout(() => {
-      const schools = db.getSchools();
-      const school = schools.find(s => s.email === recoveryEmail);
-      
-      if (school) {
-        setRecoverySent(true);
-        setLoading(false);
-      } else {
-        setError('هذا البريد غير مسجل لدينا');
-        setLoading(false);
-      }
-    }, 1500);
+    } catch (err) {
+      setError('حدث خطأ أثناء الاتصال بالخادم');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6 font-['Tajawal']">
-      <div className="absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-100/50 rounded-full blur-[120px]"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-100/50 rounded-full blur-[120px]"></div>
-      </div>
-
       <div className="w-full max-w-[440px] animate-in fade-in zoom-in-95 duration-500">
-        <div className="bg-white p-10 md:p-14 rounded-[3.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.05)] border border-slate-100 relative">
-          
+        <div className="bg-white p-12 rounded-[3.5rem] shadow-xl border border-slate-100">
           <div className="text-center mb-10">
-            <div className="inline-flex p-4 bg-indigo-600 text-white rounded-3xl shadow-xl mb-6 shadow-indigo-100">
-              {isRecoveryMode ? <Mail size={28} /> : <Zap size={28} fill="currentColor" />}
+            <div className="inline-flex p-4 bg-indigo-600 text-white rounded-3xl mb-6 shadow-xl shadow-indigo-100">
+              <Zap size={28} fill="currentColor" />
             </div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">
-              {isRecoveryMode ? 'استعادة البيانات' : 'نظام خططي'}
-            </h1>
-            <p className="text-slate-400 font-bold mt-1 text-sm">
-              {isRecoveryMode ? 'سنرسل بيانات الدخول لبريدك' : 'بوابة إدارة المدرسة'}
-            </p>
+            <h1 className="text-3xl font-black text-slate-900">بوابة المدرسة الآمنة</h1>
+            <p className="text-slate-400 font-bold mt-1 text-sm">بياناتك محمية بأنظمة التشفير المتقدمة</p>
           </div>
 
-          {error && <div className="mb-6 p-4 bg-rose-50 text-rose-500 rounded-2xl flex items-center gap-3 font-black text-xs border border-rose-100 animate-in shake"><AlertCircle size={16} />{error}</div>}
+          {error && <div className="mb-6 p-4 bg-rose-50 text-rose-500 rounded-2xl flex items-center gap-3 font-black text-xs border border-rose-100"><AlertCircle size={16} />{error}</div>}
 
-          {isRecoveryMode ? (
-            recoverySent ? (
-              <div className="text-center space-y-6 animate-in zoom-in-95">
-                <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-3xl flex items-center justify-center mx-auto shadow-inner"><CheckCircle2 size={40} /></div>
-                <p className="font-bold text-slate-600 leading-relaxed px-4">تم إرسال تعليمات الاستعادة إلى بريدك الإلكتروني المسجل بنجاح.</p>
-                <button onClick={() => {setIsRecoveryMode(false); setRecoverySent(false);}} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black transition-all hover:bg-black">العودة لتسجيل الدخول</button>
-              </div>
-            ) : (
-              <form onSubmit={handleRecovery} className="space-y-6">
-                <div className="relative group">
-                  <button 
-                    type="button" 
-                    onClick={() => recoveryRef.current?.focus()}
-                    className="absolute right-5 top-5 text-slate-300 group-focus-within:text-indigo-600 transition-colors"
-                  >
-                    <Mail size={20} />
-                  </button>
-                  <input 
-                    ref={recoveryRef}
-                    type="email" 
-                    required 
-                    value={recoveryEmail} 
-                    onChange={(e) => setRecoveryEmail(e.target.value)} 
-                    placeholder="البريد الإلكتروني المسجل" 
-                    className="w-full p-5 pr-14 bg-slate-50/50 border-2 border-transparent rounded-2xl font-bold text-slate-800 outline-none focus:bg-white focus:border-indigo-100 transition-all text-left shadow-sm" 
-                    dir="ltr" 
-                  />
-                </div>
-                <button type="submit" disabled={loading} className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3">
-                  {loading ? <Loader2 className="animate-spin" size={24} /> : 'إرسال بيانات الاستعادة'}
-                </button>
-                <button type="button" onClick={() => setIsRecoveryMode(false)} className="w-full text-slate-400 text-sm font-bold hover:text-indigo-600">تذكرت البيانات؟ تسجيل الدخول</button>
-              </form>
-            )
-          ) : (
-            <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-500 mr-2">اسم المستخدم / الرابط</label>
               <div className="relative group">
-                <button 
-                  type="button" 
-                  onClick={() => usernameRef.current?.focus()}
-                  className="absolute right-5 top-5 text-slate-300 group-focus-within:text-indigo-600 transition-colors"
-                >
-                  <Globe size={20} />
-                </button>
-                <input 
-                  ref={usernameRef}
-                  type="text" 
-                  required 
-                  value={username} 
-                  onChange={(e) => setUsername(e.target.value)} 
-                  placeholder="اسم المستخدم أو الرابط" 
-                  className="w-full p-5 pr-14 bg-slate-50/50 border-2 border-transparent rounded-2xl font-bold text-slate-800 outline-none focus:bg-white focus:border-indigo-100 transition-all text-left shadow-sm" 
-                  dir="ltr" 
-                />
+                <Globe className="absolute right-5 top-5 text-slate-300" size={20} />
+                <input type="text" required value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" dir="ltr" className="w-full p-5 pr-14 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-indigo-100 transition-all shadow-sm" />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-500 mr-2">كلمة المرور</label>
               <div className="relative group">
-                <button 
-                  type="button" 
-                  onClick={() => passwordRef.current?.focus()}
-                  className="absolute right-5 top-5 text-slate-300 group-focus-within:text-indigo-600 transition-colors"
-                >
-                  <Lock size={20} />
-                </button>
-                <input 
-                  ref={passwordRef}
-                  type={showPassword ? "text" : "password"} 
-                  required 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  placeholder="كلمة المرور" 
-                  className="w-full p-5 pr-14 bg-slate-50/50 border-2 border-transparent rounded-2xl font-bold text-slate-800 outline-none focus:bg-white focus:border-indigo-100 transition-all text-left shadow-sm" 
-                  dir="ltr" 
-                />
-                <button 
-                  type="button" 
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600 transition-colors"
-                >
+                <Lock className="absolute right-5 top-5 text-slate-300" size={20} />
+                <input type={showPassword ? "text" : "password"} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" dir="ltr" className="w-full p-5 pr-14 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-indigo-100 transition-all shadow-sm" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute left-4 top-5 text-slate-300">
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
-              <div className="text-left px-2">
-                <button type="button" onClick={() => setIsRecoveryMode(true)} className="text-[10px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest">نسيت بيانات الدخول؟</button>
-              </div>
-              <button type="submit" disabled={loading} className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3">
-                {loading ? <Loader2 className="animate-spin" size={24} /> : 'دخول النظام'}
-              </button>
-            </form>
-          )}
-
-          {!isRecoveryMode && (
-            <div className="mt-8 text-center border-t border-slate-50 pt-8">
-              <button onClick={() => navigate('/register-school')} className="text-indigo-600 text-sm font-black hover:underline underline-offset-4">إنشاء حساب مدرسة جديدة</button>
             </div>
-          )}
+
+            <button type="submit" disabled={loading} className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3">
+              {loading ? <Loader2 className="animate-spin" size={24} /> : 'تسجيل دخول آمن'}
+            </button>
+          </form>
         </div>
         <div className="mt-8 text-center">
-          <button onClick={() => navigate('/')} className="text-slate-400 font-bold text-xs hover:text-slate-600 transition flex items-center justify-center gap-2 mx-auto">
+          <button onClick={() => navigate('/')} className="text-slate-400 font-bold text-xs flex items-center justify-center gap-2 mx-auto">
             <ArrowLeft size={14} /> العودة للرئيسية
           </button>
         </div>

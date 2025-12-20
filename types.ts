@@ -14,18 +14,11 @@ export interface School {
   weeklyNotesImage?: string;
   subscriptionActive: boolean;
   slug: string;
-  adminPassword?: string;
+  adminPassword?: string; // سيعامل كـ Hash في النسخة المتقدمة
   studentCount: number;
   teacherCount: number;
   expiryDate: string;
-}
-
-export interface AcademicWeek {
-  id: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  isActive: boolean;
+  token?: string; // للتحقق من الجلسة
 }
 
 export interface Teacher {
@@ -35,6 +28,7 @@ export interface Teacher {
   password?: string;
   subjects: string[];
   schoolId: string;
+  token?: string;
 }
 
 export interface Student {
@@ -44,6 +38,14 @@ export interface Student {
   section: string;
   phoneNumber: string;
   schoolId: string;
+}
+
+export interface AcademicWeek {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
 }
 
 export interface SchoolClass {
@@ -58,17 +60,9 @@ export interface Subject {
   name: string;
 }
 
-export interface Message {
-  id: string;
-  senderId: string;
-  senderName: string;
-  content: string;
-  timestamp: string;
-  isAnnouncement?: boolean;
-}
-
 export interface AppState {
   currentSchool: School | null;
   currentUser: any | null;
   role: UserRole;
+  isAuthenticated: boolean;
 }

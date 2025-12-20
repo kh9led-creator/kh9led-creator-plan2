@@ -5,21 +5,40 @@ import { School, Teacher, Subject, SchoolClass } from '../../types.ts';
 import { Save, Info, User, Book, LayoutGrid, CheckCircle2 } from 'lucide-react';
 
 const ScheduleManagement: React.FC<{ school: School }> = ({ school }) => {
-  const classes = db.getClasses(school.id);
-  const teachers = db.getTeachers(school.id);
-  const subjects = db.getSubjects(school.id);
-  
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [selectedClass, setSelectedClass] = useState<string>("");
+  const [schedule, setSchedule] = useState<any>({});
+  const [saved, setSaved] = useState(false);
+
+  // @google/genai guidelines: Handle async database calls in useEffect.
+  useEffect(() => {
+    const loadInitialData = async () => {
+      const allClasses = await db.getClasses(school.id);
+      const allTeachers = await db.getTeachers(school.id);
+      const allSubjects = await db.getSubjects(school.id);
+      setClasses(allClasses);
+      setTeachers(allTeachers);
+      setSubjects(allSubjects);
+      if (allClasses.length > 0) {
+        setSelectedClass(`${allClasses[0].grade} - فصل ${allClasses[0].section}`);
+      }
+    };
+    loadInitialData();
+  }, [school.id]);
+
   const availableClasses = useMemo(() => {
     return classes.map(c => `${c.grade} - فصل ${c.section}`);
   }, [classes]);
 
-  const [selectedClass, setSelectedClass] = useState<string>(availableClasses[0] || "");
-  const [schedule, setSchedule] = useState<any>({});
-  const [saved, setSaved] = useState(false);
-
   useEffect(() => {
     if (selectedClass) {
-      setSchedule(db.getSchedule(school.id, selectedClass));
+      const loadSchedule = async () => {
+        const data = await db.getSchedule(school.id, selectedClass);
+        setSchedule(data);
+      };
+      loadSchedule();
     }
   }, [selectedClass, school.id]);
 
@@ -33,8 +52,8 @@ const ScheduleManagement: React.FC<{ school: School }> = ({ school }) => {
     }));
   };
 
-  const saveAll = () => {
-    db.saveSchedule(school.id, selectedClass, schedule);
+  const saveAll = async () => {
+    await db.saveSchedule(school.id, selectedClass, schedule);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };

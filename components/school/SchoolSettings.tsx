@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { School, Subject, Teacher, SchoolClass } from '../../types.ts';
 import { BookOpen, UserPlus, Trash2, Key, User, Save, ListChecks, Edit2, Calendar, Plus, Book, LayoutGrid, X, GraduationCap, RefreshCw } from 'lucide-react';
@@ -19,13 +20,18 @@ const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
   const [newClass, setNewClass] = useState({ grade: 'الأول الابتدائي', section: '1' });
   const [newSubjectName, setNewSubjectName] = useState('');
 
+  // @google/genai guidelines: Use async functions for data fetching.
+  const loadData = async () => {
+    setTeachers(await db.getTeachers(school.id));
+    setSubjects(await db.getSubjects(school.id));
+    setClasses(await db.getClasses(school.id));
+  };
+
   useEffect(() => {
-    setTeachers(db.getTeachers(school.id));
-    setSubjects(db.getSubjects(school.id));
-    setClasses(db.getClasses(school.id));
+    loadData();
   }, [school.id]);
 
-  const addTeacher = () => {
+  const addTeacher = async () => {
     if (!teacherName || !teacherUsername) return;
     const teacher: Teacher = {
       id: Date.now().toString(),
@@ -35,19 +41,19 @@ const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
       subjects: [],
       schoolId: school.id
     };
-    db.saveTeacher(teacher);
-    setTeachers(db.getTeachers(school.id));
+    await db.saveTeacher(teacher);
+    await loadData();
     setTeacherName(''); setTeacherUsername(''); setTeacherPassword('');
   };
 
-  const deleteTeacher = (id: string) => {
+  const deleteTeacher = async (id: string) => {
     if (confirm('هل أنت متأكد من حذف حساب المعلم؟')) {
-      db.deleteTeacher(id);
-      setTeachers(db.getTeachers(school.id));
+      await db.deleteTeacher(id);
+      await loadData();
     }
   };
 
-  const handleSaveClass = () => {
+  const handleSaveClass = async () => {
     if (!newClass.grade || !newClass.section) return;
     const classData: SchoolClass = {
       id: editingClass ? editingClass.id : Date.now().toString(),
@@ -55,39 +61,39 @@ const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
       section: newClass.section,
       schoolId: school.id
     };
-    db.saveClass(classData);
-    setClasses(db.getClasses(school.id));
+    await db.saveClass(classData);
+    await loadData();
     setNewClass({ grade: 'الأول الابتدائي', section: '1' });
     setEditingClass(null);
   };
 
-  const deleteClass = (id: string) => {
+  const handleDeleteClass = async (id: string) => {
     if (confirm('هل أنت متأكد من حذف هذا الفصل؟ قد يؤثر ذلك على الجداول المرتبطة.')) {
-      db.deleteClass(school.id, id);
-      setClasses(db.getClasses(school.id));
+      await db.deleteClass(school.id, id);
+      await loadData();
     }
   };
 
-  const syncClasses = () => {
+  const syncClasses = async () => {
     if (confirm('سيتم تحديث قائمة الفصول بناءً على الطلاب المسجلين حالياً. هل أنت متأكد؟')) {
-       db.syncClassesFromStudents(school.id);
-       setClasses(db.getClasses(school.id));
+       await db.syncClassesFromStudents(school.id);
+       await loadData();
        alert('تمت المزامنة بنجاح.');
     }
   };
 
-  const addSubject = () => {
+  const addSubject = async () => {
     if (!newSubjectName.trim()) return;
     const subject: Subject = { id: Date.now().toString(), name: newSubjectName.trim() };
-    db.saveSubject(school.id, subject);
-    setSubjects(db.getSubjects(school.id));
+    await db.saveSubject(school.id, subject);
+    await loadData();
     setNewSubjectName('');
   };
 
-  const deleteSubject = (id: string) => {
+  const deleteSubject = async (id: string) => {
     if (confirm('هل أنت متأكد من حذف هذه المادة؟')) {
-      db.deleteSubject(school.id, id);
-      setSubjects(db.getSubjects(school.id));
+      await db.deleteSubject(school.id, id);
+      await loadData();
     }
   };
 
@@ -211,8 +217,7 @@ const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
                     </div>
                     <div className="flex gap-2">
                        <button onClick={() => { setEditingClass(c); setNewClass({ grade: c.grade, section: c.section }); }} className="p-2 text-blue-500 hover:bg-blue-100 rounded-lg transition opacity-0 group-hover:opacity-100"><Edit2 size={18} /></button>
-                       {/* Fix: changed deleteClass(school.id, c.id) to deleteClass(c.id) to match the local definition */}
-                       <button onClick={() => deleteClass(c.id)} className="p-2 text-rose-500 hover:bg-rose-100 rounded-lg transition opacity-0 group-hover:opacity-100"><Trash2 size={18} /></button>
+                       <button onClick={() => handleDeleteClass(c.id)} className="p-2 text-rose-500 hover:bg-rose-100 rounded-lg transition opacity-0 group-hover:opacity-100"><Trash2 size={18} /></button>
                     </div>
                   </div>
                 ))}

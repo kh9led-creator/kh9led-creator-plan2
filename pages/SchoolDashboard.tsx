@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { School, Teacher, AcademicWeek } from '../types.ts';
+import { School, Teacher, AcademicWeek, Student, SchoolClass } from '../types.ts';
 import { db } from '../constants.tsx';
 import { 
   LayoutDashboard, GraduationCap, Settings, LogOut, 
@@ -83,7 +83,7 @@ const SchoolDashboard: React.FC<Props> = ({ school, onLogout }) => {
               <div className="bg-indigo-600 p-1.5 rounded-lg text-white shadow-md"><Zap size={18} /></div>
               <span className="font-black text-slate-800 text-base">خططي</span>
            </div>
-           <button onClick={() => setIsSidebarOpen(true)} className="p-2 bg-slate-50 rounded-xl border border-slate-200 text-indigo-600"><Menu size={24} /></button>
+           <button onClick={() => setIsSidebarOpen(true)} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-indigo-600"><Menu size={24} /></button>
         </header>
 
         <main className="flex-1 overflow-y-auto">
@@ -105,36 +105,52 @@ const SchoolDashboard: React.FC<Props> = ({ school, onLogout }) => {
 const SchoolOverview: React.FC<{ school: School }> = ({ school }) => {
   const [showIncomplete, setShowIncomplete] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
+  const [activeWeek, setActiveWeek] = useState<AcademicWeek | undefined>(undefined);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [studentsCount, setStudentsCount] = useState(0);
+  const [attendanceCount, setAttendanceCount] = useState(0);
+  const [teacherStatus, setTeacherStatus] = useState<{ completed: Teacher[], incomplete: Teacher[] }>({ completed: [], incomplete: [] });
 
-  const activeWeek = db.getActiveWeek(school.id);
-  const teachers = db.getTeachers(school.id);
-  const studentsCount = db.getStudents(school.id).length;
+  // @google/genai guidelines: Handle async database calls in useEffect.
+  useEffect(() => {
+    const fetchData = async () => {
+      const week = await db.getActiveWeek(school.id);
+      const allTeachers = await db.getTeachers(school.id);
+      const students = await db.getStudents(school.id);
+      const attendance = await db.getAttendance(school.id);
+      const classes = await db.getClasses(school.id);
 
-  const teacherStatus = useMemo(() => {
-    if (!activeWeek) return { completed: [], incomplete: [] };
-    const plans = db.getPlans(school.id, activeWeek.id);
-    const classes = db.getClasses(school.id);
-    const completed: Teacher[] = [];
-    const incomplete: Teacher[] = [];
+      setActiveWeek(week);
+      setTeachers(allTeachers);
+      setStudentsCount(students.length);
+      setAttendanceCount(attendance.length);
 
-    teachers.forEach(teacher => {
-      let sessions: any[] = [];
-      classes.forEach(cls => {
-        const classTitle = `${cls.grade} - فصل ${cls.section}`;
-        const schedule = db.getSchedule(school.id, classTitle);
-        Object.entries(schedule).forEach(([key, val]: [string, any]) => {
-          if (val.teacherId === teacher.id) sessions.push({ classTitle, key });
-        });
-      });
-      if (sessions.length === 0) return;
-      const isAllDone = sessions.every(s => {
-        const plan = plans[`${s.classTitle}_${s.key}`];
-        return plan && plan.lesson && plan.lesson.trim().length > 0;
-      });
-      if (isAllDone) completed.push(teacher); else incomplete.push(teacher);
-    });
-    return { completed, incomplete };
-  }, [school.id, teachers, activeWeek]);
+      if (week) {
+        const plans = await db.getPlans(school.id, week.id);
+        const completed: Teacher[] = [];
+        const incomplete: Teacher[] = [];
+
+        for (const teacher of allTeachers) {
+          let sessions: any[] = [];
+          for (const cls of classes) {
+            const classTitle = `${cls.grade} - فصل ${cls.section}`;
+            const schedule = await db.getSchedule(school.id, classTitle);
+            Object.entries(schedule).forEach(([key, val]: [string, any]) => {
+              if (val.teacherId === teacher.id) sessions.push({ classTitle, key });
+            });
+          }
+          if (sessions.length === 0) continue;
+          const isAllDone = sessions.every(s => {
+            const plan = plans[`${s.classTitle}_${s.key}`];
+            return plan && plan.lesson && plan.lesson.trim().length > 0;
+          });
+          if (isAllDone) completed.push(teacher); else incomplete.push(teacher);
+        }
+        setTeacherStatus({ completed, incomplete });
+      }
+    };
+    fetchData();
+  }, [school.id]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-full">
@@ -153,7 +169,7 @@ const SchoolOverview: React.FC<{ school: School }> = ({ school }) => {
         {[
           { label: 'الطلاب', value: studentsCount, icon: <GraduationCap size={24} />, color: 'indigo' },
           { label: 'المعلمون', value: teachers.length, icon: <Users size={24} />, color: 'blue' },
-          { label: 'الغياب المرصود', value: db.getAttendance(school.id).length, icon: <ClipboardCheck size={24} />, color: 'amber' },
+          { label: 'الغياب المرصود', value: attendanceCount, icon: <ClipboardCheck size={24} />, color: 'amber' },
         ].map((stat, i) => (
           <div key={i} className="card-neo p-6 flex items-center gap-5">
              <div className={`w-12 h-12 bg-${stat.color}-50 text-${stat.color}-600 rounded-xl flex items-center justify-center`}>{stat.icon}</div>
@@ -200,7 +216,7 @@ const SchoolOverview: React.FC<{ school: School }> = ({ school }) => {
           {showIncomplete && (
             <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm animate-in slide-in-from-top-2">
               {teacherStatus.incomplete.length === 0 ? <p className="text-center py-4 text-emerald-500 font-bold text-sm">الجميع أتم الرصد بنجاح.</p> : (
-                <div className="flex flex-wrap gap-2">{teacherStatus.incomplete.map(t => <span key={t.id} className="bg-rose-50 text-rose-700 px-4 py-1.5 rounded-lg text-xs font-bold border border-rose-100">{t.name}</span>)}</div>
+                <div className="flex flex-wrap gap-2">{teacherStatus.incomplete.map(t => <span key={t.id} className="bg-rose-50 text-rose-700 px-4 py-1.5 rounded-lg text-xs font-bold border border-rose-100/50">{t.name}</span>)}</div>
               )}
             </div>
           )}
@@ -212,4 +228,4 @@ const SchoolOverview: React.FC<{ school: School }> = ({ school }) => {
   );
 };
 
-export default SchoolDashboard;
+export default SchoolOverview;
