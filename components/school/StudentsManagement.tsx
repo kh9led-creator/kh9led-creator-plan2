@@ -8,7 +8,7 @@ import {
   X, Sparkles, Loader2, User, 
   FileSpreadsheet, Upload, 
   Edit2, Users, AlertCircle, 
-  FileUp, Info
+  FileUp, Info, Eraser
 } from 'lucide-react';
 
 const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
@@ -24,7 +24,6 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
   const [tempImportData, setTempImportData] = useState<Student[] | null>(null);
   const [importSummary, setImportSummary] = useState<{count: number, samples: string[]} | null>(null);
   const [importError, setImportError] = useState('');
-  const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -56,7 +55,6 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
       const extracted: Student[] = [];
       const timestamp = Date.now().toString(36);
 
-      // تخطي الصف الأول (العناوين)
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
         if (!row || row.length === 0) continue;
@@ -66,7 +64,6 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         const grade = String(row[2] || 'غير محدد').trim();
         const section = String(row[3] || '1').trim();
 
-        // فحص الحد الأدنى من البيانات (الاسم مطلوب)
         if (name.length >= 3) {
           extracted.push({
             id: `s-${timestamp}-${i}-${Math.random().toString(36).substr(2, 5)}`,
@@ -83,11 +80,10 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         setImportSummary({ count: extracted.length, samples: extracted.slice(0, 3).map(s => s.name) });
         setTempImportData(extracted);
       } else {
-        setImportError('لم يتم العثور على بيانات صالحة في الملف. تأكد من أن الأسماء تبدأ من العمود الأول والصف الثاني.');
+        setImportError('لم يتم العثور على بيانات صالحة. تأكد من أن الأسماء تبدأ من العمود الأول والصف الثاني.');
       }
     } catch (err) { 
-      console.error("Excel process error:", err);
-      setImportError('حدث خطأ أثناء قراءة ملف Excel. تأكد من أن الملف غير محمي بكلمة مرور.');
+      setImportError('حدث خطأ أثناء قراءة ملف Excel.');
     } finally {
       setIsProcessing(false);
     }
@@ -103,14 +99,21 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
       setShowImport(false);
       setTempImportData(null);
       setImportSummary(null);
-      
-      // رسالة نجاح مخصصة توضح أن الفصول تم استيرادها أيضاً
-      alert(`تم بنجاح استيراد ${tempImportData.length} طالباً، وتحديث قائمة الفصول الدراسية في الجداول تلقائياً.`);
+      alert(`تم بنجاح استيراد ${tempImportData.length} طالباً، وتم تحديث الفصول والجداول تلقائياً.`);
     } catch (err: any) {
-      console.error("Save bulk failed", err);
-      setImportError(err.message || 'حدث خطأ تقني أثناء محاولة حفظ البيانات.');
+      setImportError(err.message || 'حدث خطأ أثناء الحفظ.');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (students.length === 0) return;
+    if (confirm('تحذير: هل أنت متأكد من حذف كافة الطلاب؟ سيؤدي ذلك لتفريغ القائمة تماماً.')) {
+      setLoading(true);
+      await db.deleteAllStudents(schoolId);
+      await loadData();
+      alert('تم تفريغ قائمة الطلاب بنجاح.');
     }
   };
 
@@ -142,10 +145,15 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
           <div className="w-14 h-14 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg"><Users size={28} /></div>
           <div>
             <h2 className="text-2xl font-black text-slate-800 tracking-tight">إدارة الطلاب</h2>
-            <p className="text-slate-400 font-bold text-sm">قاعدة بيانات آمنة | الإجمالي: {students.length}</p>
+            <p className="text-slate-400 font-bold text-sm">الإجمالي: {students.length} طالب</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
+          {students.length > 0 && (
+            <button onClick={handleDeleteAll} className="bg-rose-50 text-rose-600 px-5 py-3.5 rounded-xl font-bold flex items-center gap-2 hover:bg-rose-600 hover:text-white transition shadow-sm border border-rose-100 text-sm">
+              <Eraser size={18} /> تفريغ القائمة
+            </button>
+          )}
           <button onClick={() => { setImportError(''); setImportSummary(null); setShowImport(true); }} className="bg-emerald-600 text-white px-6 py-3.5 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700 transition shadow-md text-sm">
             <FileSpreadsheet size={18} /> استيراد Excel
           </button>
@@ -160,7 +168,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
           <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-center justify-center">
              <div className="flex flex-col items-center gap-3">
                 <Loader2 className="animate-spin text-indigo-600" size={40} />
-                <span className="font-black text-slate-600">جاري الاتصال بقاعدة البيانات...</span>
+                <span className="font-black text-slate-600">جاري تحميل البيانات...</span>
              </div>
           </div>
         )}
@@ -190,10 +198,10 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {filteredStudents.length === 0 && !loading ? (
-                <tr><td colSpan={4} className="p-20 text-center text-slate-300 font-bold italic">لا توجد سجلات حالياً.</td></tr>
+                <tr><td colSpan={4} className="p-20 text-center text-slate-300 font-bold italic">لا توجد بيانات طلاب حالياً.</td></tr>
               ) : (
                 filteredStudents.map(s => (
-                  <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
+                  <tr key={s.id} className="hover:bg-slate-50/80 transition-colors group">
                     <td className="p-5 font-bold text-slate-700">{s.name}</td>
                     <td className="p-5 text-center"><span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-xs font-bold">{s.grade}</span></td>
                     <td className="p-5 text-center text-slate-500 font-bold">{s.section}</td>
@@ -212,7 +220,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] flex items-center justify-center p-4">
           <div className="bg-white p-10 rounded-[3rem] max-w-xl w-full shadow-2xl animate-in zoom-in-95 overflow-hidden">
              <div className="flex justify-between items-center mb-8">
-                <h3 className="text-xl font-black text-slate-900">استيراد آمن للبيانات</h3>
+                <h3 className="text-xl font-black text-slate-900">استيراد طلاب من Excel</h3>
                 <button onClick={() => setShowImport(false)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors"><X size={24} /></button>
              </div>
 
@@ -226,22 +234,21 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                <div className="border-4 border-dashed rounded-[2.5rem] h-64 flex flex-col items-center justify-center bg-slate-50 relative group transition-all hover:bg-slate-100">
                   <input ref={fileInputRef} type="file" className="hidden" accept=".xlsx, .xls" onChange={(e) => e.target.files?.[0] && processExcelFile(e.target.files[0])} />
                   <Upload size={48} className="text-slate-300 mb-4 group-hover:text-indigo-400 transition-colors" />
-                  <p className="text-slate-400 font-bold text-sm mb-4">اسحب ملف Excel هنا أو اختر يدوياً</p>
-                  <button onClick={() => fileInputRef.current?.click()} className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-black hover:bg-emerald-700 transition shadow-lg active:scale-95">اختيار ملف Excel</button>
+                  <p className="text-slate-400 font-bold text-sm mb-4 text-center px-4">اسحب ملف Excel هنا أو اختر يدوياً<br/><span className="text-[10px] opacity-60">(الترتيب: الاسم، الجوال، الصف، الفصل)</span></p>
+                  <button onClick={() => fileInputRef.current?.click()} className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-black hover:bg-emerald-700 transition shadow-lg active:scale-95">اختيار ملف</button>
                </div>
              ) : (
                <div className="space-y-6">
                   <div className="bg-emerald-50 p-8 rounded-[2.5rem] border border-emerald-100">
-                    <h4 className="text-xl font-black text-emerald-900 mb-2">تم اكتشاف {importSummary.count} سجل</h4>
-                    <p className="text-sm font-bold text-emerald-600 mb-4">نماذج من البيانات المكتشفة:</p>
+                    <h4 className="text-xl font-black text-emerald-900 mb-2">اكتشاف {importSummary.count} طالب</h4>
+                    <p className="text-sm font-bold text-emerald-600 mb-4">نماذج من البيانات:</p>
                     <div className="flex flex-wrap gap-2 mb-6">
                        {importSummary.samples.map((name, i) => <span key={i} className="bg-white px-3 py-1 rounded-lg text-[10px] font-black text-emerald-800 border border-emerald-200">{name}</span>)}
-                       {importSummary.count > 3 && <span className="text-[10px] text-emerald-400 font-bold self-center">...وغيرهم</span>}
                     </div>
                     <div className="flex gap-4">
-                       <button onClick={() => {setImportSummary(null); setTempImportData(null);}} className="flex-1 py-4 bg-white text-slate-600 rounded-2xl font-black hover:bg-slate-50 transition border">تغيير الملف</button>
+                       <button onClick={() => {setImportSummary(null); setTempImportData(null);}} className="flex-1 py-4 bg-white text-slate-600 rounded-2xl font-black hover:bg-slate-50 transition border">إلغاء</button>
                        <button onClick={confirmAndSave} disabled={isProcessing} className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-emerald-700 transition shadow-lg shadow-emerald-100 active:scale-95">
-                          {isProcessing ? <Loader2 className="animate-spin" /> : 'تأكيد وحفظ في النظام'}
+                          {isProcessing ? <Loader2 className="animate-spin" /> : 'حفظ ومزامنة الجداول'}
                        </button>
                     </div>
                   </div>
@@ -267,13 +274,11 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-black text-slate-500 mr-2">الصف الدراسي</label>
-                    <select className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-indigo-100 transition appearance-none" value={formData.grade} onChange={e => setFormData({...formData, grade: e.target.value})}>
-                      <option>الأول الابتدائي</option><option>الثاني الابتدائي</option><option>الثالث الابتدائي</option><option>الرابع الابتدائي</option><option>الخامس الابتدائي</option><option>السادس الابتدائي</option>
-                    </select>
+                    <input type="text" className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-indigo-100 transition" value={formData.grade} onChange={e => setFormData({...formData, grade: e.target.value})} placeholder="مثال: الأول الابتدائي" />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-black text-slate-500 mr-2">رقم الفصل</label>
-                    <input type="text" className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-indigo-100 transition" value={formData.section} onChange={e => setFormData({...formData, section: e.target.value})} />
+                    <input type="text" className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-indigo-100 transition" value={formData.section} onChange={e => setFormData({...formData, section: e.target.value})} placeholder="مثال: 1" />
                   </div>
                 </div>
                 <div className="space-y-1.5">
@@ -281,7 +286,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                   <input type="text" className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-indigo-100 transition" value={formData.phoneNumber} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} />
                 </div>
                 
-                <button onClick={handleSaveManual} className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all mt-6 active:scale-95">حفظ البيانات</button>
+                <button onClick={handleSaveManual} className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all mt-6 active:scale-95">حفظ ومزامنة</button>
              </div>
           </div>
         </div>
