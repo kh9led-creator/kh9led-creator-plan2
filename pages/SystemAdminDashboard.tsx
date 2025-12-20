@@ -4,9 +4,9 @@ import { db } from '../constants';
 import { School as SchoolType } from '../types';
 import { 
   LayoutDashboard, ShieldCheck, School, 
-  CreditCard, Settings, LogOut, CheckCircle2, 
-  XCircle, ArrowUpRight, Plus, Globe, User, Lock, Save, Check, Key,
-  Mail, Phone, Loader2
+  LogOut, CheckCircle2, XCircle, Edit3, Trash2, 
+  Plus, Globe, User, Lock, Save, Check, Key,
+  Mail, Phone, Loader2, Power, Calendar, RefreshCcw, X
 } from 'lucide-react';
 
 const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
@@ -14,7 +14,11 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
   const [schools, setSchools] = useState<SchoolType[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // بيانات الملف الشخصي
+  // States for Editing
+  const [editingSchool, setEditingSchool] = useState<SchoolType | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  // Profile Data
   const [adminData, setAdminData] = useState({ username: '', password: '' });
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -22,20 +26,21 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      const [schoolsData, adminInfo] = await Promise.all([
-        db.getSchools(),
-        db.getSystemAdmin()
-      ]);
-      setSchools(schoolsData);
-      setAdminData(adminInfo);
-      setNewUsername(adminInfo.username);
-      setNewPassword(adminInfo.password);
-      setLoading(false);
-    };
     fetchData();
   }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    const [schoolsData, adminInfo] = await Promise.all([
+      db.getSchools(),
+      db.getSystemAdmin()
+    ]);
+    setSchools(schoolsData);
+    setAdminData(adminInfo);
+    setNewUsername(adminInfo.username);
+    setNewPassword(adminInfo.password);
+    setLoading(false);
+  };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,16 +53,44 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
-  const deleteSchool = async (id: string) => {
+  const handleDeleteSchool = async (id: string) => {
     if (confirm('هل أنت متأكد من حذف هذه المدرسة نهائياً؟ سيتم حذف كافة البيانات المرتبطة بها.')) {
       await db.deleteSchool(id);
       setSchools(await db.getSchools());
     }
   };
 
+  const handleToggleStatus = async (school: SchoolType) => {
+    const updated = { ...school, subscriptionActive: !school.subscriptionActive };
+    await db.saveSchool(updated);
+    setSchools(await db.getSchools());
+  };
+
+  const handleRenewSubscription = async (school: SchoolType) => {
+    // تجديد لمدة سنة من تاريخ اليوم
+    const nextYear = new Date();
+    nextYear.setFullYear(nextYear.getFullYear() + 1);
+    const dateStr = nextYear.toISOString().split('T')[0];
+    
+    const updated = { ...school, expiryDate: dateStr, subscriptionActive: true };
+    await db.saveSchool(updated);
+    setSchools(await db.getSchools());
+    alert(`تم تجديد الاشتراك لـ ${school.name} بنجاح حتى ${dateStr}`);
+  };
+
+  const handleUpdateSchool = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingSchool) {
+      await db.saveSchool(editingSchool);
+      setSchools(await db.getSchools());
+      setShowEditModal(false);
+      setEditingSchool(null);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-slate-900 flex-col gap-4">
+      <div className="h-screen w-full flex items-center justify-center bg-slate-950 flex-col gap-4">
          <Loader2 size={48} className="text-blue-500 animate-spin" />
          <span className="text-white font-black">جاري تهيئة مركز التحكم...</span>
       </div>
@@ -65,7 +98,7 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
   }
 
   return (
-    <div className="flex h-screen bg-slate-100 overflow-hidden font-['Tajawal']">
+    <div className="flex h-screen bg-slate-100 overflow-hidden font-['Tajawal'] text-right" dir="rtl">
       {/* Sidebar */}
       <aside className="w-80 bg-slate-900 text-white flex flex-col p-8 shrink-0">
         <div className="flex items-center gap-3 mb-12">
@@ -116,12 +149,12 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
                 <div className="text-4xl font-black text-slate-900 mt-2">{schools.length}</div>
               </div>
               <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
-                <div className="text-slate-400 font-bold text-sm uppercase tracking-widest">المعلمون النشطون</div>
-                <div className="text-4xl font-black text-emerald-600 mt-2">--</div>
+                <div className="text-slate-400 font-bold text-sm uppercase tracking-widest">مدارس نشطة</div>
+                <div className="text-4xl font-black text-emerald-600 mt-2">{schools.filter(s => s.subscriptionActive).length}</div>
               </div>
               <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
-                <div className="text-slate-400 font-bold text-sm uppercase tracking-widest">الطلاب المسجلون</div>
-                <div className="text-4xl font-black text-blue-600 mt-2">--</div>
+                <div className="text-slate-400 font-bold text-sm uppercase tracking-widest">مدارس موقوفة</div>
+                <div className="text-4xl font-black text-rose-600 mt-2">{schools.filter(s => !s.subscriptionActive).length}</div>
               </div>
             </div>
           </div>
@@ -149,7 +182,8 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
                         type="text" 
                         value={newUsername}
                         onChange={(e) => setNewUsername(e.target.value)}
-                        className="w-full p-5 bg-slate-50 border-none rounded-3xl font-black text-lg outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                        className="w-full p-5 bg-slate-50 border-none rounded-3xl font-black text-lg outline-none focus:ring-2 focus:ring-blue-100 transition-all text-left"
+                        dir="ltr"
                       />
                    </div>
                    <div className="space-y-2">
@@ -160,7 +194,8 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
                         type="password" 
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full p-5 bg-slate-50 border-none rounded-3xl font-black text-lg outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                        className="w-full p-5 bg-slate-50 border-none rounded-3xl font-black text-lg outline-none focus:ring-2 focus:ring-blue-100 transition-all text-left"
+                        dir="ltr"
                       />
                    </div>
 
@@ -176,68 +211,102 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
           </div>
         )}
 
-        {(activeTab === 'home' || activeTab === 'schools') && (
+        {activeTab === 'schools' && (
            <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden mt-8">
             <div className="p-8 border-b bg-slate-50/50 flex justify-between items-center">
               <div>
-                <h3 className="text-xl font-black text-slate-800">إدارة المدارس والبيانات الحساسة</h3>
-                <p className="text-xs text-slate-400 font-bold mt-1">بيانات الدخول والتواصل لجميع المدارس المسجلة.</p>
+                <h3 className="text-xl font-black text-slate-800">إدارة المدارس والبيانات</h3>
+                <p className="text-xs text-slate-400 font-bold mt-1">التحكم الكامل في المدارس المسجلة: تعديل، إيقاف، وحذف.</p>
               </div>
             </div>
             {schools.length === 0 ? (
                <div className="p-20 text-center text-slate-400 font-bold">لا يوجد مدارس مسجلة بعد.</div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-right">
-                  <thead className="bg-slate-50/50 text-slate-400 text-xs font-black uppercase tracking-widest">
+                <table className="w-full text-right border-collapse">
+                  <thead className="bg-slate-50/50 text-slate-400 text-[10px] font-black uppercase tracking-widest">
                     <tr>
-                      <th className="p-6">المدرسة</th>
-                      <th className="p-6">رابط الوصول (Slug)</th>
-                      <th className="p-6">التواصل (البريد/الجوال)</th>
-                      <th className="p-6">كلمة المرور</th>
-                      <th className="p-6">الحالة</th>
-                      <th className="p-6 text-left">الإجراءات</th>
+                      <th className="p-6 text-right">المدرسة</th>
+                      <th className="p-6 text-right">رابط الوصول</th>
+                      <th className="p-6 text-right">التواصل</th>
+                      <th className="p-6 text-right">تاريخ الانتهاء</th>
+                      <th className="p-6 text-right">الحالة</th>
+                      <th className="p-6 text-center">الإجراءات</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-slate-100">
                     {schools.map(school => (
-                      <tr key={school.id} className="border-b last:border-0 hover:bg-slate-50 transition">
+                      <tr key={school.id} className="hover:bg-slate-50 transition group">
                         <td className="p-6">
                           <div className="flex items-center gap-3">
-                             {school.logoUrl && <img src={school.logoUrl} className="w-8 h-8 rounded-lg object-contain bg-white border" />}
+                             <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center overflow-hidden border">
+                                {school.logoUrl ? <img src={school.logoUrl} className="w-full h-full object-contain" /> : <School className="text-slate-300" size={20} />}
+                             </div>
                              <span className="font-black text-slate-900">{school.name}</span>
                           </div>
                         </td>
-                        <td className="p-6 font-mono text-blue-600 font-bold">{school.slug}</td>
                         <td className="p-6">
-                           <div className="flex flex-col gap-1.5">
-                              <div className="flex items-center gap-2 text-slate-600 font-bold text-xs">
-                                <Mail size={12} className="text-indigo-400" />
-                                <span>{school.email}</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-slate-600 font-bold text-xs">
-                                <Phone size={12} className="text-emerald-400" />
-                                <span dir="ltr">{school.adminPhone || '---'}</span>
-                              </div>
+                          <div className="flex items-center gap-1.5 text-blue-600 font-bold text-xs bg-blue-50 px-3 py-1.5 rounded-full w-fit">
+                            <Globe size={12} />
+                            <span>/p/{school.slug}</span>
+                          </div>
+                        </td>
+                        <td className="p-6">
+                           <div className="flex flex-col gap-1 text-[10px] font-bold text-slate-500">
+                              <span className="flex items-center gap-1.5"><Mail size={12} className="text-slate-300" /> {school.email}</span>
+                              <span className="flex items-center gap-1.5"><Phone size={12} className="text-slate-300" /> {school.adminPhone || '---'}</span>
                            </div>
                         </td>
                         <td className="p-6">
-                           <div className="flex items-center gap-2 text-slate-600 font-black">
-                              <Key size={14} className="text-amber-500" />
-                              <span>{school.adminPassword || 'admin (افتراضي)'}</span>
+                           <div className="flex items-center gap-1.5 font-bold text-xs text-slate-600">
+                              <Calendar size={14} className="text-slate-400" />
+                              <span>{school.expiryDate}</span>
                            </div>
                         </td>
                         <td className="p-6">
-                          <span className="bg-emerald-50 text-emerald-600 px-4 py-1 rounded-full text-[10px] font-black border border-emerald-100">نشط</span>
+                          {school.subscriptionActive ? (
+                            <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black border border-emerald-100 flex items-center gap-1.5 w-fit">
+                               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+                               نشط
+                            </span>
+                          ) : (
+                            <span className="bg-rose-50 text-rose-600 px-3 py-1 rounded-full text-[10px] font-black border border-rose-100 flex items-center gap-1.5 w-fit">
+                               <div className="w-1.5 h-1.5 bg-rose-500 rounded-full"></div>
+                               موقوف
+                            </span>
+                          )}
                         </td>
-                        <td className="p-6 text-left">
-                          <button 
-                            onClick={() => deleteSchool(school.id)}
-                            className="p-3 text-rose-500 hover:bg-rose-50 rounded-xl transition"
-                            title="حذف المدرسة"
-                          >
-                            <XCircle size={18} />
-                          </button>
+                        <td className="p-6">
+                          <div className="flex items-center justify-center gap-2">
+                            <button 
+                              onClick={() => handleRenewSubscription(school)}
+                              className="p-2.5 text-indigo-600 hover:bg-indigo-50 rounded-xl transition"
+                              title="تجديد الاشتراك (سنة واحدة)"
+                            >
+                              <RefreshCcw size={18} />
+                            </button>
+                            <button 
+                              onClick={() => { setEditingSchool({...school}); setShowEditModal(true); }}
+                              className="p-2.5 text-blue-600 hover:bg-blue-50 rounded-xl transition"
+                              title="تعديل بيانات المدرسة"
+                            >
+                              <Edit3 size={18} />
+                            </button>
+                            <button 
+                              onClick={() => handleToggleStatus(school)}
+                              className={`p-2.5 rounded-xl transition ${school.subscriptionActive ? 'text-amber-600 hover:bg-amber-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
+                              title={school.subscriptionActive ? 'إيقاف الاشتراك' : 'تفعيل الاشتراك'}
+                            >
+                              <Power size={18} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteSchool(school.id)}
+                              className="p-2.5 text-rose-500 hover:bg-rose-50 rounded-xl transition"
+                              title="حذف المدرسة نهائياً"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -245,6 +314,93 @@ const SystemAdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) 
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Edit School Modal */}
+        {showEditModal && editingSchool && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[200] flex items-center justify-center p-6">
+            <div className="bg-white rounded-[3.5rem] w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95">
+               <div className="p-8 border-b bg-slate-50 flex justify-between items-center">
+                  <div className="flex items-center gap-4">
+                     <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><Edit3 size={24} /></div>
+                     <div>
+                        <h3 className="text-2xl font-black text-slate-900">تعديل بيانات المدرسة</h3>
+                        <p className="text-sm text-slate-500 font-bold">تحديث المعلومات الأساسية للمدرسة.</p>
+                     </div>
+                  </div>
+                  <button onClick={() => { setShowEditModal(false); setEditingSchool(null); }} className="p-3 bg-white text-slate-400 rounded-2xl hover:text-rose-500 shadow-sm transition-colors"><X size={24} /></button>
+               </div>
+               
+               <form onSubmit={handleUpdateSchool} className="p-10 space-y-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-black text-slate-500 mr-2">اسم المدرسة</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={editingSchool.name}
+                        onChange={e => setEditingSchool({...editingSchool, name: e.target.value})}
+                        className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-black text-slate-500 mr-2">رابط المدرسة (Slug)</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={editingSchool.slug}
+                        onChange={e => setEditingSchool({...editingSchool, slug: e.target.value})}
+                        className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-100 transition-all text-left"
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-black text-slate-500 mr-2">البريد الإلكتروني</label>
+                      <input 
+                        type="email" 
+                        required
+                        value={editingSchool.email}
+                        onChange={e => setEditingSchool({...editingSchool, email: e.target.value})}
+                        className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-100 transition-all text-left"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-black text-slate-500 mr-2">رقم الجوال</label>
+                      <input 
+                        type="text" 
+                        value={editingSchool.adminPhone || ''}
+                        onChange={e => setEditingSchool({...editingSchool, adminPhone: e.target.value})}
+                        className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-100 transition-all text-left"
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-black text-slate-500 mr-2">تاريخ انتهاء الاشتراك</label>
+                    <input 
+                      type="date" 
+                      required
+                      value={editingSchool.expiryDate}
+                      onChange={e => setEditingSchool({...editingSchool, expiryDate: e.target.value})}
+                      className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-100 transition-all text-left"
+                    />
+                  </div>
+
+                  <div className="pt-4 flex gap-4">
+                     <button type="button" onClick={() => setShowEditModal(false)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black transition-all hover:bg-slate-200">إلغاء</button>
+                     <button type="submit" className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-100 hover:bg-blue-700 transition flex items-center justify-center gap-2">
+                        <Save size={20} />
+                        حفظ التعديلات
+                     </button>
+                  </div>
+               </form>
+            </div>
           </div>
         )}
       </main>
