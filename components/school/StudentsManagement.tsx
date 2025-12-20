@@ -103,7 +103,9 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
       setShowImport(false);
       setTempImportData(null);
       setImportSummary(null);
-      alert(`تم بنجاح حفظ ${tempImportData.length} طالباً في النظام.`);
+      
+      // رسالة نجاح مخصصة توضح أن الفصول تم استيرادها أيضاً
+      alert(`تم بنجاح استيراد ${tempImportData.length} طالباً، وتحديث قائمة الفصول الدراسية في الجداول تلقائياً.`);
     } catch (err: any) {
       console.error("Save bulk failed", err);
       setImportError(err.message || 'حدث خطأ تقني أثناء محاولة حفظ البيانات.');

@@ -21,7 +21,6 @@ export const hashSecurityPassword = async (pwd: string) => {
   return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
-// @google/genai: تحسين التشفير لضغط البيانات وتقليل استهلاك المساحة
 const Security = {
   encrypt: (data: any): string => {
     try {
@@ -107,21 +106,24 @@ export const db = {
     return all.filter((s: Student) => s.schoolId === schoolId);
   },
 
-  // @google/genai: إصلاح الحفظ الجماعي مع معالجة أخطاء سعة الذاكرة
   saveBulkStudents: async (newStudents: Student[]) => {
+    if (newStudents.length === 0) return true;
+    const schoolId = newStudents[0].schoolId;
     await delay(300);
     try {
       const data = localStorage.getItem(STORAGE_KEYS.STUDENTS);
       const all = Security.decrypt(data || "") || [];
       const currentAll = Array.isArray(all) ? all : [];
       
-      // دمج البيانات مع تجنب التكرار
       const newIds = new Set(newStudents.map(s => s.id));
       const filteredCurrent = currentAll.filter((s: Student) => !newIds.has(s.id));
       const updated = [...filteredCurrent, ...newStudents];
       
-      const encrypted = Security.encrypt(updated);
-      localStorage.setItem(STORAGE_KEYS.STUDENTS, encrypted);
+      localStorage.setItem(STORAGE_KEYS.STUDENTS, Security.encrypt(updated));
+      
+      // @google/genai: استدعاء مزامنة الفصول تلقائياً فور حفظ الطلاب
+      await db.syncClassesFromStudents(schoolId);
+      
       return true;
     } catch (e: any) {
       if (e.name === 'QuotaExceededError' || e.message?.includes('quota')) {
@@ -138,6 +140,9 @@ export const db = {
     const idx = currentAll.findIndex((s: Student) => s.id === student.id);
     if (idx > -1) currentAll[idx] = student; else currentAll.push(student);
     localStorage.setItem(STORAGE_KEYS.STUDENTS, Security.encrypt(currentAll));
+    
+    // مزامنة الفصل لهذا الطالب الفردي أيضاً
+    await db.syncClassesFromStudents(student.schoolId);
   },
 
   getPlans: async (schoolId: string, weekId: string) => {
@@ -247,21 +252,23 @@ export const db = {
     const data = localStorage.getItem(STORAGE_KEYS.TEACHERS);
     const all = Security.decrypt(data || "") || [];
     const filtered = all.filter((t: any) => t.id !== id);
-    localStorage.setItem(STORAGE_KEYS.TEACHERS, Security.encrypt(filtered));
+    localStorage.setItem(STORAGE_KEYS.TEACHERS, Security.encrypt(all));
   },
 
   getClasses: async (schoolId: string): Promise<SchoolClass[]> => {
     const data = localStorage.getItem(STORAGE_KEYS.CLASSES);
     const all = Security.decrypt(data || "") || [];
+    if (!Array.isArray(all)) return [];
     return all.filter((c: any) => c.schoolId === schoolId);
   },
 
   saveClass: async (cls: SchoolClass) => {
     const data = localStorage.getItem(STORAGE_KEYS.CLASSES);
     const all = Security.decrypt(data || "") || [];
-    const idx = all.findIndex((c: any) => c.id === cls.id);
-    if (idx > -1) all[idx] = cls; else all.push(cls);
-    localStorage.setItem(STORAGE_KEYS.CLASSES, Security.encrypt(all));
+    const currentAll = Array.isArray(all) ? all : [];
+    const idx = currentAll.findIndex((c: any) => c.id === cls.id);
+    if (idx > -1) currentAll[idx] = cls; else currentAll.push(cls);
+    localStorage.setItem(STORAGE_KEYS.CLASSES, Security.encrypt(currentAll));
   },
 
   deleteClass: async (schoolId: string, id: string) => {
@@ -271,15 +278,41 @@ export const db = {
     localStorage.setItem(STORAGE_KEYS.CLASSES, Security.encrypt(filtered));
   },
 
+  // @google/genai: تحديث المزامنة لتكون أكثر كفاءة وتعمل تلقائياً عند استيراد الطلاب
   syncClassesFromStudents: async (schoolId: string) => {
     const students = await db.getStudents(schoolId);
-    const uniqueClasses = Array.from(new Set(students.map(s => `${s.grade}|${s.section}`)));
+    if (students.length === 0) return;
+    
+    const uniqueClassKeys = Array.from(new Set(students.map(s => `${s.grade}|${s.section}`)));
     const existingClasses = await db.getClasses(schoolId);
-    for (const uc of uniqueClasses) {
+    
+    let hasChanges = false;
+    const newClasses = [...existingClasses];
+
+    for (const uc of uniqueClassKeys) {
       const [grade, section] = uc.split('|');
-      if (!existingClasses.find(c => c.grade === grade && c.section === section)) {
-        await db.saveClass({ id: `auto-${Date.now()}-${Math.random()}`, grade, section, schoolId });
+      // التحقق مما إذا كان الفصل موجوداً مسبقاً بنفس الصف والقسم
+      const exists = existingClasses.some(c => c.grade === grade && c.section === section);
+      
+      if (!exists) {
+        newClasses.push({ 
+          id: `auto-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
+          grade, 
+          section, 
+          schoolId 
+        });
+        hasChanges = true;
       }
+    }
+
+    if (hasChanges) {
+      // جلب كافة الفصول لكل المدارس أولاً للحفاظ على البيانات الأخرى
+      const allDataRaw = localStorage.getItem(STORAGE_KEYS.CLASSES);
+      const allData = Security.decrypt(allDataRaw || "") || [];
+      const otherSchoolsClasses = allData.filter((c: any) => c.schoolId !== schoolId);
+      
+      const finalClasses = [...otherSchoolsClasses, ...newClasses];
+      localStorage.setItem(STORAGE_KEYS.CLASSES, Security.encrypt(finalClasses));
     }
   },
 
