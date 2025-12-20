@@ -105,6 +105,8 @@ export const db = {
     const all = Security.decrypt(data || "") || [];
     const filtered = all.filter((s: Student) => s.schoolId !== schoolId);
     localStorage.setItem(STORAGE_KEYS.STUDENTS, Security.encrypt(filtered));
+    // بعد حذف الطلاب، نمسح الفصول المرتبطة بهم
+    await db.syncClassesFromStudents(schoolId, []);
   },
 
   saveBulkStudents: async (newStudents: Student[]) => {
@@ -121,6 +123,7 @@ export const db = {
       const updated = [...filteredCurrent, ...newStudents];
       
       localStorage.setItem(STORAGE_KEYS.STUDENTS, Security.encrypt(updated));
+      // مزامنة الفصول فوراً بعد الاستيراد
       await db.syncClassesFromStudents(schoolId, updated.filter(s => s.schoolId === schoolId));
       return true;
     } catch (e: any) { throw e; }
@@ -158,43 +161,47 @@ export const db = {
     localStorage.setItem(STORAGE_KEYS.CLASSES, Security.encrypt(filtered));
   },
 
+  // @google/genai: وظيفة مزامنة "مطهرة" تحذف أي فصل غير موجود في قائمة الطلاب الحالية
   syncClassesFromStudents: async (schoolId: string, providedStudents?: Student[]) => {
     const students = providedStudents || await db.getStudents(schoolId);
-    if (students.length === 0) return;
     
-    // استخراج الفصول الفريدة بناءً على (الصف + الفصل) فقط
-    // نتجاهل أي صف يحتوي على "اسم الطالب" أو "الجوال" كإجراء أمان إضافي
+    // استخراج الفصول الفريدة مع شروط صارمة جداً لمنع التداخل
     const uniqueClassKeys = Array.from(new Set(
       students
-        .filter(s => s.grade.length > 0 && s.grade.length < 50 && !/^\d+$/.test(s.grade))
+        .filter(s => {
+          const g = s.grade.trim();
+          const n = s.name.trim();
+          // شروط الفصل الصالح:
+          // 1. ليس فارغاً
+          // 2. لا يحتوي على أرقام جوال (أكثر من 5 أرقام متتالية)
+          // 3. طول النص منطقي لاسم صف (أقل من 30 حرف عادة)
+          // 4. لا يشبه اسم الطالب (إذا كان الاسم يتطابق تماماً مع الصف فهناك خطأ استيراد)
+          const isPhone = /[0-9]{6,}/.test(g);
+          const isTooLong = g.length > 30;
+          return g.length > 0 && !isPhone && !isTooLong && g !== n;
+        })
         .map(s => `${s.grade.trim()}|${s.section.trim()}`)
     ));
 
-    const existingClasses = await db.getClasses(schoolId);
-    let hasChanges = false;
-    const newClasses = [...existingClasses];
-
-    for (const uc of uniqueClassKeys) {
+    // جلب كافة الفصول في النظام
+    const allDataRaw = localStorage.getItem(STORAGE_KEYS.CLASSES);
+    const allData: SchoolClass[] = Security.decrypt(allDataRaw || "") || [];
+    
+    // الاحتفاظ بفصول المدارس الأخرى وحذف فصول هذه المدرسة القديمة بالكامل لإعادة بنائها
+    const otherSchoolsClasses = allData.filter((c: any) => c.schoolId !== schoolId);
+    
+    const newClassesForSchool = uniqueClassKeys.map((uc, index) => {
       const [grade, section] = uc.split('|');
-      const exists = existingClasses.some(c => c.grade.trim() === grade && c.section.trim() === section);
-      
-      if (!exists) {
-        newClasses.push({ 
-          id: `cls-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
-          grade, 
-          section, 
-          schoolId 
-        });
-        hasChanges = true;
-      }
-    }
+      return { 
+        id: `cls-${schoolId}-${index}-${Date.now()}`, 
+        grade, 
+        section, 
+        schoolId 
+      };
+    });
 
-    if (hasChanges) {
-      const allDataRaw = localStorage.getItem(STORAGE_KEYS.CLASSES);
-      const allData = Security.decrypt(allDataRaw || "") || [];
-      const otherSchoolsClasses = allData.filter((c: any) => c.schoolId !== schoolId);
-      localStorage.setItem(STORAGE_KEYS.CLASSES, Security.encrypt([...otherSchoolsClasses, ...newClasses]));
-    }
+    // حفظ القائمة "المطهرة" الجديدة
+    localStorage.setItem(STORAGE_KEYS.CLASSES, Security.encrypt([...otherSchoolsClasses, ...newClassesForSchool]));
   },
 
   getPlans: async (schoolId: string, weekId: string) => {

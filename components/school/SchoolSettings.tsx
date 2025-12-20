@@ -5,7 +5,7 @@ import {
   BookOpen, UserPlus, Trash2, Key, User, Save, ListChecks, 
   Edit2, Calendar, Plus, Book, LayoutGrid, X, 
   GraduationCap, RefreshCw, Fingerprint, ShieldCheck,
-  CheckCircle2, Loader2
+  CheckCircle2, Loader2, AlertCircle
 } from 'lucide-react';
 import { db } from '../../constants.tsx';
 import ScheduleManagement from './ScheduleManagement.tsx';
@@ -27,6 +27,7 @@ const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
   
   const [isBioLoading, setIsBioLoading] = useState(false);
   const [isBioEnabled, setIsBioEnabled] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const loadData = async () => {
     setTeachers(await db.getTeachers(school.id));
@@ -84,7 +85,7 @@ const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
   const handleSaveClass = async () => {
     if (!newClass.grade || !newClass.section) return;
     const classData: SchoolClass = {
-      id: editingClass ? editingClass.id : Date.now().toString(),
+      id: editingClass ? editingClass.id : `c-${Date.now()}`,
       grade: newClass.grade,
       section: newClass.section,
       schoolId: school.id
@@ -103,10 +104,12 @@ const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
   };
 
   const syncClasses = async () => {
-    if (confirm('سيتم تحديث قائمة الفصول بناءً على الطلاب المسجلين حالياً. هل أنت متأكد؟')) {
+    if (confirm('سيقوم النظام الآن بتنظيف قائمة الفصول وحذف أي فصول خاطئة (مثل الأسماء أو الجوالات) وإعادة بنائها بناءً على قائمة الطلاب الحالية فقط. هل تريد الاستمرار؟')) {
+       setIsSyncing(true);
        await db.syncClassesFromStudents(school.id);
        await loadData();
-       alert('تمت المزامنة بنجاح.');
+       setIsSyncing(false);
+       alert('تم تطهير ومزامنة الفصول بنجاح.');
     }
   };
 
@@ -153,15 +156,20 @@ const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
                 <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-blue-100"><User size={24} /></div>
                 <div>
                    <h3 className="text-xl font-black text-slate-800">إدارة المعلمين والفصول</h3>
-                   <p className="text-xs text-slate-400 font-bold">لديك {teachers.length} معلم و {classes.length} فصل</p>
+                   <p className="text-xs text-slate-400 font-bold">لديك {teachers.length} معلم و {classes.length} فصل دراسي</p>
                 </div>
              </div>
              <div className="flex gap-2 w-full md:w-auto">
-                <button onClick={syncClasses} className="flex-1 md:flex-none bg-emerald-50 text-emerald-600 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-600 hover:text-white transition shadow-sm border border-emerald-100">
-                  <RefreshCw size={20} /> مزامنة
+                <button 
+                  onClick={syncClasses} 
+                  disabled={isSyncing}
+                  className="flex-1 md:flex-none bg-emerald-50 text-emerald-600 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-600 hover:text-white transition shadow-sm border border-emerald-100 disabled:opacity-50"
+                >
+                  {isSyncing ? <Loader2 className="animate-spin" /> : <RefreshCw size={20} />}
+                  تطهير ومزامنة الفصول
                 </button>
                 <button onClick={() => setShowClassesModal(true)} className="flex-1 md:flex-none bg-slate-900 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition shadow-lg">
-                  <LayoutGrid size={20} className="text-blue-400" /> الفصول
+                  <LayoutGrid size={20} className="text-blue-400" /> إدارة الفصول
                 </button>
              </div>
           </div>
@@ -247,19 +255,26 @@ const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
       )}
 
       {showClassesModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[200] flex items-center justify-center p-4">
           <div className="bg-white rounded-[3.5rem] w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95">
             <div className="p-8 border-b bg-slate-50 flex justify-between items-center">
               <div className="flex items-center gap-4">
                  <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg"><LayoutGrid size={24} /></div>
                  <div>
-                    <h3 className="text-2xl font-black text-slate-900">الفصول الدراسية</h3>
+                    <h3 className="text-2xl font-black text-slate-900">إدارة الفصول الدراسية</h3>
                     <p className="text-sm text-slate-500 font-bold">إجمالي الفصول: {classes.length}</p>
                  </div>
               </div>
               <button onClick={() => {setShowClassesModal(false); setEditingClass(null);}} className="p-3 bg-white text-slate-400 rounded-2xl hover:text-rose-500 shadow-sm transition-colors"><X size={24} /></button>
             </div>
             <div className="p-8">
+              <div className="bg-amber-50 p-5 rounded-2xl border border-amber-100 flex items-start gap-3 mb-6">
+                 <AlertCircle className="text-amber-600 shrink-0" size={20} />
+                 <p className="text-xs font-bold text-amber-800 leading-relaxed">
+                    ملاحظة: الفصول تظهر هنا بناءً على الطلاب المسجلين. إذا وجدت أسماء طلاب هنا، يرجى حذف الطلاب الخطأ من "إدارة الطلاب" ثم العودة هنا والضغط على زر "تطهير ومزامنة الفصول" في القائمة الرئيسية.
+                 </p>
+              </div>
+
               <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100 mb-8 space-y-4">
                  <h4 className="font-black text-blue-800 text-sm">{editingClass ? 'تعديل الفصل' : 'إضافة فصل يدوي'}</h4>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -271,21 +286,25 @@ const SchoolSettings: React.FC<{ school: School }> = ({ school }) => {
                  <button onClick={handleSaveClass} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-100 hover:bg-blue-700 transition">{editingClass ? 'تحديث الفصل' : 'إضافة الفصل للقائمة'}</button>
               </div>
               <div className="max-h-[300px] overflow-y-auto space-y-3 px-2 custom-scrollbar">
-                {classes.map(c => (
-                  <div key={c.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border hover:border-blue-100 transition group">
-                    <div className="flex items-center gap-4">
-                       <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-sm"><GraduationCap size={20} /></div>
-                       <div className="flex flex-col">
-                          <span className="font-black text-slate-800">{c.grade}</span>
-                          <span className="text-xs text-slate-400 font-bold">فصل رقم {c.section}</span>
-                       </div>
+                {classes.length === 0 ? (
+                  <div className="text-center p-10 text-slate-300 font-bold">لا توجد فصول دراسية.</div>
+                ) : (
+                  classes.map(c => (
+                    <div key={c.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border hover:border-blue-100 transition group">
+                      <div className="flex items-center gap-4">
+                         <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-sm"><GraduationCap size={20} /></div>
+                         <div className="flex flex-col">
+                            <span className="font-black text-slate-800">{c.grade}</span>
+                            <span className="text-xs text-slate-400 font-bold">فصل رقم {c.section}</span>
+                         </div>
+                      </div>
+                      <div className="flex gap-2">
+                         <button onClick={() => { setEditingClass(c); setNewClass({ grade: c.grade, section: c.section }); }} className="p-2 text-blue-500 hover:bg-blue-100 rounded-lg transition opacity-0 group-hover:opacity-100"><Edit2 size={18} /></button>
+                         <button onClick={() => handleDeleteClass(c.id)} className="p-2 text-rose-500 hover:bg-rose-100 rounded-lg transition opacity-0 group-hover:opacity-100"><Trash2 size={18} /></button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                       <button onClick={() => { setEditingClass(c); setNewClass({ grade: c.grade, section: c.section }); }} className="p-2 text-blue-500 hover:bg-blue-100 rounded-lg transition opacity-0 group-hover:opacity-100"><Edit2 size={18} /></button>
-                       <button onClick={() => handleDeleteClass(c.id)} className="p-2 text-rose-500 hover:bg-rose-100 rounded-lg transition opacity-0 group-hover:opacity-100"><Trash2 size={18} /></button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
