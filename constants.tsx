@@ -11,10 +11,9 @@ const STORAGE_KEYS = {
   WEEKS: 'madrasati_weeks_secure',
   SUBJECTS: 'madrasati_subjects_secure',
   SYSTEM: 'madrasati_sys_secure',
-  BIOMETRICS: 'madrasati_biometric_keys' // مفاتيح البصمة
+  BIOMETRICS: 'madrasati_biometric_keys'
 };
 
-// @google/genai: جعل وظيفة التشفير متاحة خارجياً لضمان توحيد معايير الأمان
 export const hashSecurityPassword = async (pwd: string) => {
   const encoder = new TextEncoder();
   const data = encoder.encode(pwd + "MADRASATI_SALT");
@@ -22,9 +21,37 @@ export const hashSecurityPassword = async (pwd: string) => {
   return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
+// @google/genai: تحديث نظام التشفير ليدعم اليونيكود (العربي) بشكل أفضل وأكثر استقراراً
 const Security = {
-  encrypt: (data: any) => btoa(encodeURIComponent(JSON.stringify(data))),
-  decrypt: (cipher: string) => JSON.parse(decodeURIComponent(atob(cipher))),
+  encrypt: (data: any): string => {
+    try {
+      const jsonString = JSON.stringify(data);
+      const uint8Array = new TextEncoder().encode(jsonString);
+      let binString = "";
+      for (let i = 0; i < uint8Array.byteLength; i++) {
+        binString += String.fromCharCode(uint8Array[i]);
+      }
+      return btoa(binString);
+    } catch (e) {
+      console.error("Encryption failed", e);
+      return "";
+    }
+  },
+  decrypt: (cipher: string): any => {
+    try {
+      if (!cipher) return null;
+      const binString = atob(cipher);
+      const uint8Array = new Uint8Array(binString.length);
+      for (let i = 0; i < binString.length; i++) {
+        uint8Array[i] = binString.charCodeAt(i);
+      }
+      const jsonString = new TextDecoder().decode(uint8Array);
+      return JSON.parse(jsonString);
+    } catch (e) {
+      console.error("Decryption failed", e);
+      return null;
+    }
+  },
 };
 
 export const formatToHijri = (dateString: string | Date): string => {
@@ -48,11 +75,10 @@ export const PERIODS = [1, 2, 3, 4, 5, 6, 7];
 const delay = (ms: number = 400) => new Promise(res => setTimeout(res, ms));
 
 export const db = {
-  // --- المدارس ---
   getSchools: async (): Promise<School[]> => {
-    await delay();
+    await delay(200);
     const data = localStorage.getItem(STORAGE_KEYS.SCHOOLS);
-    return data ? Security.decrypt(data) : [];
+    return Security.decrypt(data || "") || [];
   },
 
   saveSchool: async (school: School) => {
@@ -73,36 +99,42 @@ export const db = {
     return schools.find(s => s.slug === slug);
   },
 
-  // --- الطلاب ---
   getStudents: async (schoolId: string): Promise<Student[]> => {
-    await delay(300);
+    await delay(200);
     const data = localStorage.getItem(STORAGE_KEYS.STUDENTS);
-    const all: Student[] = data ? Security.decrypt(data) : [];
-    return all.filter(s => s.schoolId === schoolId);
+    const all = Security.decrypt(data || "") || [];
+    if (!Array.isArray(all)) return [];
+    return all.filter((s: Student) => s.schoolId === schoolId);
   },
 
-  saveBulkStudents: async (students: Student[]) => {
-    await delay(800);
+  // @google/genai: تحسين وظيفة الحفظ الجماعي لضمان عدم ضياع البيانات السابقة
+  saveBulkStudents: async (newStudents: Student[]) => {
+    await delay(500);
     const data = localStorage.getItem(STORAGE_KEYS.STUDENTS);
-    const all: Student[] = data ? Security.decrypt(data) : [];
-    const updated = [...all, ...students];
+    const all = Security.decrypt(data || "") || [];
+    const currentAll = Array.isArray(all) ? all : [];
+    
+    // تجنب التكرار بناءً على المعرف
+    const newStudentIds = new Set(newStudents.map(s => s.id));
+    const filteredCurrent = currentAll.filter((s: Student) => !newStudentIds.has(s.id));
+    
+    const updated = [...filteredCurrent, ...newStudents];
     localStorage.setItem(STORAGE_KEYS.STUDENTS, Security.encrypt(updated));
   },
 
   saveStudent: async (student: Student) => {
     const data = localStorage.getItem(STORAGE_KEYS.STUDENTS);
-    const all: Student[] = data ? Security.decrypt(data) : [];
-    const idx = all.findIndex(s => s.id === student.id);
-    if (idx > -1) all[idx] = student; else all.push(student);
-    localStorage.setItem(STORAGE_KEYS.STUDENTS, Security.encrypt(all));
+    const all = Security.decrypt(data || "") || [];
+    const currentAll = Array.isArray(all) ? all : [];
+    const idx = currentAll.findIndex((s: Student) => s.id === student.id);
+    if (idx > -1) currentAll[idx] = student; else currentAll.push(student);
+    localStorage.setItem(STORAGE_KEYS.STUDENTS, Security.encrypt(currentAll));
   },
 
-  // --- الخطط الأسبوعية ---
   getPlans: async (schoolId: string, weekId: string) => {
-    await delay(200);
     const key = `${STORAGE_KEYS.PLANS}_${schoolId}_${weekId}`;
     const data = localStorage.getItem(key);
-    return data ? Security.decrypt(data) : {};
+    return Security.decrypt(data || "") || {};
   },
 
   savePlan: async (schoolId: string, weekId: string, planKey: string, entry: any) => {
@@ -112,11 +144,9 @@ export const db = {
     localStorage.setItem(storageKey, Security.encrypt(current));
   },
 
-  // --- التحقق من الهوية ---
   authenticateSchool: async (username: string, passwordPlain: string) => {
     const schools = await db.getSchools();
     const hashed = await hashSecurityPassword(passwordPlain);
-    
     const school = schools.find(s => s.adminUsername === username || s.slug === username);
     if (school && (school.adminPassword === hashed || passwordPlain === 'admin')) {
       return { ...school, token: 'JWT_' + btoa(school.id + Date.now()) };
@@ -124,10 +154,7 @@ export const db = {
     return null;
   },
 
-  // --- التوثيق بالبصمة ---
-  isBiometricsSupported: () => {
-    return !!(window.PublicKeyCredential && window.navigator.credentials);
-  },
+  isBiometricsSupported: () => !!(window.PublicKeyCredential && window.navigator.credentials),
 
   registerBiometric: async (userId: string, type: 'SCHOOL' | 'TEACHER') => {
     if (!db.isBiometricsSupported()) return false;
@@ -143,10 +170,9 @@ export const db = {
   },
 
   authenticateBiometric: async () => {
-    if (!db.isBiometricsSupported()) return null;
     const localKey = localStorage.getItem('local_biometric_key');
     if (!localKey) return null;
-    await delay(1000);
+    await delay(500);
     const biometricsRaw = localStorage.getItem(STORAGE_KEYS.BIOMETRICS) || '{}';
     const biometrics = JSON.parse(biometricsRaw);
     const record = biometrics[localKey];
@@ -157,7 +183,7 @@ export const db = {
         return school ? { type: 'SCHOOL_ADMIN', data: school } : null;
       } else {
         const data = localStorage.getItem(STORAGE_KEYS.TEACHERS);
-        const all = data ? Security.decrypt(data) : [];
+        const all = Security.decrypt(data || "") || [];
         const teacher = all.find((t: any) => t.id === record.userId);
         return teacher ? { type: 'TEACHER', data: teacher } : null;
       }
@@ -165,10 +191,9 @@ export const db = {
     return null;
   },
 
-  // --- باقي الوظائف ---
   getWeeks: async (schoolId: string): Promise<AcademicWeek[]> => {
     const data = localStorage.getItem(`${STORAGE_KEYS.WEEKS}_${schoolId}`);
-    return data ? Security.decrypt(data) : [];
+    return Security.decrypt(data || "") || [];
   },
 
   saveWeek: async (schoolId: string, week: AcademicWeek) => {
@@ -197,13 +222,13 @@ export const db = {
 
   getTeachers: async (schoolId: string): Promise<Teacher[]> => {
     const data = localStorage.getItem(STORAGE_KEYS.TEACHERS);
-    const all = data ? Security.decrypt(data) : [];
+    const all = Security.decrypt(data || "") || [];
     return all.filter((t: any) => t.schoolId === schoolId);
   },
 
   saveTeacher: async (teacher: Teacher) => {
     const data = localStorage.getItem(STORAGE_KEYS.TEACHERS);
-    const all = data ? Security.decrypt(data) : [];
+    const all = Security.decrypt(data || "") || [];
     const idx = all.findIndex((t: any) => t.id === teacher.id);
     if (idx > -1) all[idx] = teacher; else all.push(teacher);
     localStorage.setItem(STORAGE_KEYS.TEACHERS, Security.encrypt(all));
@@ -211,20 +236,20 @@ export const db = {
 
   deleteTeacher: async (id: string) => {
     const data = localStorage.getItem(STORAGE_KEYS.TEACHERS);
-    const all = data ? Security.decrypt(data) : [];
+    const all = Security.decrypt(data || "") || [];
     const filtered = all.filter((t: any) => t.id !== id);
     localStorage.setItem(STORAGE_KEYS.TEACHERS, Security.encrypt(filtered));
   },
 
   getClasses: async (schoolId: string): Promise<SchoolClass[]> => {
     const data = localStorage.getItem(STORAGE_KEYS.CLASSES);
-    const all = data ? Security.decrypt(data) : [];
+    const all = Security.decrypt(data || "") || [];
     return all.filter((c: any) => c.schoolId === schoolId);
   },
 
   saveClass: async (cls: SchoolClass) => {
     const data = localStorage.getItem(STORAGE_KEYS.CLASSES);
-    const all = data ? Security.decrypt(data) : [];
+    const all = Security.decrypt(data || "") || [];
     const idx = all.findIndex((c: any) => c.id === cls.id);
     if (idx > -1) all[idx] = cls; else all.push(cls);
     localStorage.setItem(STORAGE_KEYS.CLASSES, Security.encrypt(all));
@@ -232,7 +257,7 @@ export const db = {
 
   deleteClass: async (schoolId: string, id: string) => {
     const data = localStorage.getItem(STORAGE_KEYS.CLASSES);
-    const all = data ? Security.decrypt(data) : [];
+    const all = Security.decrypt(data || "") || [];
     const filtered = all.filter((c: any) => c.id !== id);
     localStorage.setItem(STORAGE_KEYS.CLASSES, Security.encrypt(filtered));
   },
@@ -251,7 +276,7 @@ export const db = {
 
   getSubjects: async (schoolId: string): Promise<Subject[]> => {
     const data = localStorage.getItem(`${STORAGE_KEYS.SUBJECTS}_${schoolId}`);
-    return data ? Security.decrypt(data) : [];
+    return Security.decrypt(data || "") || [];
   },
 
   saveSubject: async (schoolId: string, subject: Subject) => {
@@ -264,12 +289,12 @@ export const db = {
   deleteSubject: async (schoolId: string, id: string) => {
     const subjects = await db.getSubjects(schoolId);
     const filtered = subjects.filter(s => s.id !== id);
-    localStorage.setItem(`${STORAGE_KEYS.SUBJECTS}_${schoolId}`, Security.encrypt(subjects));
+    localStorage.setItem(`${STORAGE_KEYS.SUBJECTS}_${schoolId}`, Security.encrypt(filtered));
   },
 
   getSchedule: async (schoolId: string, classTitle: string) => {
     const data = localStorage.getItem(`${STORAGE_KEYS.SCHEDULES}_${schoolId}_${classTitle}`);
-    return data ? Security.decrypt(data) : {};
+    return Security.decrypt(data || "") || {};
   },
 
   saveSchedule: async (schoolId: string, classTitle: string, schedule: any) => {
@@ -278,7 +303,7 @@ export const db = {
 
   getAttendance: async (schoolId: string) => {
     const data = localStorage.getItem(`attendance_${schoolId}`);
-    return data ? Security.decrypt(data) : [];
+    return Security.decrypt(data || "") || [];
   },
 
   saveAttendance: async (schoolId: string, report: any) => {
@@ -293,7 +318,7 @@ export const db = {
     const filtered = current.filter((r: any) => r.id !== id);
     if (report) {
       const archivedData = localStorage.getItem(`attendance_archived_${schoolId}`);
-      const archived = archivedData ? Security.decrypt(archivedData) : [];
+      const archived = Security.decrypt(archivedData || "") || [];
       archived.push(report);
       localStorage.setItem(`attendance_archived_${schoolId}`, Security.encrypt(archived));
     }
@@ -302,7 +327,7 @@ export const db = {
 
   getArchivedAttendance: async (schoolId: string) => {
     const data = localStorage.getItem(`attendance_archived_${schoolId}`);
-    return data ? Security.decrypt(data) : [];
+    return Security.decrypt(data || "") || [];
   },
 
   restoreAttendance: async (schoolId: string, id: string) => {
@@ -319,7 +344,7 @@ export const db = {
 
   getArchivedPlans: async (schoolId: string) => {
     const data = localStorage.getItem(`plans_archived_${schoolId}`);
-    return data ? Security.decrypt(data) : [];
+    return Security.decrypt(data || "") || [];
   },
 
   archiveWeekPlans: async (schoolId: string, week: AcademicWeek) => {
@@ -334,13 +359,11 @@ export const db = {
   },
 
   getSystemAdmin: async () => {
-    await delay(200);
     const data = localStorage.getItem(STORAGE_KEYS.SYSTEM);
-    return data ? Security.decrypt(data) : { username: 'admin', password: 'password' };
+    return Security.decrypt(data || "") || { username: 'admin', password: 'password' };
   },
 
   updateSystemAdmin: async (admin: any) => {
-    await delay(500);
     localStorage.setItem(STORAGE_KEYS.SYSTEM, Security.encrypt(admin));
   }
 };

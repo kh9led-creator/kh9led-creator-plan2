@@ -33,17 +33,15 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
 
   const loadData = async () => {
     setLoading(true);
-    const data = await db.getStudents(schoolId);
-    setStudents(data);
-    setLoading(false);
+    try {
+      const data = await db.getStudents(schoolId);
+      setStudents(data);
+    } catch (err) {
+      console.error("Failed to load students", err);
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const filteredStudents = useMemo(() => {
-    return students.filter(s => 
-      s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      s.grade.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [students, searchTerm]);
 
   const processExcelFile = async (file: File) => {
     setIsProcessing(true);
@@ -61,7 +59,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         const name = String(row[0] || '').trim();
         if (name && name.length > 3) {
           extracted.push({
-            id: `s-${timestamp}-${index}`,
+            id: `s-${timestamp}-${index}-${Math.random().toString(36).substr(2, 5)}`,
             name,
             phoneNumber: String(row[1] || ''),
             grade: String(row[2] || 'غير محدد'),
@@ -75,27 +73,38 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
         setImportSummary({ count: extracted.length, samples: extracted.slice(0, 3).map(s => s.name) });
         setTempImportData(extracted);
       } else {
-        setImportError('لم يتم العثور على بيانات صالحة.');
+        setImportError('لم يتم العثور على بيانات صالحة في الملف. تأكد من أن الأسماء في العمود الأول.');
       }
-    } catch (err) { setImportError('خطأ في معالجة الملف.'); }
-    setIsProcessing(false);
+    } catch (err) { 
+      setImportError('خطأ في معالجة الملف. تأكد من صحة تنسيق ملف Excel.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const confirmAndSave = async () => {
-    if (!tempImportData) return;
+    if (!tempImportData || tempImportData.length === 0) return;
     setIsProcessing(true);
-    await db.saveBulkStudents(tempImportData);
-    await loadData();
-    setShowImport(false);
-    setTempImportData(null);
-    setIsProcessing(false);
-    alert('تم الحفظ بنجاح بنظام مشفر وآمن.');
+    try {
+      await db.saveBulkStudents(tempImportData);
+      // تحديث القائمة المحلية فوراً
+      await loadData();
+      setShowImport(false);
+      setTempImportData(null);
+      setImportSummary(null);
+      alert(`تم بنجاح حفظ ${tempImportData.length} طالباً في قاعدة البيانات.`);
+    } catch (err) {
+      console.error("Save bulk failed", err);
+      alert('حدث خطأ أثناء محاولة حفظ البيانات. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleSaveManual = async () => {
     if (!formData.name) return alert('الاسم مطلوب');
     const student: Student = {
-      id: editingStudent ? editingStudent.id : `m-${Date.now()}`,
+      id: editingStudent ? editingStudent.id : `m-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       ...formData,
       schoolId
     };
@@ -103,7 +112,15 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     await loadData();
     setShowForm(false);
     setEditingStudent(null);
+    setFormData({ name: '', grade: 'الأول الابتدائي', section: '1', phoneNumber: '' });
   };
+
+  const filteredStudents = useMemo(() => {
+    return students.filter(s => 
+      s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      s.grade.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [students, searchTerm]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-full">
@@ -116,10 +133,10 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
-          <button onClick={() => setShowImport(true)} className="bg-emerald-600 text-white px-6 py-3.5 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700 transition shadow-md text-sm">
+          <button onClick={() => { setImportError(''); setImportSummary(null); setShowImport(true); }} className="bg-emerald-600 text-white px-6 py-3.5 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700 transition shadow-md text-sm">
             <FileSpreadsheet size={18} /> استيراد Excel
           </button>
-          <button onClick={() => { setEditingStudent(null); setShowForm(true); }} className="bg-indigo-600 text-white px-6 py-3.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 transition shadow-md text-sm">
+          <button onClick={() => { setEditingStudent(null); setFormData({ name: '', grade: 'الأول الابتدائي', section: '1', phoneNumber: '' }); setShowForm(true); }} className="bg-indigo-600 text-white px-6 py-3.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 transition shadow-md text-sm">
             <Plus size={18} /> إضافة يدوي
           </button>
         </div>
@@ -152,7 +169,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
           <table className="w-full text-right">
             <thead className="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest">
               <tr>
-                <th className="p-5">اسم الطالب</th>
+                <th className="p-5 text-right">اسم الطالب</th>
                 <th className="p-5 text-center">الصف</th>
                 <th className="p-5 text-center">الفصل</th>
                 <th className="p-5 text-left">التحكم</th>
@@ -168,7 +185,7 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
                     <td className="p-5 text-center"><span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-xs font-bold">{s.grade}</span></td>
                     <td className="p-5 text-center text-slate-500 font-bold">{s.section}</td>
                     <td className="p-5 text-left">
-                       <button onClick={() => { setEditingStudent(s); setFormData({name:s.name, grade:s.grade, section:s.section, phoneNumber:s.phoneNumber}); setShowForm(true); }} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"><Edit2 size={16} /></button>
+                       <button onClick={() => { setEditingStudent(s); setFormData({name:s.name, grade:s.grade, section:s.section, phoneNumber:s.phoneNumber}); setShowForm(true); }} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Edit2 size={16} /></button>
                     </td>
                   </tr>
                 ))
@@ -183,27 +200,76 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
           <div className="bg-white p-10 rounded-[3rem] max-w-xl w-full shadow-2xl animate-in zoom-in-95">
              <div className="flex justify-between items-center mb-8">
                 <h3 className="text-xl font-black text-slate-900">استيراد آمن للبيانات</h3>
-                <button onClick={() => setShowImport(false)} className="p-2 text-slate-400"><X size={24} /></button>
+                <button onClick={() => setShowImport(false)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors"><X size={24} /></button>
              </div>
 
+             {importError && (
+               <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-2xl flex items-center gap-3 font-bold text-xs border border-rose-100">
+                  <AlertCircle size={18} /> {importError}
+               </div>
+             )}
+
              {!importSummary ? (
-               <div className="border-4 border-dashed rounded-[2.5rem] h-64 flex flex-col items-center justify-center bg-slate-50">
-                  <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => e.target.files?.[0] && processExcelFile(e.target.files[0])} />
-                  <Upload size={48} className="text-slate-300 mb-4" />
-                  <button onClick={() => fileInputRef.current?.click()} className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-black">اختيار ملف Excel</button>
+               <div className="border-4 border-dashed rounded-[2.5rem] h-64 flex flex-col items-center justify-center bg-slate-50 relative group">
+                  <input ref={fileInputRef} type="file" className="hidden" accept=".xlsx, .xls" onChange={(e) => e.target.files?.[0] && processExcelFile(e.target.files[0])} />
+                  <Upload size={48} className="text-slate-300 mb-4 group-hover:text-indigo-400 transition-colors" />
+                  <p className="text-slate-400 font-bold text-sm mb-4">اسحب ملف Excel هنا أو اختر يدوياً</p>
+                  <button onClick={() => fileInputRef.current?.click()} className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-black hover:bg-emerald-700 transition shadow-lg">اختيار ملف Excel</button>
                </div>
              ) : (
-               <div className="bg-emerald-50 p-8 rounded-[2.5rem] border border-emerald-100">
-                  <h4 className="text-xl font-black text-emerald-900 mb-2">اكتشاف {importSummary.count} سجل</h4>
-                  <p className="text-sm font-bold text-emerald-600 mb-6">سيتم تشفير البيانات وحفظها فور التأكيد.</p>
-                  <div className="flex gap-4">
-                     <button onClick={() => setImportSummary(null)} className="flex-1 py-4 bg-white rounded-2xl font-black">إلغاء</button>
-                     <button onClick={confirmAndSave} disabled={isProcessing} className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-black flex items-center justify-center gap-2">
-                        {isProcessing ? <Loader2 className="animate-spin" /> : 'تأكيد وحفظ مشفر'}
-                     </button>
+               <div className="space-y-6">
+                  <div className="bg-emerald-50 p-8 rounded-[2.5rem] border border-emerald-100">
+                    <h4 className="text-xl font-black text-emerald-900 mb-2">اكتشاف {importSummary.count} سجل</h4>
+                    <p className="text-sm font-bold text-emerald-600 mb-4">نماذج من البيانات المكتشفة:</p>
+                    <div className="flex flex-wrap gap-2 mb-6">
+                       {importSummary.samples.map((name, i) => <span key={i} className="bg-white px-3 py-1 rounded-lg text-[10px] font-black text-emerald-800 border border-emerald-200">{name}</span>)}
+                       {importSummary.count > 3 && <span className="text-[10px] text-emerald-400 font-bold self-center">...وغيرهم</span>}
+                    </div>
+                    <div className="flex gap-4">
+                       <button onClick={() => setImportSummary(null)} className="flex-1 py-4 bg-white text-slate-600 rounded-2xl font-black hover:bg-slate-50 transition border">إلغاء</button>
+                       <button onClick={confirmAndSave} disabled={isProcessing} className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-emerald-700 transition shadow-lg shadow-emerald-100">
+                          {isProcessing ? <Loader2 className="animate-spin" /> : 'تأكيد وحفظ في النظام'}
+                       </button>
+                    </div>
                   </div>
                </div>
              )}
+          </div>
+        </div>
+      )}
+
+      {showForm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+          <div className="bg-white p-10 rounded-[3rem] max-w-lg w-full shadow-2xl animate-in zoom-in-95">
+             <div className="flex justify-between items-center mb-8">
+                <h3 className="text-xl font-black text-slate-900">{editingStudent ? 'تعديل بيانات طالب' : 'إضافة طالب جديد'}</h3>
+                <button onClick={() => setShowForm(false)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors"><X size={24} /></button>
+             </div>
+
+             <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-500 mr-2">اسم الطالب الثلاثي</label>
+                  <input type="text" className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-indigo-100 transition" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-black text-slate-500 mr-2">الصف الدراسي</label>
+                    <select className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-indigo-100 transition appearance-none" value={formData.grade} onChange={e => setFormData({...formData, grade: e.target.value})}>
+                      <option>الأول الابتدائي</option><option>الثاني الابتدائي</option><option>الثالث الابتدائي</option><option>الرابع الابتدائي</option><option>الخامس الابتدائي</option><option>السادس الابتدائي</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-black text-slate-500 mr-2">رقم الفصل</label>
+                    <input type="text" className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-indigo-100 transition" value={formData.section} onChange={e => setFormData({...formData, section: e.target.value})} />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-500 mr-2">رقم جوال ولي الأمر (اختياري)</label>
+                  <input type="text" className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-indigo-100 transition" value={formData.phoneNumber} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} />
+                </div>
+                
+                <button onClick={handleSaveManual} className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all mt-6 active:scale-95">حفظ البيانات</button>
+             </div>
           </div>
         </div>
       )}
