@@ -32,6 +32,7 @@ const BulkStudentPlans: React.FC = () => {
   const [activeWeek, setActiveWeek] = useState<AcademicWeek | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Fix: Explicitly typing data and class map to avoid 'unknown' index errors
   useEffect(() => {
     const loadBulkData = async () => {
       if (schoolSlug) {
@@ -44,14 +45,14 @@ const BulkStudentPlans: React.FC = () => {
             setAllPlans(await db.getPlans(s.id, week.id));
           }
           setSubjects(await db.getSubjects(s.id));
-          let students = await db.getStudents(s.id);
+          let students: Student[] = await db.getStudents(s.id);
           if (filterClass) {
             students = students.filter(std => `${std.grade} - فصل ${std.section}` === filterClass);
           }
           setStudentsToPrint(students);
           
-          const classes = Array.from(new Set(students.map(std => `${std.grade} - فصل ${std.section}`)));
-          const schedules: any = {};
+          const classes: string[] = Array.from(new Set(students.map((std: Student) => `${std.grade} - فصل ${std.section}`)));
+          const schedules: Record<string, any> = {};
           for (const cls of classes) {
             schedules[cls] = await db.getSchedule(s.id, cls);
           }
