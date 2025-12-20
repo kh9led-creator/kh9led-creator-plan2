@@ -33,10 +33,7 @@ const Security = {
         binary += String.fromCharCode(bytes[i]);
       }
       return btoa(binary);
-    } catch (e) {
-      console.error("Encryption failed", e);
-      return "";
-    }
+    } catch (e) { return ""; }
   },
   decrypt: (cipher: string): any => {
     try {
@@ -48,10 +45,7 @@ const Security = {
       }
       const jsonString = new TextDecoder().decode(bytes);
       return JSON.parse(jsonString);
-    } catch (e) {
-      console.error("Decryption failed", e);
-      return null;
-    }
+    } catch (e) { return null; }
   },
 };
 
@@ -127,17 +121,9 @@ export const db = {
       const updated = [...filteredCurrent, ...newStudents];
       
       localStorage.setItem(STORAGE_KEYS.STUDENTS, Security.encrypt(updated));
-      
-      // مزامنة الفصول بشكل ذكي فور الاستيراد
       await db.syncClassesFromStudents(schoolId, updated.filter(s => s.schoolId === schoolId));
-      
       return true;
-    } catch (e: any) {
-      if (e.name === 'QuotaExceededError' || e.message?.includes('quota')) {
-        throw new Error("تجاوزت سعة التخزين المسموحة في المتصفح. يرجى تقليل عدد الطلاب المستوردين.");
-      }
-      throw e;
-    }
+    } catch (e: any) { throw e; }
   },
 
   saveStudent: async (student: Student) => {
@@ -147,9 +133,68 @@ export const db = {
     const idx = currentAll.findIndex((s: Student) => s.id === student.id);
     if (idx > -1) currentAll[idx] = student; else currentAll.push(student);
     localStorage.setItem(STORAGE_KEYS.STUDENTS, Security.encrypt(currentAll));
+    await db.syncClassesFromStudents(student.schoolId);
+  },
+
+  getClasses: async (schoolId: string): Promise<SchoolClass[]> => {
+    const data = localStorage.getItem(STORAGE_KEYS.CLASSES);
+    const all = Security.decrypt(data || "") || [];
+    if (!Array.isArray(all)) return [];
+    return all.filter((c: any) => c.schoolId === schoolId);
+  },
+
+  saveClass: async (cls: SchoolClass) => {
+    const data = localStorage.getItem(STORAGE_KEYS.CLASSES);
+    const all = Security.decrypt(data || "") || [];
+    const idx = all.findIndex((c: any) => c.id === cls.id);
+    if (idx > -1) all[idx] = cls; else all.push(cls);
+    localStorage.setItem(STORAGE_KEYS.CLASSES, Security.encrypt(all));
+  },
+
+  deleteClass: async (schoolId: string, id: string) => {
+    const data = localStorage.getItem(STORAGE_KEYS.CLASSES);
+    const all = Security.decrypt(data || "") || [];
+    const filtered = all.filter((c: any) => c.id !== id);
+    localStorage.setItem(STORAGE_KEYS.CLASSES, Security.encrypt(filtered));
+  },
+
+  syncClassesFromStudents: async (schoolId: string, providedStudents?: Student[]) => {
+    const students = providedStudents || await db.getStudents(schoolId);
+    if (students.length === 0) return;
     
-    const schoolStudents = currentAll.filter(s => s.schoolId === student.schoolId);
-    await db.syncClassesFromStudents(student.schoolId, schoolStudents);
+    // استخراج الفصول الفريدة بناءً على (الصف + الفصل) فقط
+    // نتجاهل أي صف يحتوي على "اسم الطالب" أو "الجوال" كإجراء أمان إضافي
+    const uniqueClassKeys = Array.from(new Set(
+      students
+        .filter(s => s.grade.length > 0 && s.grade.length < 50 && !/^\d+$/.test(s.grade))
+        .map(s => `${s.grade.trim()}|${s.section.trim()}`)
+    ));
+
+    const existingClasses = await db.getClasses(schoolId);
+    let hasChanges = false;
+    const newClasses = [...existingClasses];
+
+    for (const uc of uniqueClassKeys) {
+      const [grade, section] = uc.split('|');
+      const exists = existingClasses.some(c => c.grade.trim() === grade && c.section.trim() === section);
+      
+      if (!exists) {
+        newClasses.push({ 
+          id: `cls-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
+          grade, 
+          section, 
+          schoolId 
+        });
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      const allDataRaw = localStorage.getItem(STORAGE_KEYS.CLASSES);
+      const allData = Security.decrypt(allDataRaw || "") || [];
+      const otherSchoolsClasses = allData.filter((c: any) => c.schoolId !== schoolId);
+      localStorage.setItem(STORAGE_KEYS.CLASSES, Security.encrypt([...otherSchoolsClasses, ...newClasses]));
+    }
   },
 
   getPlans: async (schoolId: string, weekId: string) => {
@@ -171,43 +216,6 @@ export const db = {
     const school = schools.find(s => s.adminUsername === username || s.slug === username);
     if (school && (school.adminPassword === hashed || passwordPlain === 'admin')) {
       return { ...school, token: 'JWT_' + btoa(school.id + Date.now()) };
-    }
-    return null;
-  },
-
-  isBiometricsSupported: () => !!(window.PublicKeyCredential && window.navigator.credentials),
-
-  registerBiometric: async (userId: string, type: 'SCHOOL' | 'TEACHER') => {
-    if (!db.isBiometricsSupported()) return false;
-    try {
-      const credentialId = 'biom_' + btoa(userId + Math.random());
-      const biometricsRaw = localStorage.getItem(STORAGE_KEYS.BIOMETRICS) || '{}';
-      const biometrics = JSON.parse(biometricsRaw);
-      biometrics[credentialId] = { userId, type, date: new Date().toISOString() };
-      localStorage.setItem(STORAGE_KEYS.BIOMETRICS, JSON.stringify(biometrics));
-      localStorage.setItem('local_biometric_key', credentialId);
-      return true;
-    } catch (e) { return false; }
-  },
-
-  authenticateBiometric: async () => {
-    const localKey = localStorage.getItem('local_biometric_key');
-    if (!localKey) return null;
-    await delay(300);
-    const biometricsRaw = localStorage.getItem(STORAGE_KEYS.BIOMETRICS) || '{}';
-    const biometrics = JSON.parse(biometricsRaw);
-    const record = biometrics[localKey];
-    if (record) {
-      if (record.type === 'SCHOOL') {
-        const schools = await db.getSchools();
-        const school = schools.find(s => s.id === record.userId);
-        return school ? { type: 'SCHOOL_ADMIN', data: school } : null;
-      } else {
-        const data = localStorage.getItem(STORAGE_KEYS.TEACHERS);
-        const all = Security.decrypt(data || "") || [];
-        const teacher = all.find((t: any) => t.id === record.userId);
-        return teacher ? { type: 'TEACHER', data: teacher } : null;
-      }
     }
     return null;
   },
@@ -259,67 +267,7 @@ export const db = {
     const data = localStorage.getItem(STORAGE_KEYS.TEACHERS);
     const all = Security.decrypt(data || "") || [];
     const filtered = all.filter((t: any) => t.id !== id);
-    localStorage.setItem(STORAGE_KEYS.TEACHERS, Security.encrypt(all));
-  },
-
-  getClasses: async (schoolId: string): Promise<SchoolClass[]> => {
-    const data = localStorage.getItem(STORAGE_KEYS.CLASSES);
-    const all = Security.decrypt(data || "") || [];
-    if (!Array.isArray(all)) return [];
-    return all.filter((c: any) => c.schoolId === schoolId);
-  },
-
-  saveClass: async (cls: SchoolClass) => {
-    const data = localStorage.getItem(STORAGE_KEYS.CLASSES);
-    const all = Security.decrypt(data || "") || [];
-    const currentAll = Array.isArray(all) ? all : [];
-    const idx = currentAll.findIndex((c: any) => c.id === cls.id);
-    if (idx > -1) currentAll[idx] = cls; else currentAll.push(cls);
-    localStorage.setItem(STORAGE_KEYS.CLASSES, Security.encrypt(currentAll));
-  },
-
-  deleteClass: async (schoolId: string, id: string) => {
-    const data = localStorage.getItem(STORAGE_KEYS.CLASSES);
-    const all = Security.decrypt(data || "") || [];
-    const filtered = all.filter((c: any) => c.id !== id);
-    localStorage.setItem(STORAGE_KEYS.CLASSES, Security.encrypt(filtered));
-  },
-
-  // تم تحسين المزامنة لتعمل بذكاء أكبر مع البيانات المدخلة
-  syncClassesFromStudents: async (schoolId: string, providedStudents?: Student[]) => {
-    const students = providedStudents || await db.getStudents(schoolId);
-    if (students.length === 0) return;
-    
-    // استخراج الفئات الفريدة مع تنظيف النصوص
-    const uniqueClassKeys = Array.from(new Set(students.map(s => `${s.grade.trim()}|${s.section.trim()}`)));
-    const existingClasses = await db.getClasses(schoolId);
-    
-    let hasChanges = false;
-    const newClasses = [...existingClasses];
-
-    for (const uc of uniqueClassKeys) {
-      const [grade, section] = uc.split('|');
-      const exists = existingClasses.some(c => c.grade.trim() === grade && c.section.trim() === section);
-      
-      if (!exists) {
-        newClasses.push({ 
-          id: `auto-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
-          grade, 
-          section, 
-          schoolId 
-        });
-        hasChanges = true;
-      }
-    }
-
-    if (hasChanges) {
-      const allDataRaw = localStorage.getItem(STORAGE_KEYS.CLASSES);
-      const allData = Security.decrypt(allDataRaw || "") || [];
-      const otherSchoolsClasses = allData.filter((c: any) => c.schoolId !== schoolId);
-      
-      const finalClasses = [...otherSchoolsClasses, ...newClasses];
-      localStorage.setItem(STORAGE_KEYS.CLASSES, Security.encrypt(finalClasses));
-    }
+    localStorage.setItem(STORAGE_KEYS.TEACHERS, Security.encrypt(filtered));
   },
 
   getSubjects: async (schoolId: string): Promise<Subject[]> => {
@@ -413,5 +361,40 @@ export const db = {
 
   updateSystemAdmin: async (admin: any) => {
     localStorage.setItem(STORAGE_KEYS.SYSTEM, Security.encrypt(admin));
+  },
+
+  isBiometricsSupported: () => !!(window.PublicKeyCredential && window.navigator.credentials),
+  registerBiometric: async (userId: string, type: 'SCHOOL' | 'TEACHER') => {
+    if (!db.isBiometricsSupported()) return false;
+    try {
+      const credentialId = 'biom_' + btoa(userId + Math.random());
+      const biometricsRaw = localStorage.getItem(STORAGE_KEYS.BIOMETRICS) || '{}';
+      const biometrics = JSON.parse(biometricsRaw);
+      biometrics[credentialId] = { userId, type, date: new Date().toISOString() };
+      localStorage.setItem(STORAGE_KEYS.BIOMETRICS, JSON.stringify(biometrics));
+      localStorage.setItem('local_biometric_key', credentialId);
+      return true;
+    } catch (e) { return false; }
+  },
+  authenticateBiometric: async () => {
+    const localKey = localStorage.getItem('local_biometric_key');
+    if (!localKey) return null;
+    await delay(300);
+    const biometricsRaw = localStorage.getItem(STORAGE_KEYS.BIOMETRICS) || '{}';
+    const biometrics = JSON.parse(biometricsRaw);
+    const record = biometrics[localKey];
+    if (record) {
+      if (record.type === 'SCHOOL') {
+        const schools = await db.getSchools();
+        const school = schools.find(s => s.id === record.userId);
+        return school ? { type: 'SCHOOL_ADMIN', data: school } : null;
+      } else {
+        const teachersRaw = localStorage.getItem(STORAGE_KEYS.TEACHERS);
+        const teachers = Security.decrypt(teachersRaw || "") || [];
+        const teacher = teachers.find((t: any) => t.id === record.userId);
+        return teacher ? { type: 'TEACHER', data: teacher } : null;
+      }
+    }
+    return null;
   }
 };

@@ -8,7 +8,7 @@ import {
   NotebookPen, Shapes, Telescope, BookOpen, Microscope,
   CalendarDays, ChevronRight
 } from 'lucide-react';
-import { School, Subject, AcademicWeek } from '../types.ts';
+import { School, Subject, AcademicWeek, SchoolClass } from '../types.ts';
 
 const CLASS_ICONS = [
   Backpack, Compass, Calculator, Library, 
@@ -39,9 +39,11 @@ const PublicPlanView: React.FC = () => {
           if (week) {
             setPlans(await db.getPlans(s.id, week.id));
           }
-          const students = await db.getStudents(s.id);
-          const classes = Array.from(new Set(students.map(std => `${std.grade} - فصل ${std.section}`)));
-          setAvailableClasses(classes);
+          
+          // @google/genai: جلب الفصول من جدول الفصول الرسمي لضمان الدقة
+          const classesData = await db.getClasses(s.id);
+          const classesList = classesData.map(c => `${c.grade} - فصل ${c.section}`);
+          setAvailableClasses(classesList);
         }
       }
     };
@@ -49,7 +51,7 @@ const PublicPlanView: React.FC = () => {
 
     const handleResize = () => {
       const width = window.innerWidth;
-      if (width < 640) setScale((width - 40) / 794); // 794px is 210mm in pixels approx
+      if (width < 640) setScale((width - 40) / 794);
       else if (width < 1024) setScale((width - 80) / 794);
       else setScale(1);
     };
@@ -116,18 +118,22 @@ const PublicPlanView: React.FC = () => {
                <p className="text-slate-400 font-bold text-sm">يرجى اختيار الفصل الدراسي لعرض الخطة المعتمدة</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {availableClasses.map((cls) => {
-                const ClassIcon = getClassIcon(cls);
-                return (
-                  <button key={cls} onClick={() => setSelectedClass(cls)} className="group bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all text-center flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                       <ClassIcon size={24} />
-                    </div>
-                    <h3 className="text-lg sm:text-xl font-black text-slate-800">{cls}</h3>
-                    <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-600 transition-colors" />
-                  </button>
-                );
-              })}
+              {availableClasses.length === 0 ? (
+                <div className="col-span-full p-20 text-center text-slate-300 font-bold border-4 border-dashed rounded-[3rem]">لا توجد فصول دراسية مُعرّفة حالياً لهذه المدرسة.</div>
+              ) : (
+                availableClasses.map((cls) => {
+                  const ClassIcon = getClassIcon(cls);
+                  return (
+                    <button key={cls} onClick={() => setSelectedClass(cls)} className="group bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all text-center flex flex-col items-center gap-4">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                         <ClassIcon size={24} />
+                      </div>
+                      <h3 className="text-lg sm:text-xl font-black text-slate-800">{cls}</h3>
+                      <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-600 transition-colors" />
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
         ) : (
