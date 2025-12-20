@@ -21,17 +21,19 @@ export const hashSecurityPassword = async (pwd: string) => {
   return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
-// @google/genai: تحديث نظام التشفير ليدعم اليونيكود (العربي) بشكل أفضل وأكثر استقراراً
+// @google/genai: تحسين التشفير لضغط البيانات وتقليل استهلاك المساحة
 const Security = {
   encrypt: (data: any): string => {
     try {
+      if (!data) return "";
       const jsonString = JSON.stringify(data);
-      const uint8Array = new TextEncoder().encode(jsonString);
-      let binString = "";
-      for (let i = 0; i < uint8Array.byteLength; i++) {
-        binString += String.fromCharCode(uint8Array[i]);
+      const bytes = new TextEncoder().encode(jsonString);
+      let binary = "";
+      const len = bytes.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
       }
-      return btoa(binString);
+      return btoa(binary);
     } catch (e) {
       console.error("Encryption failed", e);
       return "";
@@ -39,13 +41,13 @@ const Security = {
   },
   decrypt: (cipher: string): any => {
     try {
-      if (!cipher) return null;
-      const binString = atob(cipher);
-      const uint8Array = new Uint8Array(binString.length);
-      for (let i = 0; i < binString.length; i++) {
-        uint8Array[i] = binString.charCodeAt(i);
+      if (!cipher || typeof cipher !== 'string') return null;
+      const binary = atob(cipher);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
       }
-      const jsonString = new TextDecoder().decode(uint8Array);
+      const jsonString = new TextDecoder().decode(bytes);
       return JSON.parse(jsonString);
     } catch (e) {
       console.error("Decryption failed", e);
@@ -72,11 +74,10 @@ export const DAYS = [
 
 export const PERIODS = [1, 2, 3, 4, 5, 6, 7];
 
-const delay = (ms: number = 400) => new Promise(res => setTimeout(res, ms));
+const delay = (ms: number = 300) => new Promise(res => setTimeout(res, ms));
 
 export const db = {
   getSchools: async (): Promise<School[]> => {
-    await delay(200);
     const data = localStorage.getItem(STORAGE_KEYS.SCHOOLS);
     return Security.decrypt(data || "") || [];
   },
@@ -100,26 +101,34 @@ export const db = {
   },
 
   getStudents: async (schoolId: string): Promise<Student[]> => {
-    await delay(200);
     const data = localStorage.getItem(STORAGE_KEYS.STUDENTS);
     const all = Security.decrypt(data || "") || [];
     if (!Array.isArray(all)) return [];
     return all.filter((s: Student) => s.schoolId === schoolId);
   },
 
-  // @google/genai: تحسين وظيفة الحفظ الجماعي لضمان عدم ضياع البيانات السابقة
+  // @google/genai: إصلاح الحفظ الجماعي مع معالجة أخطاء سعة الذاكرة
   saveBulkStudents: async (newStudents: Student[]) => {
-    await delay(500);
-    const data = localStorage.getItem(STORAGE_KEYS.STUDENTS);
-    const all = Security.decrypt(data || "") || [];
-    const currentAll = Array.isArray(all) ? all : [];
-    
-    // تجنب التكرار بناءً على المعرف
-    const newStudentIds = new Set(newStudents.map(s => s.id));
-    const filteredCurrent = currentAll.filter((s: Student) => !newStudentIds.has(s.id));
-    
-    const updated = [...filteredCurrent, ...newStudents];
-    localStorage.setItem(STORAGE_KEYS.STUDENTS, Security.encrypt(updated));
+    await delay(300);
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.STUDENTS);
+      const all = Security.decrypt(data || "") || [];
+      const currentAll = Array.isArray(all) ? all : [];
+      
+      // دمج البيانات مع تجنب التكرار
+      const newIds = new Set(newStudents.map(s => s.id));
+      const filteredCurrent = currentAll.filter((s: Student) => !newIds.has(s.id));
+      const updated = [...filteredCurrent, ...newStudents];
+      
+      const encrypted = Security.encrypt(updated);
+      localStorage.setItem(STORAGE_KEYS.STUDENTS, encrypted);
+      return true;
+    } catch (e: any) {
+      if (e.name === 'QuotaExceededError' || e.message?.includes('quota')) {
+        throw new Error("تجاوزت سعة التخزين المسموحة في المتصفح. يرجى تقليل عدد الطلاب المستوردين.");
+      }
+      throw e;
+    }
   },
 
   saveStudent: async (student: Student) => {
@@ -172,7 +181,7 @@ export const db = {
   authenticateBiometric: async () => {
     const localKey = localStorage.getItem('local_biometric_key');
     if (!localKey) return null;
-    await delay(500);
+    await delay(300);
     const biometricsRaw = localStorage.getItem(STORAGE_KEYS.BIOMETRICS) || '{}';
     const biometrics = JSON.parse(biometricsRaw);
     const record = biometrics[localKey];

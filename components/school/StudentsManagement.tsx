@@ -49,34 +49,45 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
     try {
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const firstSheetName = workbook.SheetNames[0];
+      const firstSheet = workbook.Sheets[firstSheetName];
       const rows: any[][] = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
       
       const extracted: Student[] = [];
       const timestamp = Date.now().toString(36);
 
-      rows.slice(1).forEach((row, index) => {
+      // تخطي الصف الأول (العناوين)
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length === 0) continue;
+
         const name = String(row[0] || '').trim();
-        if (name && name.length > 3) {
+        const phoneNumber = String(row[1] || '').trim();
+        const grade = String(row[2] || 'غير محدد').trim();
+        const section = String(row[3] || '1').trim();
+
+        // فحص الحد الأدنى من البيانات (الاسم مطلوب)
+        if (name.length >= 3) {
           extracted.push({
-            id: `s-${timestamp}-${index}-${Math.random().toString(36).substr(2, 5)}`,
+            id: `s-${timestamp}-${i}-${Math.random().toString(36).substr(2, 5)}`,
             name,
-            phoneNumber: String(row[1] || ''),
-            grade: String(row[2] || 'غير محدد'),
-            section: String(row[3] || '1'),
+            phoneNumber,
+            grade,
+            section,
             schoolId
           });
         }
-      });
+      }
 
       if (extracted.length > 0) {
         setImportSummary({ count: extracted.length, samples: extracted.slice(0, 3).map(s => s.name) });
         setTempImportData(extracted);
       } else {
-        setImportError('لم يتم العثور على بيانات صالحة في الملف. تأكد من أن الأسماء في العمود الأول.');
+        setImportError('لم يتم العثور على بيانات صالحة في الملف. تأكد من أن الأسماء تبدأ من العمود الأول والصف الثاني.');
       }
     } catch (err) { 
-      setImportError('خطأ في معالجة الملف. تأكد من صحة تنسيق ملف Excel.');
+      console.error("Excel process error:", err);
+      setImportError('حدث خطأ أثناء قراءة ملف Excel. تأكد من أن الملف غير محمي بكلمة مرور.');
     } finally {
       setIsProcessing(false);
     }
@@ -85,24 +96,24 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
   const confirmAndSave = async () => {
     if (!tempImportData || tempImportData.length === 0) return;
     setIsProcessing(true);
+    setImportError('');
     try {
       await db.saveBulkStudents(tempImportData);
-      // تحديث القائمة المحلية فوراً
       await loadData();
       setShowImport(false);
       setTempImportData(null);
       setImportSummary(null);
-      alert(`تم بنجاح حفظ ${tempImportData.length} طالباً في قاعدة البيانات.`);
-    } catch (err) {
+      alert(`تم بنجاح حفظ ${tempImportData.length} طالباً في النظام.`);
+    } catch (err: any) {
       console.error("Save bulk failed", err);
-      alert('حدث خطأ أثناء محاولة حفظ البيانات. يرجى المحاولة مرة أخرى.');
+      setImportError(err.message || 'حدث خطأ تقني أثناء محاولة حفظ البيانات.');
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleSaveManual = async () => {
-    if (!formData.name) return alert('الاسم مطلوب');
+    if (!formData.name.trim()) return alert('الاسم مطلوب');
     const student: Student = {
       id: editingStudent ? editingStudent.id : `m-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       ...formData,
@@ -197,37 +208,37 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
 
       {showImport && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] flex items-center justify-center p-4">
-          <div className="bg-white p-10 rounded-[3rem] max-w-xl w-full shadow-2xl animate-in zoom-in-95">
+          <div className="bg-white p-10 rounded-[3rem] max-w-xl w-full shadow-2xl animate-in zoom-in-95 overflow-hidden">
              <div className="flex justify-between items-center mb-8">
                 <h3 className="text-xl font-black text-slate-900">استيراد آمن للبيانات</h3>
                 <button onClick={() => setShowImport(false)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors"><X size={24} /></button>
              </div>
 
              {importError && (
-               <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-2xl flex items-center gap-3 font-bold text-xs border border-rose-100">
+               <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-2xl flex items-center gap-3 font-bold text-xs border border-rose-100 animate-in shake duration-300">
                   <AlertCircle size={18} /> {importError}
                </div>
              )}
 
              {!importSummary ? (
-               <div className="border-4 border-dashed rounded-[2.5rem] h-64 flex flex-col items-center justify-center bg-slate-50 relative group">
+               <div className="border-4 border-dashed rounded-[2.5rem] h-64 flex flex-col items-center justify-center bg-slate-50 relative group transition-all hover:bg-slate-100">
                   <input ref={fileInputRef} type="file" className="hidden" accept=".xlsx, .xls" onChange={(e) => e.target.files?.[0] && processExcelFile(e.target.files[0])} />
                   <Upload size={48} className="text-slate-300 mb-4 group-hover:text-indigo-400 transition-colors" />
                   <p className="text-slate-400 font-bold text-sm mb-4">اسحب ملف Excel هنا أو اختر يدوياً</p>
-                  <button onClick={() => fileInputRef.current?.click()} className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-black hover:bg-emerald-700 transition shadow-lg">اختيار ملف Excel</button>
+                  <button onClick={() => fileInputRef.current?.click()} className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-black hover:bg-emerald-700 transition shadow-lg active:scale-95">اختيار ملف Excel</button>
                </div>
              ) : (
                <div className="space-y-6">
                   <div className="bg-emerald-50 p-8 rounded-[2.5rem] border border-emerald-100">
-                    <h4 className="text-xl font-black text-emerald-900 mb-2">اكتشاف {importSummary.count} سجل</h4>
+                    <h4 className="text-xl font-black text-emerald-900 mb-2">تم اكتشاف {importSummary.count} سجل</h4>
                     <p className="text-sm font-bold text-emerald-600 mb-4">نماذج من البيانات المكتشفة:</p>
                     <div className="flex flex-wrap gap-2 mb-6">
                        {importSummary.samples.map((name, i) => <span key={i} className="bg-white px-3 py-1 rounded-lg text-[10px] font-black text-emerald-800 border border-emerald-200">{name}</span>)}
                        {importSummary.count > 3 && <span className="text-[10px] text-emerald-400 font-bold self-center">...وغيرهم</span>}
                     </div>
                     <div className="flex gap-4">
-                       <button onClick={() => setImportSummary(null)} className="flex-1 py-4 bg-white text-slate-600 rounded-2xl font-black hover:bg-slate-50 transition border">إلغاء</button>
-                       <button onClick={confirmAndSave} disabled={isProcessing} className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-emerald-700 transition shadow-lg shadow-emerald-100">
+                       <button onClick={() => {setImportSummary(null); setTempImportData(null);}} className="flex-1 py-4 bg-white text-slate-600 rounded-2xl font-black hover:bg-slate-50 transition border">تغيير الملف</button>
+                       <button onClick={confirmAndSave} disabled={isProcessing} className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-emerald-700 transition shadow-lg shadow-emerald-100 active:scale-95">
                           {isProcessing ? <Loader2 className="animate-spin" /> : 'تأكيد وحفظ في النظام'}
                        </button>
                     </div>
