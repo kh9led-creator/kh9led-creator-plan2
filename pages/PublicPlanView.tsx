@@ -8,7 +8,7 @@ import {
   NotebookPen, Shapes, Telescope, BookOpen, Microscope,
   CalendarDays, ChevronRight
 } from 'lucide-react';
-import { School, Subject, AcademicWeek, SchoolClass } from '../types.ts';
+import { School, Subject, AcademicWeek } from '../types.ts';
 
 const CLASS_ICONS = [
   Backpack, Compass, Calculator, Library, 
@@ -39,8 +39,6 @@ const PublicPlanView: React.FC = () => {
           if (week) {
             setPlans(await db.getPlans(s.id, week.id));
           }
-          
-          // @google/genai: جلب الفصول من جدول الفصول الرسمي لضمان الدقة
           const classesData = await db.getClasses(s.id);
           const classesList = classesData.map(c => `${c.grade} - فصل ${c.section}`);
           setAvailableClasses(classesList);
@@ -85,12 +83,9 @@ const PublicPlanView: React.FC = () => {
 
   return (
     <div className="bg-[#F8FAFC] min-h-screen font-['Tajawal'] pb-10 overflow-x-hidden">
-      <header className="glass border-b border-slate-100 px-4 md:px-8 py-3 no-print sticky top-0 z-50">
+      <header className="bg-white border-b border-slate-100 px-4 md:px-8 py-3 no-print sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto flex justify-between items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="bg-white p-2 rounded-xl shadow-sm border hidden sm:block">
-               {school.logoUrl ? <img src={school.logoUrl} className="w-10 h-10 object-contain" alt="شعار" /> : <SchoolIcon className="text-indigo-600" size={24} />}
-            </div>
             <div className="text-right">
               <h1 className="text-sm sm:text-lg font-black text-slate-900 truncate max-w-[150px] sm:max-w-none">{school.name}</h1>
               <p className="text-[9px] sm:text-[10px] text-indigo-600 font-black uppercase tracking-widest">بوابة الخطط الأسبوعية</p>
@@ -99,12 +94,12 @@ const PublicPlanView: React.FC = () => {
           
           <div className="flex items-center gap-2">
             {selectedClass && (
-              <button onClick={() => setSelectedClass("")} className="bg-white text-slate-600 p-2 sm:px-4 sm:py-2 rounded-xl font-black flex items-center gap-2 hover:bg-slate-50 border text-[10px] sm:text-xs transition-all">
-                <ArrowRight size={14} className="hidden sm:block" /> تغيير الفصل
+              <button onClick={() => setSelectedClass("")} className="bg-white text-slate-600 px-4 py-2 rounded-xl font-black flex items-center gap-2 hover:bg-slate-50 border text-xs transition-all">
+                تغيير الفصل
               </button>
             )}
-            <button onClick={() => window.print()} className="bg-slate-900 text-white p-2 sm:px-6 sm:py-2 rounded-xl font-black shadow-xl flex items-center gap-2 hover:bg-black text-[10px] sm:text-xs">
-              <Printer size={14} /> <span className="hidden sm:block">طباعة الخطة</span>
+            <button onClick={() => window.print()} className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-black shadow-lg flex items-center gap-2 hover:bg-indigo-700 text-xs transition-all">
+              <Printer size={14} /> طباعة الخطة
             </button>
           </div>
         </div>
@@ -118,69 +113,56 @@ const PublicPlanView: React.FC = () => {
                <p className="text-slate-400 font-bold text-sm">يرجى اختيار الفصل الدراسي لعرض الخطة المعتمدة</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {availableClasses.length === 0 ? (
-                <div className="col-span-full p-20 text-center text-slate-300 font-bold border-4 border-dashed rounded-[3rem]">لا توجد فصول دراسية مُعرّفة حالياً لهذه المدرسة.</div>
-              ) : (
-                availableClasses.map((cls) => {
-                  const ClassIcon = getClassIcon(cls);
-                  return (
-                    <button key={cls} onClick={() => setSelectedClass(cls)} className="group bg-white p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all text-center flex flex-col items-center gap-4">
-                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                         <ClassIcon size={24} />
-                      </div>
-                      <h3 className="text-lg sm:text-xl font-black text-slate-800">{cls}</h3>
-                      <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-600 transition-colors" />
-                    </button>
-                  );
-                })
-              )}
+              {availableClasses.map((cls) => {
+                const ClassIcon = getClassIcon(cls);
+                return (
+                  <button key={cls} onClick={() => setSelectedClass(cls)} className="group bg-white p-6 sm:p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all text-center flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                       <ClassIcon size={24} />
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-black text-slate-800">{cls}</h3>
+                    <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-600 transition-colors" />
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : (
           <div className="w-full flex justify-center py-4 sm:py-10">
-            <div className="origin-top transition-transform duration-500" style={{ transform: `scale(${scale})` }}>
-               <div className="a4-page bg-white shadow-2xl border p-[8mm] relative flex flex-col overflow-hidden" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
+            <div className="origin-top transition-transform duration-500 print:transform-none" style={{ transform: `scale(${scale})` }}>
+               <div className="a4-page bg-white p-[5mm] md:p-[8mm] relative flex flex-col overflow-hidden print:border-none print:shadow-none print:m-0" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
                 
-                {school.logoUrl && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.08] z-0 overflow-hidden">
-                    <img src={school.logoUrl} className="w-[500px] h-[500px] object-contain grayscale" alt="علامة مائية" />
-                  </div>
-                )}
+                {/* تم إلغاء العلامة المائية "صور النظام" هنا للطباعة النظيفة */}
 
-                <div className="relative z-10 grid grid-cols-3 gap-2 mb-2.5 border-b-2 border-slate-900 pb-2 items-center">
-                  <div className="text-right space-y-0.5 font-black text-[7pt] leading-tight text-slate-800">
+                <div className="relative z-10 grid grid-cols-3 gap-2 mb-2 border-b-2 border-slate-900 pb-2 items-center">
+                  <div className="text-right space-y-0.5 font-black text-[7.5pt] leading-tight text-slate-800">
                     {headerLines.map((line, i) => <p key={i}>{line}</p>)}
                   </div>
 
                   <div className="flex flex-col items-center justify-center">
-                    {school.logoUrl ? <img src={school.logoUrl} className="w-14 h-14 object-contain" alt="شعار" /> : <div className="w-12 h-12 border border-dashed rounded-lg flex items-center justify-center text-[6pt] text-slate-300 font-black uppercase tracking-widest">Logo</div>}
-                    <div className="mt-1 bg-slate-900 text-white px-3 py-0.5 rounded-full">
-                      <span className="text-[6.5pt] font-black uppercase">الخطة الدراسية الأسبوعية</span>
+                    {school.logoUrl && <img src={school.logoUrl} className="w-16 h-16 object-contain" alt="شعار" />}
+                    <div className="mt-1 bg-black text-white px-4 py-0.5 rounded-full">
+                      <span className="text-[7pt] font-black uppercase">الخطة الدراسية الأسبوعية</span>
                     </div>
                   </div>
 
-                  <div className="text-left space-y-0.5 font-bold text-[8.5pt] text-slate-900">
-                    <p className="flex items-center justify-end gap-1">
-                        الأسبوع: <span className="font-black">{activeWeek?.name || "---"}</span>
-                        <span className="text-[7pt] text-slate-500 font-bold mr-1">({activeWeek ? formatToHijri(activeWeek.startDate) : '--'})</span>
-                    </p>
-                    <p className="flex items-center justify-end gap-1">
-                        {React.createElement(getClassIcon(selectedClass), { size: 10, className: "text-slate-500" })} 
-                        الصف: <span className="font-black">{selectedClass}</span>
-                    </p>
+                  <div className="text-left space-y-0.5 font-bold text-[9pt] text-black">
+                    <p>الأسبوع: <span className="font-black">{activeWeek?.name || "---"}</span></p>
+                    <p className="text-[7pt] text-slate-600">التاريخ: {activeWeek ? formatToHijri(activeWeek.startDate) : '--'}</p>
+                    <p>الصف: <span className="font-black">{selectedClass}</span></p>
                   </div>
                 </div>
 
-                <div className="relative z-10 flex-1 overflow-hidden border-[2px] border-slate-900 rounded-sm mb-3">
+                <div className="relative z-10 flex-1 overflow-hidden border-[1.5pt] border-black rounded-sm mb-3">
                   <table className="w-full border-collapse table-fixed h-full text-center">
-                    <thead className="bg-slate-50 border-b-[2px] border-slate-900 font-black">
-                      <tr className="h-8">
-                        <th className="border-l-[1.5px] border-slate-900 w-12 text-[8.5pt] bg-slate-100">اليوم</th>
-                        <th className="border-l-[1.5px] border-slate-900 w-7 text-[7.5pt]">م</th>
-                        <th className="border-l-[1.5px] border-slate-900 w-24 text-[8.5pt]">المادة</th>
-                        <th className="border-l-[1.5px] border-slate-900 text-[8.5pt]">الدرس المقرر</th>
-                        <th className="border-l-[1.5px] border-slate-900 text-[8.5pt]">الواجب المنزلي</th>
-                        <th className="w-24 text-[7.5pt] bg-slate-50">ملاحظات</th>
+                    <thead className="bg-slate-50 border-b-[1.5pt] border-black font-black">
+                      <tr className="h-7">
+                        <th className="border-l-[1.2pt] border-black w-10 text-[8.5pt] bg-slate-100">اليوم</th>
+                        <th className="border-l-[1.2pt] border-black w-6 text-[7pt]">م</th>
+                        <th className="border-l-[1.2pt] border-black w-24 text-[8.5pt]">المادة</th>
+                        <th className="border-l-[1.2pt] border-black text-[8.5pt]">الدرس المقرر</th>
+                        <th className="border-l-[1.2pt] border-black text-[8.5pt]">الواجب المنزلي</th>
+                        <th className="w-20 text-[7pt] bg-slate-50">ملاحظات</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -192,17 +174,17 @@ const PublicPlanView: React.FC = () => {
                             const plan = plans[planKey] || {};
                             const subject = subjects.find(s => s.id === sched.subjectId)?.name || '-';
                             return (
-                              <tr key={`${day.id}-${period}`} className={`h-[18px] border-b ${pIdx === 6 ? 'border-b-[2px] border-slate-900' : 'border-slate-200'}`}>
+                              <tr key={`${day.id}-${period}`} className={`h-[17px] border-b ${pIdx === 6 ? 'border-b-[1.5pt] border-black' : 'border-slate-300'}`}>
                                 {pIdx === 0 && (
-                                  <td rowSpan={7} className="border-l-[1.5px] border-slate-900 font-black rotate-180 [writing-mode:vertical-rl] bg-slate-50 text-[9.5pt] tracking-[0.1em] border-b-[2px] border-slate-900 leading-none">
+                                  <td rowSpan={7} className="border-l-[1.5pt] border-black font-black rotate-180 [writing-mode:vertical-rl] bg-slate-50 text-[10pt] tracking-[0.1em] border-b-[1.5pt] border-black leading-none">
                                     {day.label}
                                   </td>
                                 )}
-                                <td className="border-l-[1px] border-slate-300 text-[8.5pt] font-black bg-slate-50/20">{period}</td>
-                                <td className="border-l-[1px] border-slate-300 text-[8.5pt] font-black truncate px-1">{subject}</td>
-                                <td className="border-l-[1px] border-slate-300 text-[8pt] leading-tight px-1.5 truncate font-bold text-slate-700 italic">{plan.lesson || '-'}</td>
-                                <td className="border-l-[1px] border-slate-300 text-[8pt] leading-tight px-1.5 truncate font-bold text-slate-800">{plan.homework || '-'}</td>
-                                <td className="text-[7pt] px-1 text-slate-400 font-black truncate italic leading-none">{plan.enrichment || '-'}</td>
+                                <td className="border-l-[0.8pt] border-slate-300 text-[8.5pt] font-black">{period}</td>
+                                <td className="border-l-[0.8pt] border-slate-300 text-[8.5pt] font-black truncate px-1">{subject}</td>
+                                <td className="border-l-[0.8pt] border-slate-300 text-[8pt] leading-tight px-1.5 truncate text-slate-700">{plan.lesson || '-'}</td>
+                                <td className="border-l-[0.8pt] border-slate-300 text-[8pt] leading-tight px-1.5 truncate font-bold text-black">{plan.homework || '-'}</td>
+                                <td className="text-[6.5pt] px-1 text-slate-500 truncate leading-none">{plan.enrichment || '-'}</td>
                               </tr>
                             );
                           })}
@@ -212,18 +194,18 @@ const PublicPlanView: React.FC = () => {
                   </table>
                 </div>
 
-                <div className="relative z-10 grid grid-cols-2 gap-4 h-[38mm]">
-                   <div className="border-[1.5px] border-slate-900 p-3 bg-white rounded-lg shadow-sm">
-                      <h3 className="text-[9.5pt] font-black mb-2 border-b border-slate-900 pb-1 text-center bg-slate-50 rounded-md">توجيهات ولي الأمر</h3>
-                      <p className="text-[8.5pt] font-bold leading-relaxed text-slate-700 whitespace-pre-wrap pr-1 overflow-hidden">
+                <div className="relative z-10 grid grid-cols-2 gap-4 h-[35mm] shrink-0">
+                   <div className="border-[1pt] border-black p-3 bg-white rounded-md">
+                      <h3 className="text-[9pt] font-black mb-1 border-b border-black pb-0.5 text-center bg-slate-50">توجيهات ولي الأمر</h3>
+                      <p className="text-[8pt] font-bold leading-tight text-slate-800 whitespace-pre-wrap pr-1 overflow-hidden h-[24mm]">
                         {school.generalMessages || "١. المتابعة المستمرة لمنصة مدرستي.\n٢. الالتزام بالحضور الصباحي.\n٣. إحضار الكتب المدرسية يومياً."}
                       </p>
                    </div>
-                   <div className="border-[1.5px] border-slate-900 p-3 bg-white rounded-lg shadow-sm">
-                      <h3 className="text-[9.5pt] font-black mb-2 border-b border-slate-900 pb-1 text-center bg-slate-50 rounded-md">القيمة التربوية</h3>
-                      <div className="flex flex-col items-center justify-center flex-1 pt-1">
-                        {school.weeklyNotesImage && <img src={school.weeklyNotesImage} className="max-h-[14mm] object-contain mb-1" alt="قيمة" />}
-                        <p className="text-[9.5pt] font-black text-center text-slate-800 leading-snug px-2">
+                   <div className="border-[1pt] border-black p-3 bg-white rounded-md">
+                      <h3 className="text-[9pt] font-black mb-1 border-b border-black pb-0.5 text-center bg-slate-50">القيمة التربوية</h3>
+                      <div className="flex flex-col items-center justify-center h-[24mm]">
+                        {school.weeklyNotesImage && <img src={school.weeklyNotesImage} className="max-h-[12mm] object-contain mb-1" alt="قيمة" />}
+                        <p className="text-[9.5pt] font-black text-center text-black leading-tight px-2">
                           {school.weeklyNotes || "البيئة المدرسية الآمنة هي منطلق الإبداع والتميز"}
                         </p>
                       </div>
@@ -235,7 +217,7 @@ const PublicPlanView: React.FC = () => {
         )}
       </main>
 
-      {selectedClass && <div className="h-[550px] sm:hidden no-print"></div>}
+      {selectedClass && <div className="h-[500px] sm:hidden no-print"></div>}
     </div>
   );
 };

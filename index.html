@@ -42,10 +42,35 @@
       input, select, textarea {
         font-family: 'Tajawal', sans-serif !important;
       }
-      .drop-zone-active {
-        border-color: #4f46e5 !important;
-        background-color: #f5f3ff !important;
-        transform: scale(1.02);
+
+      /* تنسيقات الطباعة الصارمة */
+      @media print {
+        @page {
+          size: A4 portrait;
+          margin: 0;
+        }
+        body {
+          background: white !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        .no-print {
+          display: none !important;
+        }
+        .print-only {
+          display: block !important;
+        }
+        #root {
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+        /* إخفاء أي خلفيات أو ظلال في الطباعة */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          box-shadow: none !important;
+          text-shadow: none !important;
+        }
       }
     </style>
     <script type="importmap">

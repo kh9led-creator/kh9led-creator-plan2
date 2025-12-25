@@ -14,18 +14,22 @@ import SchoolRegistration from './pages/SchoolRegistration.tsx';
 import SystemAdminLogin from './pages/SystemAdminLogin.tsx';
 
 const App: React.FC = () => {
+  // Fix: Added missing isAuthenticated property to initial state
   const [state, setState] = useState<AppState>({
     currentSchool: null,
     currentUser: null,
-    role: 'PUBLIC'
+    role: 'PUBLIC',
+    isAuthenticated: false
   });
 
+  // Fix: Added missing isAuthenticated property to login state update
   const login = (role: UserRole, school: School | null, user: any) => {
-    setState({ currentSchool: school, currentUser: user, role });
+    setState({ currentSchool: school, currentUser: user, role, isAuthenticated: true });
   };
 
+  // Fix: Added missing isAuthenticated property to logout state update
   const logout = () => {
-    setState({ currentSchool: null, currentUser: null, role: 'PUBLIC' });
+    setState({ currentSchool: null, currentUser: null, role: 'PUBLIC', isAuthenticated: false });
   };
 
   return (
