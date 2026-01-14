@@ -2,19 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { DAYS, PERIODS, db, formatToHijri } from '../constants.tsx';
-import { 
-  Printer, School as SchoolIcon, ArrowRight, GraduationCap,
-  Backpack, Compass, Calculator, Library, 
-  NotebookPen, Shapes, Telescope, BookOpen, Microscope,
-  CalendarDays, ChevronRight
-} from 'lucide-react';
+import { Printer, Backpack, ChevronRight, Calculator, BookOpen, Microscope, GraduationCap } from 'lucide-react';
 import { School, Subject, AcademicWeek } from '../types.ts';
-
-const CLASS_ICONS = [
-  Backpack, Compass, Calculator, Library, 
-  NotebookPen, Shapes, Telescope, GraduationCap, 
-  SchoolIcon, BookOpen, Microscope
-];
 
 const PublicPlanView: React.FC = () => {
   const { schoolSlug } = useParams();
@@ -25,7 +14,6 @@ const PublicPlanView: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [schedule, setSchedule] = useState<any>({});
   const [activeWeek, setActiveWeek] = useState<AcademicWeek | undefined>(undefined);
-  const [scale, setScale] = useState(1);
 
   useEffect(() => {
     const loadSchoolData = async () => {
@@ -36,27 +24,13 @@ const PublicPlanView: React.FC = () => {
           const week = await db.getActiveWeek(s.id);
           setActiveWeek(week);
           setSubjects(await db.getSubjects(s.id));
-          if (week) {
-            setPlans(await db.getPlans(s.id, week.id));
-          }
+          if (week) setPlans(await db.getPlans(s.id, week.id));
           const classesData = await db.getClasses(s.id);
-          const classesList = classesData.map(c => `${c.grade} - فصل ${c.section}`);
-          setAvailableClasses(classesList);
+          setAvailableClasses(classesData.map(c => `${c.grade} - فصل ${c.section}`));
         }
       }
     };
     loadSchoolData();
-
-    const handleResize = () => {
-      const width = window.innerWidth;
-      if (width < 640) setScale((width - 40) / 794);
-      else if (width < 1024) setScale((width - 80) / 794);
-      else setScale(1);
-    };
-
-    window.addEventListener('resize', handleResize);
-    handleResize();
-    return () => window.removeEventListener('resize', handleResize);
   }, [schoolSlug]);
 
   useEffect(() => {
@@ -68,104 +42,70 @@ const PublicPlanView: React.FC = () => {
     loadSchedule();
   }, [school, selectedClass]);
 
-  const getClassIcon = (classTitle: string) => {
-    let hash = 0;
-    for (let i = 0; i < classTitle.length; i++) {
-      hash = classTitle.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const index = Math.abs(hash) % CLASS_ICONS.length;
-    return CLASS_ICONS[index];
-  };
+  if (!school) return <div className="p-24 text-center font-black animate-pulse text-indigo-400 text-2xl">جاري تحميل البوابة...</div>;
 
-  if (!school) return <div className="p-24 text-center font-black animate-pulse text-indigo-400 text-2xl">جاري تهيئة البوابة التعليمية...</div>;
-
-  const headerLines = (school.headerContent || "المملكة العربية السعودية\nوزارة التعليم\nالإدارة العامة للتعليم").split('\n');
+  const headerLines = (school.headerContent || "").split('\n');
 
   return (
     <div className="bg-[#F8FAFC] min-h-screen font-['Tajawal'] pb-10 overflow-x-hidden">
-      <header className="bg-white border-b border-slate-100 px-4 md:px-8 py-3 no-print sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto flex justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <h1 className="text-sm sm:text-lg font-black text-slate-900 truncate max-w-[150px] sm:max-w-none">{school.name}</h1>
-              <p className="text-[9px] sm:text-[10px] text-indigo-600 font-black uppercase tracking-widest">بوابة الخطط الأسبوعية</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {selectedClass && (
-              <button onClick={() => setSelectedClass("")} className="bg-white text-slate-600 px-4 py-2 rounded-xl font-black flex items-center gap-2 hover:bg-slate-50 border text-xs transition-all">
-                تغيير الفصل
-              </button>
-            )}
-            <button onClick={() => window.print()} className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-black shadow-lg flex items-center gap-2 hover:bg-indigo-700 text-xs transition-all">
-              <Printer size={14} /> طباعة الخطة
-            </button>
-          </div>
+      <header className="bg-white border-b px-8 py-3 no-print sticky top-0 z-50 shadow-sm flex justify-between items-center">
+        <div className="text-right">
+          <h1 className="text-lg font-black text-slate-900">{school.name}</h1>
+          <p className="text-[10px] text-indigo-600 font-black uppercase tracking-widest">بوابة الخطط الأسبوعية</p>
+        </div>
+        <div className="flex gap-2">
+          {selectedClass && <button onClick={() => setSelectedClass("")} className="bg-slate-100 px-4 py-2 rounded-xl font-black text-xs">تغيير الفصل</button>}
+          <button onClick={() => window.print()} className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-black shadow-lg flex items-center gap-2 hover:bg-indigo-700 text-xs transition-all">
+            <Printer size={14} /> طباعة الخطة
+          </button>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto p-4 flex flex-col items-center">
         {!selectedClass ? (
-          <div className="w-full animate-in fade-in slide-in-from-bottom-5">
-            <div className="text-center mb-10 space-y-2 mt-10">
-               <h2 className="text-2xl sm:text-3xl font-black text-slate-900">أهلاً بكم في فصولنا</h2>
-               <p className="text-slate-400 font-bold text-sm">يرجى اختيار الفصل الدراسي لعرض الخطة المعتمدة</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {availableClasses.map((cls) => {
-                const ClassIcon = getClassIcon(cls);
-                return (
-                  <button key={cls} onClick={() => setSelectedClass(cls)} className="group bg-white p-6 sm:p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all text-center flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                       <ClassIcon size={24} />
-                    </div>
-                    <h3 className="text-lg sm:text-xl font-black text-slate-800">{cls}</h3>
-                    <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-600 transition-colors" />
-                  </button>
-                );
-              })}
-            </div>
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">
+            {availableClasses.map((cls) => (
+              <button key={cls} onClick={() => setSelectedClass(cls)} className="bg-white p-8 rounded-[2.5rem] border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all text-center flex flex-col items-center gap-4">
+                <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center"><Backpack size={32} /></div>
+                <h3 className="text-xl font-black text-slate-800">{cls}</h3>
+                <ChevronRight size={16} className="text-slate-300" />
+              </button>
+            ))}
           </div>
         ) : (
-          <div className="w-full flex justify-center py-4 sm:py-10">
-            <div className="origin-top transition-transform duration-500 print:transform-none" style={{ transform: `scale(${scale})` }}>
-               <div className="a4-page bg-white p-[5mm] md:p-[8mm] relative flex flex-col overflow-hidden print:border-none print:shadow-none print:m-0" style={{ width: '210mm', height: '297mm', boxSizing: 'border-box' }}>
+          <div className="w-full flex justify-center py-4">
+             <div className="print-area bg-white p-[8mm] relative flex flex-col print:p-0 print:border-none print:shadow-none" style={{ width: '210mm', minHeight: '290mm', boxSizing: 'border-box' }}>
                 
-                {/* تم إلغاء العلامة المائية "صور النظام" هنا للطباعة النظيفة */}
-
-                <div className="relative z-10 grid grid-cols-3 gap-2 mb-2 border-b-2 border-slate-900 pb-2 items-center">
-                  <div className="text-right space-y-0.5 font-black text-[7.5pt] leading-tight text-slate-800">
+                {/* ترويسة الطباعة الرسمية */}
+                <div className="grid grid-cols-3 gap-2 mb-4 border-b-2 border-black pb-2 items-center">
+                  <div className="text-right space-y-0.5 font-black text-[8pt] leading-tight">
                     {headerLines.map((line, i) => <p key={i}>{line}</p>)}
                   </div>
-
                   <div className="flex flex-col items-center justify-center">
-                    {school.logoUrl && <img src={school.logoUrl} className="w-16 h-16 object-contain" alt="شعار" />}
-                    <div className="mt-1 bg-black text-white px-4 py-0.5 rounded-full">
-                      <span className="text-[7pt] font-black uppercase">الخطة الدراسية الأسبوعية</span>
-                    </div>
+                    {school.logoUrl && <img src={school.logoUrl} className="w-20 h-20 object-contain" alt="Logo" />}
+                    <div className="mt-1 bg-black text-white px-4 py-0.5 rounded-full"><span className="text-[7pt] font-black uppercase">الخطة الأسبوعية</span></div>
                   </div>
-
-                  <div className="text-left space-y-0.5 font-bold text-[9pt] text-black">
+                  <div className="text-left space-y-1 text-[9pt] font-bold">
                     <p>الأسبوع: <span className="font-black">{activeWeek?.name || "---"}</span></p>
-                    <p className="text-[7pt] text-slate-600">التاريخ: {activeWeek ? formatToHijri(activeWeek.startDate) : '--'}</p>
                     <p>الصف: <span className="font-black">{selectedClass}</span></p>
+                    <p className="text-[7pt]">تاريخ: {activeWeek ? formatToHijri(activeWeek.startDate) : '--'}</p>
                   </div>
                 </div>
 
-                <div className="relative z-10 flex-1 overflow-hidden border-[1.5pt] border-black rounded-sm mb-3">
-                  <table className="w-full border-collapse table-fixed h-full text-center">
-                    <thead className="bg-slate-50 border-b-[1.5pt] border-black font-black">
-                      <tr className="h-7">
-                        <th className="border-l-[1.2pt] border-black w-10 text-[8.5pt] bg-slate-100">اليوم</th>
-                        <th className="border-l-[1.2pt] border-black w-6 text-[7pt]">م</th>
-                        <th className="border-l-[1.2pt] border-black w-24 text-[8.5pt]">المادة</th>
-                        <th className="border-l-[1.2pt] border-black text-[8.5pt]">الدرس المقرر</th>
-                        <th className="border-l-[1.2pt] border-black text-[8.5pt]">الواجب المنزلي</th>
-                        <th className="w-20 text-[7pt] bg-slate-50">ملاحظات</th>
+                {/* جدول الخطة المضغوط لملائمة صفحة واحدة */}
+                <div className="flex-1 border-[1.5pt] border-black rounded-sm overflow-hidden mb-4">
+                  <table className="w-full border-collapse h-full text-center table-fixed">
+                    <thead className="bg-slate-50 border-b-[1.5pt] border-black font-black text-[9pt]">
+                      <tr className="h-8">
+                        <th className="border-l-[1.2pt] border-black w-12">اليوم</th>
+                        <th className="border-l-[1.2pt] border-black w-8 text-[7pt]">ح</th>
+                        <th className="border-l-[1.2pt] border-black w-24">المادة</th>
+                        <th className="border-l-[1.2pt] border-black">الدرس المقرر</th>
+                        <th className="border-l-[1.2pt] border-black">الواجب</th>
+                        <th className="w-20 text-[7pt]">ملاحظات</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="text-[8pt]">
                       {DAYS.map((day) => (
                         <React.Fragment key={day.id}>
                           {PERIODS.map((period, pIdx) => {
@@ -174,17 +114,17 @@ const PublicPlanView: React.FC = () => {
                             const plan = plans[planKey] || {};
                             const subject = subjects.find(s => s.id === sched.subjectId)?.name || '-';
                             return (
-                              <tr key={`${day.id}-${period}`} className={`h-[17px] border-b ${pIdx === 6 ? 'border-b-[1.5pt] border-black' : 'border-slate-300'}`}>
+                              <tr key={`${day.id}-${period}`} className={`h-[18.5px] border-b ${pIdx === 6 ? 'border-b-[1.5pt] border-black' : 'border-slate-300'}`}>
                                 {pIdx === 0 && (
-                                  <td rowSpan={7} className="border-l-[1.5pt] border-black font-black rotate-180 [writing-mode:vertical-rl] bg-slate-50 text-[10pt] tracking-[0.1em] border-b-[1.5pt] border-black leading-none">
+                                  <td rowSpan={7} className="border-l-[1.5pt] border-black font-black rotate-180 [writing-mode:vertical-rl] bg-slate-50 text-[10pt] tracking-widest leading-none border-b-[1.5pt] border-black">
                                     {day.label}
                                   </td>
                                 )}
-                                <td className="border-l-[0.8pt] border-slate-300 text-[8.5pt] font-black">{period}</td>
-                                <td className="border-l-[0.8pt] border-slate-300 text-[8.5pt] font-black truncate px-1">{subject}</td>
-                                <td className="border-l-[0.8pt] border-slate-300 text-[8pt] leading-tight px-1.5 truncate text-slate-700">{plan.lesson || '-'}</td>
-                                <td className="border-l-[0.8pt] border-slate-300 text-[8pt] leading-tight px-1.5 truncate font-bold text-black">{plan.homework || '-'}</td>
-                                <td className="text-[6.5pt] px-1 text-slate-500 truncate leading-none">{plan.enrichment || '-'}</td>
+                                <td className="border-l-[0.8pt] border-slate-300 font-bold">{period}</td>
+                                <td className="border-l-[0.8pt] border-slate-300 font-black truncate px-1">{subject}</td>
+                                <td className="border-l-[0.8pt] border-slate-300 leading-tight px-1 truncate text-slate-700">{plan.lesson || '-'}</td>
+                                <td className="border-l-[0.8pt] border-slate-300 leading-tight px-1 truncate font-bold">{plan.homework || '-'}</td>
+                                <td className="text-[7pt] text-slate-400 truncate px-1">{plan.enrichment || '-'}</td>
                               </tr>
                             );
                           })}
@@ -194,30 +134,24 @@ const PublicPlanView: React.FC = () => {
                   </table>
                 </div>
 
-                <div className="relative z-10 grid grid-cols-2 gap-4 h-[35mm] shrink-0">
-                   <div className="border-[1pt] border-black p-3 bg-white rounded-md">
-                      <h3 className="text-[9pt] font-black mb-1 border-b border-black pb-0.5 text-center bg-slate-50">توجيهات ولي الأمر</h3>
-                      <p className="text-[8pt] font-bold leading-tight text-slate-800 whitespace-pre-wrap pr-1 overflow-hidden h-[24mm]">
-                        {school.generalMessages || "١. المتابعة المستمرة لمنصة مدرستي.\n٢. الالتزام بالحضور الصباحي.\n٣. إحضار الكتب المدرسية يومياً."}
-                      </p>
+                {/* تذييل الصفحة */}
+                <div className="grid grid-cols-2 gap-4 h-[35mm]">
+                   <div className="border-[1.2pt] border-black p-3 bg-white rounded-md">
+                      <h3 className="text-[9pt] font-black mb-1 border-b border-black pb-0.5 bg-slate-50 text-center">توجيهات ولي الأمر</h3>
+                      <p className="text-[8.5pt] font-bold leading-tight whitespace-pre-wrap h-[20mm] overflow-hidden">{school.generalMessages || "..."}</p>
                    </div>
-                   <div className="border-[1pt] border-black p-3 bg-white rounded-md">
-                      <h3 className="text-[9pt] font-black mb-1 border-b border-black pb-0.5 text-center bg-slate-50">القيمة التربوية</h3>
-                      <div className="flex flex-col items-center justify-center h-[24mm]">
-                        {school.weeklyNotesImage && <img src={school.weeklyNotesImage} className="max-h-[12mm] object-contain mb-1" alt="قيمة" />}
-                        <p className="text-[9.5pt] font-black text-center text-black leading-tight px-2">
-                          {school.weeklyNotes || "البيئة المدرسية الآمنة هي منطلق الإبداع والتميز"}
-                        </p>
+                   <div className="border-[1.2pt] border-black p-3 bg-white rounded-md flex flex-col items-center justify-center text-center">
+                      <h3 className="text-[9pt] font-black mb-1 border-b border-black w-full pb-0.5 bg-slate-50">القيمة التربوية</h3>
+                      <div className="flex-1 flex flex-col justify-center gap-1">
+                        {school.weeklyNotesImage && <img src={school.weeklyNotesImage} className="h-10 object-contain mx-auto" />}
+                        <p className="text-[10pt] font-black leading-tight">{school.weeklyNotes || "التميز هدفنا"}</p>
                       </div>
                    </div>
                 </div>
-              </div>
-            </div>
+             </div>
           </div>
         )}
       </main>
-
-      {selectedClass && <div className="h-[500px] sm:hidden no-print"></div>}
     </div>
   );
 };
