@@ -1,16 +1,22 @@
 
 import { Student, School, SchoolClass, Subject, Teacher, AcademicWeek } from './types.ts';
 
-// محرك الاتصال بـ API الموحد
 const apiRequest = async (action: string, params: Record<string, string> = {}, body?: any) => {
-  const query = new URLSearchParams({ action, ...params }).toString();
-  const response = await fetch(`/.netlify/functions/api?${query}`, {
+  // توجيه الطلبات إلى مسار /api النسبي الذي سيعالجه سيرفر Express
+  const url = new URL('/api', window.location.origin);
+  url.searchParams.set('action', action);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+
+  const response = await fetch(url.toString(), {
     method: body ? 'POST' : 'GET',
     headers: { 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
   });
   
-  if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `خطأ في الاتصال: ${response.status}`);
+  }
   return response.json();
 };
 
@@ -33,103 +39,178 @@ export const formatToHijri = (dateStr: string | Date) => {
   }).format(date);
 };
 
-// Fix: Added missing hashSecurityPassword function for secure school registration
 export const hashSecurityPassword = async (password: string) => {
   return btoa(password).split('').reverse().join('');
 };
 
 export const db = {
-  // المدارس
-  getSchools: async (): Promise<School[]> => apiRequest('getSchools'),
-  getSchoolBySlug: async (slug: string): Promise<School | undefined> => apiRequest('getSchoolBySlug', { slug }),
+  // --- Schools Management ---
+  getSchools: async (): Promise<School[]> => {
+    const data = await apiRequest('getSchools');
+    return data.map((s: any) => ({
+      ...s,
+      adminUsername: s.admin_username,
+      adminPassword: s.admin_password,
+      subscriptionActive: s.subscription_active,
+      expiryDate: s.expiry_date,
+      headerContent: s.header_content,
+      generalMessages: s.general_messages,
+      weeklyNotes: s.weekly_notes,
+      logoUrl: s.logo_url,
+      weeklyNotesImage: s.weekly_notes_image
+    }));
+  },
+  getSchoolBySlug: async (slug: string): Promise<School | undefined> => {
+    const s = await apiRequest('getSchoolBySlug', { slug });
+    if (!s) return undefined;
+    return {
+      ...s,
+      adminUsername: s.admin_username,
+      adminPassword: s.admin_password,
+      subscriptionActive: s.subscription_active,
+      expiryDate: s.expiry_date,
+      headerContent: s.header_content,
+      generalMessages: s.general_messages,
+      weeklyNotes: s.weekly_notes,
+      logoUrl: s.logo_url,
+      weeklyNotesImage: s.weekly_notes_image
+    };
+  },
   saveSchool: async (school: School) => apiRequest('saveSchool', {}, school),
-  // Fix: Added deleteSchool method for system admin management
   deleteSchool: async (id: string) => apiRequest('deleteSchool', { id }),
-  
-  // المعلمون
+
+  // --- Teachers Management ---
   getTeachers: async (schoolId: string): Promise<Teacher[]> => apiRequest('getTeachers', { schoolId }),
   saveTeacher: async (teacher: Teacher) => apiRequest('saveTeacher', {}, teacher),
-  // Fix: Added deleteTeacher method for school settings
   deleteTeacher: async (id: string) => apiRequest('deleteTeacher', { id }),
-  
-  // الطلاب
-  getStudents: async (schoolId: string): Promise<Student[]> => apiRequest('getStudents', { schoolId }),
-  saveBulkStudents: async (students: Student[]) => apiRequest('saveBulkStudents', {}, students),
-  // Fix: Added deleteAllStudents method for bulk management
-  deleteAllStudents: async (schoolId: string) => apiRequest('deleteAllStudents', { schoolId }),
-  
-  // الفصول والمواد
-  // Fix: Added getClasses method to fetch school classes
-  getClasses: async (schoolId: string): Promise<SchoolClass[]> => apiRequest('getClasses', { schoolId }),
-  // Fix: Added saveClass method to create or update classes
-  saveClass: async (classData: SchoolClass) => apiRequest('saveClass', {}, classData),
-  // Fix: Added deleteClass method to remove specific classes
-  deleteClass: async (schoolId: string, id: string) => apiRequest('deleteClass', { schoolId, id }),
-  // Fix: Added syncClassesFromStudents method to refresh class list from student data
-  syncClassesFromStudents: async (schoolId: string) => apiRequest('syncClassesFromStudents', { schoolId }),
-  
-  // Fix: Added getSubjects method to fetch available school subjects
-  getSubjects: async (schoolId: string): Promise<Subject[]> => apiRequest('getSubjects', { schoolId }),
-  // Fix: Added saveSubject method for subject management
-  saveSubject: async (schoolId: string, subject: Subject) => apiRequest('saveSubject', { schoolId }, subject),
-  // Fix: Added deleteSubject method for subject management
-  deleteSubject: async (schoolId: string, id: string) => apiRequest('deleteSubject', { schoolId, id }),
 
-  // الجداول والخطط
+  // --- Students Management ---
+  getStudents: async (schoolId: string): Promise<Student[]> => {
+    const data = await apiRequest('getStudents', { schoolId });
+    return data.map((s: any) => ({
+      ...s,
+      phoneNumber: s.phone_number
+    }));
+  },
+  saveBulkStudents: async (students: Student[]) => apiRequest('saveBulkStudents', {}, students),
+  deleteAllStudents: async (schoolId: string) => apiRequest('deleteAllStudents', { schoolId }),
+
+  // --- Classes Management ---
+  getClasses: async (schoolId: string): Promise<SchoolClass[]> => apiRequest('getClasses', { schoolId }),
+  saveClass: async (classData: SchoolClass) => apiRequest('saveClass', {}, classData),
+  deleteClass: async (schoolId: string, classId: string) => apiRequest('deleteClass', { schoolId, classId }),
+  syncClassesFromStudents: async (schoolId: string) => apiRequest('syncClassesFromStudents', { schoolId }),
+
+  // --- Subjects Management ---
+  getSubjects: async (schoolId: string): Promise<Subject[]> => apiRequest('getSubjects', { schoolId }),
+  saveSubject: async (schoolId: string, subject: Subject) => apiRequest('saveSubject', { schoolId }, subject),
+  deleteSubject: async (schoolId: string, subjectId: string) => apiRequest('deleteSubject', { schoolId, subjectId }),
+
+  // --- Schedule Management ---
   getSchedule: async (schoolId: string, classTitle: string): Promise<any> => apiRequest('getSchedule', { schoolId, classTitle }),
   saveSchedule: async (schoolId: string, classTitle: string, schedule: any) => apiRequest('saveSchedule', { schoolId, classTitle }, schedule),
-  
-  getWeeks: async (schoolId: string): Promise<AcademicWeek[]> => apiRequest('getWeeks', { schoolId }),
-  getActiveWeek: async (schoolId: string): Promise<AcademicWeek | undefined> => apiRequest('getActiveWeek', { schoolId }),
-  // Fix: Added saveWeek method for academic calendar management
-  saveWeek: async (schoolId: string, week: AcademicWeek) => apiRequest('saveWeek', { schoolId }, week),
-  // Fix: Added setActiveWeek method to switch current monitoring week
-  setActiveWeek: async (schoolId: string, weekId: string) => apiRequest('setActiveWeek', { schoolId, weekId }),
-  // Fix: Added deleteWeek method for calendar management
-  deleteWeek: async (schoolId: string, weekId: string) => apiRequest('deleteWeek', { schoolId, weekId }),
-  
-  getPlans: async (schoolId: string, weekId: string): Promise<any> => apiRequest('getPlans', { schoolId, weekId }),
-  savePlan: async (schoolId: string, weekId: string, planKey: string, entry: any) => 
-    apiRequest('savePlan', { schoolId, weekId }, { planKey, entry, schoolId, weekId }),
-  // Fix: Added getArchivedPlans method to fetch history of weekly plans
-  getArchivedPlans: async (schoolId: string): Promise<any[]> => apiRequest('getArchivedPlans', { schoolId }),
-  // Fix: Added archiveWeekPlans method to save the current week state permanently
-  archiveWeekPlans: async (schoolId: string, week: AcademicWeek) => apiRequest('archiveWeekPlans', { schoolId }, week),
-  // Fix: Added clearWeekPlans method to reset the active week monitoring
-  clearWeekPlans: async (schoolId: string, weekId: string) => apiRequest('clearWeekPlans', { schoolId, weekId }),
 
-  // الحضور والغياب
-  // Fix: Added getAttendance method to fetch active attendance reports
-  getAttendance: async (schoolId: string): Promise<any[]> => apiRequest('getAttendance', { schoolId }),
-  // Fix: Added saveAttendance method for teachers to submit daily reports
+  // --- Plans Management ---
+  getPlans: async (schoolId: string, weekId: string): Promise<any> => {
+    const rawPlans = await apiRequest('getPlans', { schoolId, weekId });
+    const plansMap: Record<string, any> = {};
+    if (Array.isArray(rawPlans)) {
+      rawPlans.forEach((p: any) => {
+        plansMap[p.plan_key] = { lesson: p.lesson, homework: p.homework, enrichment: p.enrichment };
+      });
+    }
+    return plansMap;
+  },
+  savePlan: async (schoolId: string, weekId: string, planKey: string, entry: any) => 
+    apiRequest('savePlan', { schoolId, weekId }, { ...entry, planKey, schoolId, weekId }),
+  clearWeekPlans: async (schoolId: string, weekId: string) => apiRequest('clearWeekPlans', { schoolId, weekId }),
+  archiveWeekPlans: async (schoolId: string, week: AcademicWeek) => apiRequest('archiveWeekPlans', { schoolId }, week),
+  getArchivedPlans: async (schoolId: string): Promise<any[]> => {
+    const data = await apiRequest('getArchivedPlans', { schoolId });
+    return data.map((a: any) => ({
+        ...a,
+        weekId: a.week_id,
+        weekName: a.week_name,
+        startDate: a.start_date,
+        endDate: a.end_date,
+        plansData: a.plans_data
+    }));
+  },
+
+  // --- Weeks Management ---
+  getWeeks: async (schoolId: string): Promise<AcademicWeek[]> => {
+    const data = await apiRequest('getWeeks', { schoolId });
+    return data.map((w: any) => ({
+      ...w,
+      startDate: w.start_date,
+      endDate: w.end_date,
+      isActive: w.is_active
+    }));
+  },
+  saveWeek: async (schoolId: string, week: AcademicWeek) => apiRequest('saveWeek', { schoolId }, week),
+  setActiveWeek: async (schoolId: string, weekId: string) => apiRequest('setActiveWeek', { schoolId, weekId }),
+  deleteWeek: async (schoolId: string, weekId: string) => apiRequest('deleteWeek', { schoolId, weekId }),
+  getActiveWeek: async (schoolId: string): Promise<AcademicWeek | undefined> => {
+    const weeks = await db.getWeeks(schoolId);
+    return weeks.find(w => w.isActive);
+  },
+
+  // --- Attendance Management ---
+  getAttendance: async (schoolId: string): Promise<any[]> => {
+    const data = await apiRequest('getAttendance', { schoolId });
+    return data.map((a: any) => ({
+        ...a,
+        teacherName: a.teacher_name,
+        className: a.class_name,
+        absentCount: a.absent_count
+    }));
+  },
   saveAttendance: async (schoolId: string, report: any) => apiRequest('saveAttendance', { schoolId }, report),
-  // Fix: Added getArchivedAttendance method for historical records
-  getArchivedAttendance: async (schoolId: string): Promise<any[]> => apiRequest('getArchivedAttendance', { schoolId }),
-  // Fix: Added archiveAttendance method to move current reports to history
+  getArchivedAttendance: async (schoolId: string): Promise<any[]> => {
+    const data = await apiRequest('getArchivedAttendance', { schoolId });
+    return data.map((a: any) => ({
+        ...a,
+        teacherName: a.teacher_name,
+        className: a.class_name,
+        absentCount: a.absent_count
+    }));
+  },
   archiveAttendance: async (schoolId: string, id: string) => apiRequest('archiveAttendance', { schoolId, id }),
-  // Fix: Added restoreAttendance method to move reports back from archive
   restoreAttendance: async (schoolId: string, id: string) => apiRequest('restoreAttendance', { schoolId, id }),
 
-  // إعدادات النظام
-  // Fix: Added getSystemAdmin method for administrative panel access
+  // --- System Admin ---
   getSystemAdmin: async (): Promise<any> => apiRequest('getSystemAdmin'),
-  // Fix: Added updateSystemAdmin method for system profile management
-  updateSystemAdmin: async (data: any) => apiRequest('updateSystemAdmin', {}, data),
+  updateSystemAdmin: async (admin: any) => apiRequest('updateSystemAdmin', {}, admin),
 
-  // المصادقة
+  // --- Auth & Biometrics ---
   authenticateSchool: async (username: string, password: string): Promise<School | null> => {
     const schools = await db.getSchools();
-    return schools.find(s => s.adminUsername === username && s.adminPassword === password) || null;
+    const hashedInput = await hashSecurityPassword(password);
+    return schools.find(s => s.adminUsername === username && s.adminPassword === hashedInput) || null;
   },
-  // Fix: Added authenticateBiometric method to handle WebAuthn-like flows
-  authenticateBiometric: async (): Promise<any> => {
-    // محاكاة المصادقة بالبصمة - ترجع null في حالة عدم الربط أو بيانات الجلسة في حالة النجاح
-    return null; 
-  },
-  // Fix: Added registerBiometric method for quick login device binding
-  registerBiometric: async (id: string, role: string): Promise<boolean> => {
-    // محاكاة تسجيل البصمة وحفظ مفتاح محلي
-    localStorage.setItem('local_biometric_key', 'true');
+  registerBiometric: async (id: string, type: string): Promise<boolean> => {
+    // Mock biometric registration locally
+    localStorage.setItem('local_biometric_key', JSON.stringify({ id, type }));
     return true;
+  },
+  authenticateBiometric: async (): Promise<any> => {
+    // Mock biometric authentication from localStorage
+    const key = localStorage.getItem('local_biometric_key');
+    if (key) {
+      const { id, type } = JSON.parse(key);
+      if (type === 'SCHOOL') {
+        const schools = await db.getSchools();
+        const school = schools.find(s => s.id === id);
+        if (school) return { type: 'SCHOOL_ADMIN', data: school };
+      } else if (type === 'TEACHER') {
+        const schools = await db.getSchools();
+        for (const s of schools) {
+          const teachers = await db.getTeachers(s.id);
+          const teacher = teachers.find(t => t.id === id);
+          if (teacher) return { type: 'TEACHER', data: teacher };
+        }
+      }
+    }
+    return null;
   }
 };
