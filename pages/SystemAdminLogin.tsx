@@ -28,10 +28,10 @@ const SystemAdminLogin: React.FC<Props> = ({ onLogin }) => {
 
     try {
       const admin = await db.getSystemAdmin();
-      // تحقق من البيانات الافتراضية أو المخزنة
       if (username === admin.username && password === admin.password) {
         onLogin('SYSTEM_ADMIN', null, { name: 'المشرف العام' });
-        navigate('/admin');
+        // التوجيه إلى المسار الموحد الجديد
+        navigate('/admin-dashboard');
       } else {
         setError('إذن الوصول مرفوض. بيانات الاعتماد غير صالحة.');
       }
@@ -45,8 +45,6 @@ const SystemAdminLogin: React.FC<Props> = ({ onLogin }) => {
   const handleRecovery = (e: React.FormEvent) => {
     e.preventDefault();
     setRecoveryStatus('sending');
-    
-    // محاكاة إرسال بريد المشرف
     setTimeout(() => {
       setRecoveryStatus('sent');
     }, 2000);
@@ -65,7 +63,7 @@ const SystemAdminLogin: React.FC<Props> = ({ onLogin }) => {
             {isRecoveryMode ? <Mail size={44} /> : <ShieldCheck size={44} />}
           </div>
           <h2 className="text-3xl font-black text-white">{isRecoveryMode ? 'استعادة المشرف' : 'بوابة التحكم بالنظام'}</h2>
-          <p className="text-slate-400 mt-3 font-bold flex items-center justify-center gap-2">
+          <p className="text-slate-400 mt-3 font-bold flex items-center justify-center gap-2 text-sm">
             <Terminal size={14} />
             {isRecoveryMode ? 'تأكيد الهوية البريدية' : 'الوصول التقني المتقدم'}
           </p>

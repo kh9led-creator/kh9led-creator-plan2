@@ -23,24 +23,35 @@ const App: React.FC = () => {
   });
   const [isInitializing, setIsInitializing] = useState(true);
 
-  // استعادة الجلسة من التخزين المحلي (للتوكن فقط) والتحقق منها من السيرفر
   useEffect(() => {
     const recoverSession = async () => {
       const savedSession = localStorage.getItem('active_session');
       if (savedSession) {
         try {
           const { role, schoolId, userId } = JSON.parse(savedSession);
-          // هنا يفضل جلب بيانات المدرسة/المعلم الطازجة من قاعدة البيانات
-          if (role === 'SCHOOL_ADMIN') {
+          
+          if (role === 'SYSTEM_ADMIN') {
+            setState({ currentSchool: null, currentUser: { name: 'المشرف العام' }, role, isAuthenticated: true });
+          } else if (role === 'SCHOOL_ADMIN' && schoolId) {
             const schools = await db.getSchools();
             const school = schools.find(s => s.id === schoolId);
             if (school) {
               setState({ currentSchool: school, currentUser: { name: 'مدير المدرسة' }, role, isAuthenticated: true });
             }
+          } else if (role === 'TEACHER' && schoolId) {
+            const schools = await db.getSchools();
+            const school = schools.find(s => s.id === schoolId);
+            if (school) {
+              const teachers = await db.getTeachers(school.id);
+              const teacher = teachers.find(t => t.id === userId);
+              if (teacher) {
+                setState({ currentSchool: school, currentUser: teacher, role, isAuthenticated: true });
+              }
+            }
           }
-          // يمكنك إضافة منطق استعادة المعلم هنا أيضاً
         } catch (e) {
           console.error("Session recovery failed", e);
+          localStorage.removeItem('active_session');
         }
       }
       setIsInitializing(false);
@@ -64,7 +75,7 @@ const App: React.FC = () => {
       <div className="h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="font-black text-slate-500">جاري الاتصال بقاعدة البيانات...</p>
+          <p className="font-black text-slate-500 text-sm">جاري التحقق من الجلسة والاتصال بالسيرفر...</p>
         </div>
       </div>
     );
@@ -80,8 +91,9 @@ const App: React.FC = () => {
           <Route path="/system-access-portal" element={<SystemAdminLogin onLogin={login} />} />
           <Route path="/school/:schoolSlug/teacher-login" element={<TeacherLogin onLogin={login} />} />
 
+          {/* تم تعديل المسار هنا ليطابق ما ظهر في المشكلة */}
           <Route 
-            path="/admin/*" 
+            path="/admin-dashboard/*" 
             element={
               state.role === 'SYSTEM_ADMIN' 
                 ? <SystemAdminDashboard onLogout={logout} /> 
@@ -109,6 +121,9 @@ const App: React.FC = () => {
 
           <Route path="/p/:schoolSlug" element={<PublicPlanView />} />
           <Route path="/p/:schoolSlug/bulk/students" element={<BulkStudentPlans />} />
+          
+          {/* تحويل أي مسار غير معروف إلى الرئيسية */}
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </div>
     </Router>
