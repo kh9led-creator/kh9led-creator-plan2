@@ -13,19 +13,19 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const saved = localStorage.getItem('khotati_session');
+    const saved = localStorage.getItem('khotati_prod_session');
     if (saved) setUser(JSON.parse(saved));
     setLoading(false);
   }, []);
 
   const handleLogin = (userData: User) => {
     setUser(userData);
-    localStorage.setItem('khotati_session', JSON.stringify(userData));
+    localStorage.setItem('khotati_prod_session', JSON.stringify(userData));
   };
 
   const handleLogout = () => {
     setUser(null);
-    localStorage.removeItem('khotati_session');
+    localStorage.removeItem('khotati_prod_session');
   };
 
   if (loading) return null;
