@@ -1,11 +1,12 @@
 
-export type UserRole = 'SYSTEM_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PUBLIC';
+export type UserRole = 'SYSTEM_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER';
 
 export interface User {
   id: string;
   name: string;
   username: string;
   role: UserRole;
+  schoolId?: string;
 }
 
 export interface School {
@@ -13,32 +14,18 @@ export interface School {
   name: string;
   slug: string;
   email: string;
-  subscription_status?: 'active' | 'expired';
-  expiry_date?: string;
-  logo_url?: string;
-  // App-specific properties mapped in constants.tsx from snake_case database fields
-  adminUsername?: string;
+  adminUsername: string;
   adminPassword?: string;
-  subscriptionActive?: boolean;
-  expiryDate?: string;
+  adminPhone?: string;
+  expiryDate: string;
+  subscriptionActive: boolean;
+  studentCount?: number;
+  teacherCount?: number;
   headerContent?: string;
   generalMessages?: string;
   weeklyNotes?: string;
-  logoUrl?: string;
   weeklyNotesImage?: string;
-  adminPhone?: string;
-  studentCount?: number;
-  teacherCount?: number;
-}
-
-export interface Student {
-  id: string;
-  name: string;
-  grade: string;
-  section: string;
-  school_id: string;
-  schoolId?: string; // Mapped camelCase
-  phoneNumber?: string; // Mapped camelCase
+  logoUrl?: string;
 }
 
 export interface Teacher {
@@ -46,8 +33,18 @@ export interface Teacher {
   name: string;
   username: string;
   password?: string;
-  subjects: string[];
+  subjects?: string[];
   schoolId: string;
+}
+
+export interface Student {
+  id: string;
+  name: string;
+  phoneNumber?: string;
+  grade: string;
+  section: string;
+  schoolId: string;
+  school_id?: string;
 }
 
 export interface Subject {
@@ -75,4 +72,10 @@ export interface ApiResponse<T = any> {
   data?: T;
   message?: string;
   error?: string;
+}
+
+export interface SystemStats {
+  totalSchools: number;
+  totalStudents: number;
+  activeSubscriptions: number;
 }

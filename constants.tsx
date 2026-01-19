@@ -1,38 +1,23 @@
 
-import { Student, School, SchoolClass, Subject, Teacher, AcademicWeek } from './types.ts';
+import { ApiResponse, School, Student, Teacher, Subject, SchoolClass, AcademicWeek } from './types';
 
-const apiRequest = async (action: string, params: Record<string, string> = {}, body?: any) => {
-  // توجيه الطلبات إلى مسار /api النسبي الذي سيعالجه سيرفر Express
-  const url = new URL('/api', window.location.origin);
-  url.searchParams.set('action', action);
-  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-
-  const response = await fetch(url.toString(), {
-    method: body ? 'POST' : 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `خطأ في الاتصال: ${response.status}`);
-  }
-  return response.json();
-};
+// تحديد مسار الـ API النسبي ليعمل على أي استضافة
+const API_URL = '/api';
 
 export const DAYS = [
   { id: 'sun', label: 'الأحد' },
   { id: 'mon', label: 'الاثنين' },
   { id: 'tue', label: 'الثلاثاء' },
   { id: 'wed', label: 'الأربعاء' },
-  { id: 'thu', label: 'الخميس' }
+  { id: 'thu', label: 'الخميس' },
 ];
 
 export const PERIODS = [1, 2, 3, 4, 5, 6, 7];
 
 export const formatToHijri = (dateStr: string | Date) => {
+  if (!dateStr) return '--';
   const date = new Date(dateStr);
-  return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-uma', {
+  return new Intl.DateTimeFormat('ar-SA-u-ca-islamic', {
     day: 'numeric',
     month: 'long',
     year: 'numeric'
@@ -40,177 +25,90 @@ export const formatToHijri = (dateStr: string | Date) => {
 };
 
 export const hashSecurityPassword = async (password: string) => {
-  return btoa(password).split('').reverse().join('');
+  return btoa(password);
+};
+
+export const apiCall = async <T = any>(action: string, body: any = null, params: Record<string, string> = {}): Promise<ApiResponse<T>> => {
+  try {
+    const urlParams = new URLSearchParams({ action, ...params });
+    const response = await fetch(`${API_URL}?${urlParams.toString()}`, {
+      method: body ? 'POST' : 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : null,
+    });
+    
+    if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+    const result = await response.json();
+    // Wrap raw arrays in ApiResponse for consistency if needed, but here unwrap handles it
+    return result;
+  } catch (error: any) {
+    return { success: false, error: error.message || 'خطأ في الاتصال بالسيرفر' };
+  }
+};
+
+const unwrap = <T>(res: any): T => {
+  if (!res) throw new Error('No response from server');
+  if (Array.isArray(res)) return res as unknown as T;
+  if (res.success === false) throw new Error(res.error || 'API Error');
+  return res.data !== undefined ? res.data : res;
 };
 
 export const db = {
-  // --- Schools Management ---
-  getSchools: async (): Promise<School[]> => {
-    const data = await apiRequest('getSchools');
-    return data.map((s: any) => ({
-      ...s,
-      adminUsername: s.admin_username,
-      adminPassword: s.admin_password,
-      subscriptionActive: s.subscription_active,
-      expiryDate: s.expiry_date,
-      headerContent: s.header_content,
-      generalMessages: s.general_messages,
-      weeklyNotes: s.weekly_notes,
-      logoUrl: s.logo_url,
-      weeklyNotesImage: s.weekly_notes_image
-    }));
+  adminLogin: (credentials: any) => apiCall('adminLogin', credentials),
+  getSystemStats: () => apiCall('getSystemStats'),
+  getAllSchools: () => apiCall('getSchools'),
+  getSchoolBySlug: async (slug: string) => {
+    const res = await apiCall<School>('getSchoolBySlug', null, { slug });
+    return unwrap<School>(res);
   },
-  getSchoolBySlug: async (slug: string): Promise<School | undefined> => {
-    const s = await apiRequest('getSchoolBySlug', { slug });
-    if (!s) return undefined;
-    return {
-      ...s,
-      adminUsername: s.admin_username,
-      adminPassword: s.admin_password,
-      subscriptionActive: s.subscription_active,
-      expiryDate: s.expiry_date,
-      headerContent: s.header_content,
-      generalMessages: s.general_messages,
-      weeklyNotes: s.weekly_notes,
-      logoUrl: s.logo_url,
-      weeklyNotesImage: s.weekly_notes_image
-    };
+  saveSchool: (school: School) => apiCall('saveSchool', school),
+  authenticateSchool: async (username: string, password: string) => {
+    const res = await apiCall<School[]>('getSchools');
+    const schools = unwrap<School[]>(res);
+    return schools.find(s => s.adminUsername === username && s.adminPassword === password) || null;
   },
-  saveSchool: async (school: School) => apiRequest('saveSchool', {}, school),
-  deleteSchool: async (id: string) => apiRequest('deleteSchool', { id }),
-
-  // --- Teachers Management ---
-  getTeachers: async (schoolId: string): Promise<Teacher[]> => apiRequest('getTeachers', { schoolId }),
-  saveTeacher: async (teacher: Teacher) => apiRequest('saveTeacher', {}, teacher),
-  deleteTeacher: async (id: string) => apiRequest('deleteTeacher', { id }),
-
-  // --- Students Management ---
-  getStudents: async (schoolId: string): Promise<Student[]> => {
-    const data = await apiRequest('getStudents', { schoolId });
-    return data.map((s: any) => ({
-      ...s,
-      phoneNumber: s.phone_number
-    }));
+  authenticateBiometric: async () => {
+    // Biometric mock authentication
+    const key = localStorage.getItem('local_biometric_key');
+    if (!key) return null;
+    return null; 
   },
-  saveBulkStudents: async (students: Student[]) => apiRequest('saveBulkStudents', {}, students),
-  deleteAllStudents: async (schoolId: string) => apiRequest('deleteAllStudents', { schoolId }),
-
-  // --- Classes Management ---
-  getClasses: async (schoolId: string): Promise<SchoolClass[]> => apiRequest('getClasses', { schoolId }),
-  saveClass: async (classData: SchoolClass) => apiRequest('saveClass', {}, classData),
-  deleteClass: async (schoolId: string, classId: string) => apiRequest('deleteClass', { schoolId, classId }),
-  syncClassesFromStudents: async (schoolId: string) => apiRequest('syncClassesFromStudents', { schoolId }),
-
-  // --- Subjects Management ---
-  getSubjects: async (schoolId: string): Promise<Subject[]> => apiRequest('getSubjects', { schoolId }),
-  saveSubject: async (schoolId: string, subject: Subject) => apiRequest('saveSubject', { schoolId }, subject),
-  deleteSubject: async (schoolId: string, subjectId: string) => apiRequest('deleteSubject', { schoolId, subjectId }),
-
-  // --- Schedule Management ---
-  getSchedule: async (schoolId: string, classTitle: string): Promise<any> => apiRequest('getSchedule', { schoolId, classTitle }),
-  saveSchedule: async (schoolId: string, classTitle: string, schedule: any) => apiRequest('saveSchedule', { schoolId, classTitle }, schedule),
-
-  // --- Plans Management ---
-  getPlans: async (schoolId: string, weekId: string): Promise<any> => {
-    const rawPlans = await apiRequest('getPlans', { schoolId, weekId });
-    const plansMap: Record<string, any> = {};
-    if (Array.isArray(rawPlans)) {
-      rawPlans.forEach((p: any) => {
-        plansMap[p.plan_key] = { lesson: p.lesson, homework: p.homework, enrichment: p.enrichment };
-      });
-    }
-    return plansMap;
+  registerBiometric: async (id: string, type: string) => {
+    localStorage.setItem('local_biometric_key', `${type}_${id}`);
+    return true;
   },
-  savePlan: async (schoolId: string, weekId: string, planKey: string, entry: any) => 
-    apiRequest('savePlan', { schoolId, weekId }, { ...entry, planKey, schoolId, weekId }),
-  clearWeekPlans: async (schoolId: string, weekId: string) => apiRequest('clearWeekPlans', { schoolId, weekId }),
-  archiveWeekPlans: async (schoolId: string, week: AcademicWeek) => apiRequest('archiveWeekPlans', { schoolId }, week),
-  getArchivedPlans: async (schoolId: string): Promise<any[]> => {
-    const data = await apiRequest('getArchivedPlans', { schoolId });
-    return data.map((a: any) => ({
-        ...a,
-        weekId: a.week_id,
-        weekName: a.week_name,
-        startDate: a.start_date,
-        endDate: a.end_date,
-        plansData: a.plans_data
-    }));
-  },
-
-  // --- Weeks Management ---
-  getWeeks: async (schoolId: string): Promise<AcademicWeek[]> => {
-    const data = await apiRequest('getWeeks', { schoolId });
-    return data.map((w: any) => ({
-      ...w,
-      startDate: w.start_date,
-      endDate: w.end_date,
-      isActive: w.is_active
-    }));
-  },
-  saveWeek: async (schoolId: string, week: AcademicWeek) => apiRequest('saveWeek', { schoolId }, week),
-  setActiveWeek: async (schoolId: string, weekId: string) => apiRequest('setActiveWeek', { schoolId, weekId }),
-  deleteWeek: async (schoolId: string, weekId: string) => apiRequest('deleteWeek', { schoolId, weekId }),
-  getActiveWeek: async (schoolId: string): Promise<AcademicWeek | undefined> => {
+  getStudents: async (schoolId: string) => unwrap<Student[]>(await apiCall('getStudents', null, { schoolId })),
+  saveBulkStudents: (students: Student[]) => apiCall('saveBulkStudents', students),
+  deleteAllStudents: (schoolId: string) => apiCall('deleteAllStudents', null, { schoolId }),
+  importStudents: (data: any) => apiCall('importStudents', data),
+  getTeachers: async (schoolId: string) => unwrap<Teacher[]>(await apiCall('getTeachers', null, { schoolId })),
+  saveTeacher: (teacher: Teacher) => apiCall('saveTeacher', teacher),
+  deleteTeacher: (id: string) => apiCall('deleteTeacher', null, { id }),
+  getSubjects: async (schoolId: string) => unwrap<Subject[]>(await apiCall('getSubjects', null, { schoolId })),
+  saveSubject: (schoolId: string, subject: Subject) => apiCall('saveSubject', subject, { schoolId }),
+  deleteSubject: (schoolId: string, subjectId: string) => apiCall('deleteSubject', null, { schoolId, subjectId }),
+  getClasses: async (schoolId: string) => unwrap<SchoolClass[]>(await apiCall('getClasses', null, { schoolId })),
+  saveClass: (classData: SchoolClass) => apiCall('saveClass', classData),
+  deleteClass: (schoolId: string, classId: string) => apiCall('deleteClass', null, { schoolId, classId }),
+  syncClassesFromStudents: (schoolId: string) => apiCall('syncClassesFromStudents', null, { schoolId }),
+  getSchedule: async (schoolId: string, classTitle: string) => unwrap<any>(await apiCall('getSchedule', null, { schoolId, classTitle })),
+  saveSchedule: (schoolId: string, classTitle: string, schedule: any) => apiCall('saveSchedule', schedule, { schoolId, classTitle }),
+  getWeeks: async (schoolId: string) => unwrap<AcademicWeek[]>(await apiCall('getWeeks', null, { schoolId })),
+  getActiveWeek: async (schoolId: string) => {
     const weeks = await db.getWeeks(schoolId);
     return weeks.find(w => w.isActive);
   },
-
-  // --- Attendance Management ---
-  getAttendance: async (schoolId: string): Promise<any[]> => {
-    const data = await apiRequest('getAttendance', { schoolId });
-    return data.map((a: any) => ({
-        ...a,
-        teacherName: a.teacher_name,
-        className: a.class_name,
-        absentCount: a.absent_count
-    }));
-  },
-  saveAttendance: async (schoolId: string, report: any) => apiRequest('saveAttendance', { schoolId }, report),
-  getArchivedAttendance: async (schoolId: string): Promise<any[]> => {
-    const data = await apiRequest('getArchivedAttendance', { schoolId });
-    return data.map((a: any) => ({
-        ...a,
-        teacherName: a.teacher_name,
-        className: a.class_name,
-        absentCount: a.absent_count
-    }));
-  },
-  archiveAttendance: async (schoolId: string, id: string) => apiRequest('archiveAttendance', { schoolId, id }),
-  restoreAttendance: async (schoolId: string, id: string) => apiRequest('restoreAttendance', { schoolId, id }),
-
-  // --- System Admin ---
-  getSystemAdmin: async (): Promise<any> => apiRequest('getSystemAdmin'),
-  updateSystemAdmin: async (admin: any) => apiRequest('updateSystemAdmin', {}, admin),
-
-  // --- Auth & Biometrics ---
-  authenticateSchool: async (username: string, password: string): Promise<School | null> => {
-    const schools = await db.getSchools();
-    const hashedInput = await hashSecurityPassword(password);
-    return schools.find(s => s.adminUsername === username && s.adminPassword === hashedInput) || null;
-  },
-  registerBiometric: async (id: string, type: string): Promise<boolean> => {
-    // Mock biometric registration locally
-    localStorage.setItem('local_biometric_key', JSON.stringify({ id, type }));
-    return true;
-  },
-  authenticateBiometric: async (): Promise<any> => {
-    // Mock biometric authentication from localStorage
-    const key = localStorage.getItem('local_biometric_key');
-    if (key) {
-      const { id, type } = JSON.parse(key);
-      if (type === 'SCHOOL') {
-        const schools = await db.getSchools();
-        const school = schools.find(s => s.id === id);
-        if (school) return { type: 'SCHOOL_ADMIN', data: school };
-      } else if (type === 'TEACHER') {
-        const schools = await db.getSchools();
-        for (const s of schools) {
-          const teachers = await db.getTeachers(s.id);
-          const teacher = teachers.find(t => t.id === id);
-          if (teacher) return { type: 'TEACHER', data: teacher };
-        }
-      }
-    }
-    return null;
-  }
+  saveWeek: (schoolId: string, week: AcademicWeek) => apiCall('saveWeek', week, { schoolId }),
+  setActiveWeek: (schoolId: string, weekId: string) => apiCall('setActiveWeek', null, { schoolId, weekId }),
+  deleteWeek: (schoolId: string, weekId: string) => apiCall('deleteWeek', null, { schoolId, weekId }),
+  getPlans: async (schoolId: string, weekId: string) => unwrap<any>(await apiCall('getPlans', null, { schoolId, weekId })),
+  savePlan: (schoolId: string, weekId: string, planKey: string, entry: any) => apiCall('savePlan', { schoolId, weekId, planKey, ...entry }),
+  clearWeekPlans: (schoolId: string, weekId: string) => apiCall('clearWeekPlans', null, { schoolId, weekId }),
+  archiveWeekPlans: (schoolId: string, week: AcademicWeek) => apiCall('archiveWeekPlans', week, { schoolId }),
+  getArchivedPlans: async (schoolId: string) => unwrap<any[]>(await apiCall('getArchivedPlans', null, { schoolId })),
+  getAttendance: async (schoolId: string) => unwrap<any[]>(await apiCall('getAttendance', null, { schoolId })),
+  getArchivedAttendance: async (schoolId: string) => unwrap<any[]>(await apiCall('getArchivedAttendance', null, { schoolId })),
+  saveAttendance: (schoolId: string, report: any) => apiCall('saveAttendance', { schoolId, ...report }),
+  archiveAttendance: (schoolId: string, id: string) => apiCall('archiveAttendance', null, { schoolId, id }),
+  restoreAttendance: (schoolId: string, id: string) => apiCall('restoreAttendance', null, { schoolId, id }),
 };

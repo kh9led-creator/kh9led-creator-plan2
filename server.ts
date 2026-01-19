@@ -1,5 +1,5 @@
 
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { neon } from '@neondatabase/serverless';
 import path from 'path';
@@ -16,7 +16,7 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
 // Middleware لمعالجة طلبات الـ API الموحدة
-app.all('/api', async (req, res) => {
+app.all('/api', async (req: Request, res: Response) => {
   const action = req.query.action as string;
   const body = req.body;
   const q = req.query;
@@ -28,7 +28,7 @@ app.all('/api', async (req, res) => {
         return res.json(await sql`SELECT * FROM schools ORDER BY name ASC`);
       
       case 'getSchoolBySlug':
-        const s = await sql`SELECT * FROM schools WHERE slug = ${q.slug} LIMIT 1`;
+        const s = await sql`SELECT * FROM schools WHERE slug = ${q.slug as string} LIMIT 1`;
         return res.json(s[0] || null);
 
       case 'saveSchool':
@@ -45,12 +45,12 @@ app.all('/api', async (req, res) => {
         return res.json({ success: true });
 
       case 'deleteSchool':
-        await sql`DELETE FROM schools WHERE id = ${q.id}`;
+        await sql`DELETE FROM schools WHERE id = ${q.id as string}`;
         return res.json({ success: true });
 
       // --- إدارة المعلمين ---
       case 'getTeachers':
-        return res.json(await sql`SELECT * FROM teachers WHERE school_id = ${q.schoolId}`);
+        return res.json(await sql`SELECT * FROM teachers WHERE school_id = ${q.schoolId as string}`);
 
       case 'saveTeacher':
         await sql`
@@ -61,12 +61,12 @@ app.all('/api', async (req, res) => {
         return res.json({ success: true });
 
       case 'deleteTeacher':
-        await sql`DELETE FROM teachers WHERE id = ${q.id}`;
+        await sql`DELETE FROM teachers WHERE id = ${q.id as string}`;
         return res.json({ success: true });
 
       // --- إدارة الطلاب والفصول ---
       case 'getStudents':
-        return res.json(await sql`SELECT * FROM students WHERE school_id = ${q.schoolId} ORDER BY name ASC`);
+        return res.json(await sql`SELECT * FROM students WHERE school_id = ${q.schoolId as string} ORDER BY name ASC`);
 
       case 'saveBulkStudents':
         for (const std of body) {
@@ -79,35 +79,35 @@ app.all('/api', async (req, res) => {
         return res.json({ success: true });
 
       case 'deleteAllStudents':
-        await sql`DELETE FROM students WHERE school_id = ${q.schoolId}`;
+        await sql`DELETE FROM students WHERE school_id = ${q.schoolId as string}`;
         return res.json({ success: true });
 
       case 'getClasses':
-        return res.json(await sql`SELECT * FROM classes WHERE school_id = ${q.schoolId}`);
+        return res.json(await sql`SELECT * FROM classes WHERE school_id = ${q.schoolId as string}`);
 
       case 'saveClass':
         await sql`INSERT INTO classes (id, grade, section, school_id) VALUES (${body.id}, ${body.grade}, ${body.section}, ${body.schoolId}) ON CONFLICT (id) DO UPDATE SET grade = EXCLUDED.grade, section = EXCLUDED.section`;
         return res.json({ success: true });
 
       case 'syncClassesFromStudents':
-        await sql`DELETE FROM classes WHERE school_id = ${q.schoolId}`;
-        const dist = await sql`SELECT DISTINCT grade, section FROM students WHERE school_id = ${q.schoolId}`;
+        await sql`DELETE FROM classes WHERE school_id = ${q.schoolId as string}`;
+        const dist = await sql`SELECT DISTINCT grade, section FROM students WHERE school_id = ${q.schoolId as string}`;
         for (const c of dist) {
           const id = `c-${Date.now()}-${Math.random().toString(36).substr(2,5)}`;
-          await sql`INSERT INTO classes (id, grade, section, school_id) VALUES (${id}, ${c.grade}, ${c.section}, ${q.schoolId})`;
+          await sql`INSERT INTO classes (id, grade, section, school_id) VALUES (${id}, ${c.grade}, ${c.section}, ${q.schoolId as string})`;
         }
         return res.json({ success: true });
 
       // --- إدارة المواد والجداول ---
       case 'getSubjects':
-        return res.json(await sql`SELECT * FROM subjects WHERE school_id = ${q.schoolId} ORDER BY name ASC`);
+        return res.json(await sql`SELECT * FROM subjects WHERE school_id = ${q.schoolId as string} ORDER BY name ASC`);
 
       case 'saveSubject':
-        await sql`INSERT INTO subjects (id, name, school_id) VALUES (${body.id}, ${body.name}, ${q.schoolId}) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name`;
+        await sql`INSERT INTO subjects (id, name, school_id) VALUES (${body.id}, ${body.name}, ${q.schoolId as string}) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name`;
         return res.json({ success: true });
 
       case 'getSchedule':
-        const scheds = await sql`SELECT * FROM schedules WHERE school_id = ${q.schoolId} AND class_title = ${q.classTitle}`;
+        const scheds = await sql`SELECT * FROM schedules WHERE school_id = ${q.schoolId as string} AND class_title = ${q.classTitle as string}`;
         const map: any = {};
         scheds.forEach(s => map[s.schedule_key] = { subjectId: s.subject_id, teacherId: s.teacher_id });
         return res.json(map);
@@ -117,7 +117,7 @@ app.all('/api', async (req, res) => {
           const v = val as any;
           await sql`
             INSERT INTO schedules (school_id, class_title, schedule_key, subject_id, teacher_id)
-            VALUES (${q.schoolId}, ${q.classTitle}, ${key}, ${v.subjectId}, ${v.teacherId})
+            VALUES (${q.schoolId as string}, ${q.classTitle as string}, ${key}, ${v.subjectId}, ${v.teacherId})
             ON CONFLICT (school_id, class_title, schedule_key) DO UPDATE SET subject_id = EXCLUDED.subject_id, teacher_id = EXCLUDED.teacher_id
           `;
         }
@@ -125,7 +125,7 @@ app.all('/api', async (req, res) => {
 
       // --- الخطط الأسبوعية ---
       case 'getPlans':
-        return res.json(await sql`SELECT * FROM plans WHERE school_id = ${q.schoolId} AND week_id = ${q.weekId}`);
+        return res.json(await sql`SELECT * FROM plans WHERE school_id = ${q.schoolId as string} AND week_id = ${q.weekId as string}`);
 
       case 'savePlan':
         await sql`
@@ -136,15 +136,15 @@ app.all('/api', async (req, res) => {
         return res.json({ success: true });
 
       case 'getWeeks':
-        return res.json(await sql`SELECT * FROM weeks WHERE school_id = ${q.schoolId} ORDER BY start_date ASC`);
+        return res.json(await sql`SELECT * FROM weeks WHERE school_id = ${q.schoolId as string} ORDER BY start_date ASC`);
 
       case 'saveWeek':
-        await sql`INSERT INTO weeks (id, name, start_date, end_date, is_active, school_id) VALUES (${body.id}, ${body.name}, ${body.startDate}, ${body.endDate}, ${body.isActive}, ${q.schoolId}) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, is_active = EXCLUDED.is_active`;
+        await sql`INSERT INTO weeks (id, name, start_date, end_date, is_active, school_id) VALUES (${body.id}, ${body.name}, ${body.startDate}, ${body.endDate}, ${body.isActive}, ${q.schoolId as string}) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, is_active = EXCLUDED.is_active`;
         return res.json({ success: true });
 
       case 'setActiveWeek':
-        await sql`UPDATE weeks SET is_active = false WHERE school_id = ${q.schoolId}`;
-        await sql`UPDATE weeks SET is_active = true WHERE id = ${q.weekId}`;
+        await sql`UPDATE weeks SET is_active = false WHERE school_id = ${q.schoolId as string}`;
+        await sql`UPDATE weeks SET is_active = true WHERE id = ${q.weekId as string}`;
         return res.json({ success: true });
 
       // --- الحضور والغياب ---
@@ -153,7 +153,7 @@ app.all('/api', async (req, res) => {
         return res.json({ success: true });
 
       case 'getAttendance':
-        return res.json(await sql`SELECT * FROM attendance WHERE school_id = ${q.schoolId} AND archived = false ORDER BY timestamp DESC`);
+        return res.json(await sql`SELECT * FROM attendance WHERE school_id = ${q.schoolId as string} AND archived = false ORDER BY timestamp DESC`);
 
       // --- إعدادات النظام ---
       case 'getSystemAdmin':
@@ -176,7 +176,7 @@ app.all('/api', async (req, res) => {
 
 // خدمة ملفات الـ Frontend
 app.use(express.static(path.join(__dirname, 'dist')));
-app.get('*', (req, res) => {
+app.get('*', (req: Request, res: Response) => {
   if (req.path.startsWith('/api')) return;
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });

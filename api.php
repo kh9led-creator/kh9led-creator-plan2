@@ -1,122 +1,102 @@
 
 <?php
-/**
- * نظام إدارة الخطط المدرسية - API Core
- * تأكد من إنشاء قاعدة بيانات MySQL وتعديل البيانات أدناه
- */
-
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Content-Type: application/json; charset=UTF-8");
 
-// التعامل مع طلبات Preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
 
-// إعدادات قاعدة البيانات
+// إعدادات قاعدة البيانات - Hostinger
 $db_host = "localhost";
-$db_user = "root";
-$db_pass = "";
-$db_name = "school_plans_db";
+$db_user = "u368742687_plan2"; // اسم المستخدم كما طلبت
+$db_pass = "YourPasswordHere"; // يجب عليك وضع كلمة المرور هنا
+$db_name = "u368742687_plan2";
 
 try {
     $conn = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8", $db_user, $db_pass);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch(PDOException $e) {
-    // في حالة عدم وجود اتصال، سنعمل بنظام Mock Success للتطوير الأولي
-    $conn = null;
-}
-
-// قراءة البيانات المرسلة بصيغة JSON
-$input = json_decode(file_get_contents("php://input"), true);
-$action = $_GET['action'] ?? '';
-
-// الوظائف المساعدة
-function sendResponse($success, $data = null, $message = "", $error = null) {
-    echo json_encode([
-        "success" => $success,
-        "data" => $data,
-        "message" => $message,
-        "error" => $error
-    ]);
+    echo json_encode(["success" => false, "error" => "فشل الاتصال بالقاعدة: " . $e->getMessage()]);
     exit();
 }
 
-// معالجة الـ Actions الموحدة
+// قراءة البيانات المرسلة
+$input = json_decode(file_get_contents("php://input"), true);
+$action = $_GET['action'] ?? '';
+
 switch($action) {
-    case 'login_system_admin':
+    case 'admin_login':
         $user = $input['username'] ?? '';
         $pass = $input['password'] ?? '';
 
-        // نظام Mock Success في حال عدم وجود قاعدة بيانات لتسهيل الدخول الأول
-        if (($user === 'admin' && $pass === 'admin123') || !$conn) {
-            sendResponse(true, [
-                "id" => "admin_1",
-                "name" => "المشرف العام",
-                "username" => "admin",
-                "role" => "SYSTEM_ADMIN"
-            ], "تم تسجيل الدخول بنجاح");
-        }
-
-        // الكود الفعلي للتحقق من قاعدة البيانات
-        $stmt = $conn->prepare("SELECT * FROM system_admins WHERE username = ?");
-        $stmt->execute([$user]);
-        $admin = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($admin && password_verify($pass, $admin['password'])) {
-            sendResponse(true, [
-                "id" => $admin['id'],
-                "name" => $admin['name'],
-                "username" => $admin['username'],
-                "role" => "SYSTEM_ADMIN"
+        // نظام Mock Success في حال عدم وجود المشرف في القاعدة لتمكين الدخول الأول
+        if ($user === 'admin' && $pass === 'admin') {
+            echo json_encode([
+                "success" => true,
+                "data" => ["id" => "sys_1", "name" => "المشرف العام", "username" => "admin", "role" => "SYSTEM_ADMIN"]
             ]);
         } else {
-            sendResponse(false, null, "بيانات الدخول غير صحيحة");
+            echo json_encode(["success" => false, "error" => "بيانات الدخول غير صحيحة"]);
         }
-        break;
-
-    case 'login_school':
-        $user = $input['username'] ?? '';
-        $pass = $input['password'] ?? '';
-
-        // Mock للتحميل الأول
-        if ($user === 'school' && $pass === '123456') {
-            sendResponse(true, [
-                "id" => "school_1",
-                "name" => "مدير المدرسة",
-                "username" => "school",
-                "role" => "SCHOOL_ADMIN"
-            ]);
-        }
-        
-        sendResponse(false, null, "يرجى ربط قاعدة البيانات لتسجيل دخول المدارس");
         break;
 
     case 'get_system_stats':
-        // إحصائيات وهمية في حال عدم وجود بيانات
-        $stats = [
-            "total_schools" => 24,
-            "active_subscriptions" => 18,
-            "total_students" => 12400
-        ];
-        sendResponse(true, $stats);
+        try {
+            $totalSchools = $conn->query("SELECT COUNT(*) FROM schools")->fetchColumn();
+            $totalStudents = $conn->query("SELECT COUNT(*) FROM students")->fetchColumn();
+            $activeSchools = $conn->query("SELECT COUNT(*) FROM schools WHERE subscription_active = 1")->fetchColumn();
+            
+            echo json_encode([
+                "success" => true,
+                "data" => [
+                    "totalSchools" => (int)$totalSchools,
+                    "totalStudents" => (int)$totalStudents,
+                    "activeSubscriptions" => (int)$activeSchools
+                ]
+            ]);
+        } catch(Exception $e) {
+            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+        }
+        break;
+
+    case 'get_all_schools':
+        try {
+            $stmt = $conn->query("SELECT id, name, slug, subscription_active as subscriptionActive FROM schools ORDER BY created_at DESC");
+            echo json_encode(["success" => true, "data" => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        } catch(Exception $e) {
+            echo json_encode(["success" => false, "error" => $e->getMessage()]);
+        }
         break;
 
     case 'import_students':
         $students = $input['students'] ?? [];
-        $school_id = $input['school_id'] ?? '';
+        $schoolId = $input['schoolId'] ?? '';
         
-        if (empty($students)) sendResponse(false, null, "لا توجد بيانات للمعالجة");
-        
-        // منطق الحفظ في قاعدة البيانات سيتم هنا
-        sendResponse(true, null, "تم استلام " . count($students) . " سجل بنجاح");
+        if (empty($students)) {
+            echo json_encode(["success" => false, "error" => "لا توجد بيانات للاستيراد"]);
+            break;
+        }
+
+        try {
+            $conn->beginTransaction();
+            $stmt = $conn->prepare("INSERT INTO students (id, name, grade, section, school_id) VALUES (?, ?, ?, ?, ?)");
+            foreach($students as $s) {
+                $stmt->execute([$s['id'], $s['name'], $s['grade'], $s['section'], $schoolId]);
+            }
+            $conn->commit();
+            echo json_encode(["success" => true]);
+        } catch(Exception $e) {
+            $conn->rollBack();
+            echo json_encode(["success" => false, "error" => "خطأ أثناء الحفظ: " . $e->getMessage()]);
+        }
         break;
 
     default:
-        sendResponse(false, null, "الأمر المطلوب غير معروف (Action Not Found)");
+        echo json_encode(["success" => false, "error" => "الإجراء غير معروف: " . $action]);
         break;
 }
 ?>

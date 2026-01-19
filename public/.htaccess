@@ -1,0 +1,12 @@
+
+RewriteEngine On
+RewriteBase /
+
+# توجيه كافة الطلبات إلى index.html ما عدا ملفات الـ API والصور
+RewriteCond % {REQUEST_FILENAME} !-f
+RewriteCond % {REQUEST_FILENAME} !-d
+RewriteCond % {REQUEST_URI} !^/api.php
+RewriteRule . /index.html [L]
+
+# الحماية من استعراض المجلدات
+Options -Indexes
