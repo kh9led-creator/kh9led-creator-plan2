@@ -131,7 +131,8 @@ const StudentsManagement: React.FC<{ schoolId: string }> = ({ schoolId }) => {
           phoneNumber: phone,
           grade,
           section,
-          schoolId
+          school_id: schoolId,
+          schoolId: schoolId
         });
         
         classKeys.add(`${grade}|${section}`);

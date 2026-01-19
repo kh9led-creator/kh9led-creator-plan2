@@ -1,34 +1,34 @@
 
 export type UserRole = 'SYSTEM_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PUBLIC';
 
-// Added missing properties to School interface to fix property access errors
+export interface User {
+  id: string;
+  name: string;
+  username: string;
+  role: UserRole;
+}
+
 export interface School {
   id: string;
   name: string;
   slug: string;
   email: string;
-  adminUsername: string;
-  adminPassword?: string; // Added for authentication
-  adminPhone?: string;
-  logoUrl?: string;
+  subscription_status?: 'active' | 'expired';
+  expiry_date?: string;
+  logo_url?: string;
+  // App-specific properties mapped in constants.tsx from snake_case database fields
+  adminUsername?: string;
+  adminPassword?: string;
+  subscriptionActive?: boolean;
+  expiryDate?: string;
   headerContent?: string;
   generalMessages?: string;
   weeklyNotes?: string;
+  logoUrl?: string;
   weeklyNotesImage?: string;
-  subscriptionActive: boolean;
-  expiryDate: string;
-  studentCount?: number; // Added for registration
-  teacherCount?: number; // Added for registration
-}
-
-// Added missing properties to Teacher interface to fix property access errors
-export interface Teacher {
-  id: string;
-  name: string;
-  username: string;
-  password?: string; // Added for registration/auth
-  subjects?: string[]; // Added for management
-  schoolId: string;
+  adminPhone?: string;
+  studentCount?: number;
+  teacherCount?: number;
 }
 
 export interface Student {
@@ -36,11 +36,25 @@ export interface Student {
   name: string;
   grade: string;
   section: string;
-  phoneNumber?: string;
+  school_id: string;
+  schoolId?: string; // Mapped camelCase
+  phoneNumber?: string; // Mapped camelCase
+}
+
+export interface Teacher {
+  id: string;
+  name: string;
+  username: string;
+  password?: string;
+  subjects: string[];
   schoolId: string;
 }
 
-// Added missing SchoolClass interface to resolve import errors in multiple files
+export interface Subject {
+  id: string;
+  name: string;
+}
+
 export interface SchoolClass {
   id: string;
   grade: string;
@@ -48,13 +62,6 @@ export interface SchoolClass {
   schoolId: string;
 }
 
-// Added missing Subject interface to resolve import errors in multiple files
-export interface Subject {
-  id: string;
-  name: string;
-}
-
-// Added missing AcademicWeek interface to resolve import errors in multiple files
 export interface AcademicWeek {
   id: string;
   name: string;
@@ -63,9 +70,9 @@ export interface AcademicWeek {
   isActive: boolean;
 }
 
-export interface AppState {
-  currentSchool: School | null;
-  currentUser: any | null;
-  role: UserRole;
-  isAuthenticated: boolean;
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
 }
