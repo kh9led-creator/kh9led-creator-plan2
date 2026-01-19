@@ -7,6 +7,8 @@ import SystemAdminLogin from './pages/SystemAdminLogin';
 import SystemAdminDashboard from './pages/SystemAdminDashboard';
 import SchoolDashboard from './pages/SchoolDashboard';
 import Login from './pages/Login';
+import TeacherLogin from './pages/TeacherLogin';
+import PublicPlanView from './pages/PublicPlanView';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -46,15 +48,18 @@ const App: React.FC = () => {
           element={user?.role === 'SYSTEM_ADMIN' ? <SystemAdminDashboard user={user} onLogout={handleLogout} /> : <Navigate to="/system-access-portal" />} 
         />
 
-        {/* بوابة المدارس */}
+        {/* بوابة المدارس والجمهور */}
+        <Route path="/p/:schoolSlug" element={<PublicPlanView />} />
+        <Route path="/school/:schoolSlug/teacher-login" element={<TeacherLogin onLogin={handleLogin} />} />
+        
         <Route 
           path="/login" 
-          element={user?.role === 'SCHOOL_ADMIN' ? <Navigate to="/school" /> : <Login onLogin={handleLogin as any} />} 
+          element={user?.role === 'SCHOOL_ADMIN' ? <Navigate to="/school" /> : <Login onLogin={handleLogin} />} 
         />
         
         <Route 
           path="/school/*" 
-          element={user?.role === 'SCHOOL_ADMIN' ? <SchoolDashboard user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} 
+          element={user?.role === 'SCHOOL_ADMIN' || user?.role === 'TEACHER' ? <SchoolDashboard user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} 
         />
 
         <Route path="*" element={<Navigate to="/" />} />

@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // إعدادات قاعدة البيانات - Hostinger
 $db_host = "localhost";
 $db_user = "u368742687_plan2"; // اسم المستخدم كما طلبت
-$db_pass = "YourPasswordHere"; // يجب عليك وضع كلمة المرور هنا
+$db_pass = "Cash6010@"; // يجب عليك وضع كلمة المرور هنا
 $db_name = "u368742687_plan2";
 
 try {

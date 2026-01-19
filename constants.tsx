@@ -4,8 +4,8 @@ import { ApiResponse, User, SystemStats, School, Student, SchoolClass, Teacher, 
 // الحصول على رابط الـ API بشكل ديناميكي
 export const getApiUrl = () => {
   const origin = window.location.origin;
-  // في الـ Production يكون المسار هو api.php مباشرة في الـ public folder
-  return `${origin}/api`;
+  // تعديل: إضافة .php لضمان عمل الملف على استضافة Hostinger
+  return `${origin}/api.php`;
 };
 
 // أيام الأسبوع
@@ -61,9 +61,7 @@ export const apiCall = async <T = any>(
 
 export const db = {
   adminLogin: (credentials: any) => apiCall<User>('admin_login', credentials),
-  // دالة الدخول للمدارس
   authenticateSchool: (credentials: any) => apiCall<User>('school_login', credentials),
-  // محاكاة التحقق من البصمة (يمكن ربطها بـ WebAuthn لاحقاً)
   authenticateBiometric: async (): Promise<ApiResponse<User>> => {
     const savedBio = localStorage.getItem('khotati_bio_data');
     if (!savedBio) return { success: false, error: 'لا توجد بصمة مسجلة لهذا الجهاز' };
@@ -73,7 +71,6 @@ export const db = {
   getAllSchools: () => apiCall<School[]>('get_all_schools'),
   importStudents: (data: { students: any[], schoolId: string }) => apiCall('import_students', data),
   
-  // دوال الطلاب
   getStudents: async (schoolId: string) => {
     const res = await apiCall<Student[]>('getStudents', null, { schoolId });
     return res.data || [];
@@ -81,7 +78,6 @@ export const db = {
   saveBulkStudents: (students: Student[]) => apiCall('saveBulkStudents', students),
   deleteAllStudents: (schoolId: string) => apiCall('deleteAllStudents', null, { schoolId }),
   
-  // دوال الفصول والمعلمين والمواد
   getClasses: async (schoolId: string) => {
     const res = await apiCall<SchoolClass[]>('getClasses', null, { schoolId });
     return res.data || [];
@@ -95,14 +91,12 @@ export const db = {
     return res.data || [];
   },
   
-  // دوال الجداول
   getSchedule: async (schoolId: string, classTitle: string) => {
     const res = await apiCall<any>('getSchedule', null, { schoolId, classTitle });
     return res.data || {};
   },
   saveSchedule: (schoolId: string, classTitle: string, schedule: any) => apiCall('saveSchedule', schedule, { schoolId, classTitle }),
   
-  // دوال الحفظ والحذف للإعدادات
   saveTeacher: (teacher: Teacher) => apiCall('saveTeacher', teacher),
   deleteTeacher: (id: string) => apiCall('deleteTeacher', null, { id }),
   saveClass: (classData: SchoolClass) => apiCall('saveClass', classData),
@@ -111,7 +105,6 @@ export const db = {
   saveSubject: (schoolId: string, subject: Subject) => apiCall('saveSubject', subject, { schoolId }),
   deleteSubject: (schoolId: string, subjectId: string) => apiCall('deleteSubject', null, { schoolId, subjectId }),
   
-  // دوال الخطط والأسابيع
   getActiveWeek: async (schoolId: string): Promise<AcademicWeek | undefined> => {
     const res = await apiCall<AcademicWeek[]>('getWeeks', null, { schoolId });
     return res.data?.find(w => w.isActive);
@@ -123,7 +116,6 @@ export const db = {
   savePlan: (schoolId: string, weekId: string, planKey: string, updatedEntry: any) => 
     apiCall('savePlan', { ...updatedEntry, schoolId, weekId, planKey }),
   
-  // دوال الحضور
   saveAttendance: (schoolId: string, report: any) => apiCall('saveAttendance', { ...report, schoolId }),
   getAttendance: async (schoolId: string) => {
     const res = await apiCall<any[]>('getAttendance', null, { schoolId });
@@ -136,7 +128,6 @@ export const db = {
   archiveAttendance: (schoolId: string, id: string) => apiCall('archiveAttendance', null, { schoolId, id }),
   restoreAttendance: (schoolId: string, id: string) => apiCall('restoreAttendance', null, { schoolId, id }),
   
-  // دوال المدرسة والأسابيع والأرشفة
   getSchoolBySlug: async (schoolSlug: string) => {
     const res = await apiCall<School>('getSchoolBySlug', null, { slug: schoolSlug });
     return res.data || null;
@@ -156,6 +147,5 @@ export const db = {
   setActiveWeek: (schoolId: string, weekId: string) => apiCall('setActiveWeek', null, { schoolId, weekId }),
   deleteWeek: (schoolId: string, weekId: string) => apiCall('deleteWeek', null, { schoolId, weekId }),
   
-  // البصمة
   registerBiometric: async (schoolId: string, role: string) => true,
 };

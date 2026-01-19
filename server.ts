@@ -1,4 +1,3 @@
-
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { neon } from '@neondatabase/serverless';
@@ -12,8 +11,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const sql = neon(process.env.DATABASE_URL!);
 
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
+// Fix: Use 'as any' to avoid TypeScript overload resolution issues with cors and json middleware
+app.use(cors() as any);
+app.use(express.json({ limit: '50mb' }) as any);
 
 // Middleware لمعالجة طلبات الـ API الموحدة
 // Fix: Use 'any' to bypass Express typing issues in this environment
@@ -176,7 +176,8 @@ app.all('/api', async (req: any, res: any) => {
 });
 
 // خدمة ملفات الـ Frontend
-app.use(express.static(path.join(__dirname, 'dist')));
+// Fix: Use 'as any' to avoid TypeScript overload resolution issues with static middleware
+app.use(express.static(path.join(__dirname, 'dist')) as any);
 // Fix: Use 'any' for catch-all route to avoid SendFile typing error
 app.get('*', (req: any, res: any) => {
   if (req.path.startsWith('/api')) return;

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../constants';
+import { User } from '../types';
 import { 
   ArrowLeft, 
   Zap, 
@@ -15,7 +16,7 @@ import {
 } from 'lucide-react';
 
 interface LoginProps {
-  onLogin: (userData: any) => void;
+  onLogin: (userData: User) => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {

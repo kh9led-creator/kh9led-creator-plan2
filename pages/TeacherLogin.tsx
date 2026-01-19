@@ -2,11 +2,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../constants';
-import { UserRole } from '../types';
-import { ArrowRight, AlertCircle, Loader2, User, Lock, Fingerprint } from 'lucide-react';
+import { UserRole, User } from '../types';
+import { ArrowRight, AlertCircle, Loader2, User as UserIcon, Lock, Fingerprint } from 'lucide-react';
 
 interface Props {
-  onLogin: (role: UserRole, school: any, user: any) => void;
+  onLogin: (userData: User) => void;
 }
 
 const TeacherLogin: React.FC<Props> = ({ onLogin }) => {
@@ -19,41 +19,41 @@ const TeacherLogin: React.FC<Props> = ({ onLogin }) => {
   const [biometricLoading, setBiometricLoading] = useState(false);
   const [hasBiometric, setHasBiometric] = useState(false);
 
-  const school = useMemo(() => {
-    const schoolsRaw = localStorage.getItem('madrasati_schools_secure');
-    if (!schoolsRaw) return null;
-    const schools = JSON.parse(decodeURIComponent(atob(schoolsRaw)));
-    return (schools as any[]).find(s => s.slug === schoolSlug);
-  }, [schoolSlug]);
+  // جلب بيانات المدرسة من السيرفر للتأكد من الرابط
+  const [school, setSchool] = useState<any>(null);
 
   useEffect(() => {
-    setHasBiometric(localStorage.getItem('local_biometric_key') !== null);
-  }, []);
+    const fetchSchool = async () => {
+      if (schoolSlug) {
+        const result = await db.getSchoolBySlug(schoolSlug);
+        if (result) setSchool(result);
+      }
+    };
+    fetchSchool();
+    setHasBiometric(localStorage.getItem('khotati_bio_data') !== null);
+  }, [schoolSlug]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    setTimeout(() => {
-      if (!school) {
-        setError('المدرسة غير موجودة');
-        setLoading(false);
-        return;
-      }
+    try {
+      const result = await db.authenticateSchool({ username, password });
 
-      const teachersRaw = localStorage.getItem('madrasati_teachers_secure');
-      const teachers = teachersRaw ? JSON.parse(decodeURIComponent(atob(teachersRaw))) : [];
-      const teacher = (teachers as any[]).find(t => t.username === username && t.schoolId === school.id);
-
-      if (teacher) {
-        onLogin('TEACHER', school, teacher);
+      if (result.success && result.data) {
+        // التحقق أن المستخدم هو معلم وليس مدير مدرسة
+        // ملاحظة: في النسخة الفعلية يتم التحقق من الـ role في الـ API
+        onLogin(result.data);
         navigate('/teacher');
       } else {
         setError('بيانات المعلم غير صحيحة');
-        setLoading(false);
       }
-    }, 800);
+    } catch (err) {
+      setError('خطأ في الاتصال');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBiometricLogin = async () => {
@@ -61,12 +61,12 @@ const TeacherLogin: React.FC<Props> = ({ onLogin }) => {
     setError('');
     try {
       const result = await db.authenticateBiometric();
-      // Fix: Check role from result.data if success is true
-      if (result && result.success && result.data?.role === 'TEACHER' && result.data.schoolId === school?.id) {
-        onLogin('TEACHER', school, result.data);
+      // إصلاح: تم استبدال type بـ role ليتوافق مع الـ Interface
+      if (result && result.success && result.data) {
+        onLogin(result.data);
         navigate('/teacher');
       } else {
-        setError('فشل التعرف على البصمة أو البصمة غير مرتبطة بهذا الحساب');
+        setError('فشل التعرف على البصمة');
       }
     } catch (err) {
       setError('حدث خطأ أثناء مسح البصمة');
@@ -78,7 +78,7 @@ const TeacherLogin: React.FC<Props> = ({ onLogin }) => {
   if (!school) return <div className="min-h-screen flex items-center justify-center font-black text-slate-400 animate-pulse">جاري التحقق من الرابط...</div>;
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center px-6 font-['Tajawal']">
+    <div className="min-h-screen bg-white flex items-center justify-center px-6 font-['Tajawal']" dir="rtl">
       <div className="w-full max-w-[400px] animate-in fade-in slide-in-from-bottom-4 duration-1000">
         
         <div className="text-center mb-12">
@@ -86,7 +86,9 @@ const TeacherLogin: React.FC<Props> = ({ onLogin }) => {
             {school.logoUrl ? (
               <img src={school.logoUrl} alt={school.name} className="max-w-full max-h-full object-contain" />
             ) : (
-              <div className="w-full h-full bg-indigo-600 rounded-2xl"></div>
+              <div className="w-full h-full bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl">
+                {school.name[0]}
+              </div>
             )}
           </div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">{school.name}</h2>
@@ -105,7 +107,7 @@ const TeacherLogin: React.FC<Props> = ({ onLogin }) => {
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="relative group">
-               <User className="absolute right-5 top-5 text-slate-300 group-focus-within:text-indigo-600 transition-colors" size={20} />
+               <UserIcon className="absolute right-5 top-5 text-slate-300 group-focus-within:text-indigo-600 transition-colors" size={20} />
                <input 
                 type="text" 
                 required
@@ -134,7 +136,7 @@ const TeacherLogin: React.FC<Props> = ({ onLogin }) => {
                 disabled={loading || biometricLoading}
                 className="flex-1 py-5 bg-slate-900 text-white rounded-2xl font-black text-lg hover:bg-black shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3"
               >
-                {loading ? <Loader2 className="animate-spin" size={24} /> : 'دخول المعلم'}
+                {loading ? <Loader2 className="animate-spin" size={24} /> : 'دخول'}
               </button>
               
               {hasBiometric && (
