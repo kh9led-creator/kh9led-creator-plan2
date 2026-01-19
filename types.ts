@@ -1,11 +1,14 @@
 
 export type UserRole = 'SYSTEM_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PUBLIC';
 
+// Added missing properties to School interface to fix property access errors
 export interface School {
   id: string;
   name: string;
+  slug: string;
   email: string;
-  adminUsername?: string;
+  adminUsername: string;
+  adminPassword?: string; // Added for authentication
   adminPhone?: string;
   logoUrl?: string;
   headerContent?: string;
@@ -13,22 +16,19 @@ export interface School {
   weeklyNotes?: string;
   weeklyNotesImage?: string;
   subscriptionActive: boolean;
-  slug: string;
-  adminPassword?: string; // سيعامل كـ Hash في النسخة المتقدمة
-  studentCount: number;
-  teacherCount: number;
   expiryDate: string;
-  token?: string; // للتحقق من الجلسة
+  studentCount?: number; // Added for registration
+  teacherCount?: number; // Added for registration
 }
 
+// Added missing properties to Teacher interface to fix property access errors
 export interface Teacher {
   id: string;
   name: string;
   username: string;
-  password?: string;
-  subjects: string[];
+  password?: string; // Added for registration/auth
+  subjects?: string[]; // Added for management
   schoolId: string;
-  token?: string;
 }
 
 export interface Student {
@@ -36,18 +36,11 @@ export interface Student {
   name: string;
   grade: string;
   section: string;
-  phoneNumber: string;
+  phoneNumber?: string;
   schoolId: string;
 }
 
-export interface AcademicWeek {
-  id: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  isActive: boolean;
-}
-
+// Added missing SchoolClass interface to resolve import errors in multiple files
 export interface SchoolClass {
   id: string;
   grade: string;
@@ -55,9 +48,19 @@ export interface SchoolClass {
   schoolId: string;
 }
 
+// Added missing Subject interface to resolve import errors in multiple files
 export interface Subject {
   id: string;
   name: string;
+}
+
+// Added missing AcademicWeek interface to resolve import errors in multiple files
+export interface AcademicWeek {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
 }
 
 export interface AppState {

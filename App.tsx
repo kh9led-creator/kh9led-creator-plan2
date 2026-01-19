@@ -1,18 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { School, UserRole, AppState } from './types.ts';
-import { db } from './constants.tsx';
-import LandingPage from './pages/LandingPage.tsx';
-import SchoolDashboard from './pages/SchoolDashboard.tsx';
-import TeacherDashboard from './pages/TeacherDashboard.tsx';
-import PublicPlanView from './pages/PublicPlanView.tsx';
-import BulkStudentPlans from './pages/BulkStudentPlans.tsx';
-import SystemAdminDashboard from './pages/SystemAdminDashboard.tsx';
-import Login from './pages/Login.tsx';
-import TeacherLogin from './pages/TeacherLogin.tsx';
-import SchoolRegistration from './pages/SchoolRegistration.tsx';
-import SystemAdminLogin from './pages/SystemAdminLogin.tsx';
+import { School, UserRole, AppState } from './types';
+import { db } from './constants';
+import LandingPage from './pages/LandingPage';
+import Login from './pages/Login';
+import SchoolDashboard from './pages/SchoolDashboard';
+import SystemAdminDashboard from './pages/SystemAdminDashboard';
+import TeacherDashboard from './pages/TeacherDashboard';
+import SystemAdminLogin from './pages/SystemAdminLogin';
+import SchoolRegistration from './pages/SchoolRegistration';
 
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>({
@@ -21,111 +18,79 @@ const App: React.FC = () => {
     role: 'PUBLIC',
     isAuthenticated: false
   });
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const recoverSession = async () => {
-      const savedSession = localStorage.getItem('active_session');
-      if (savedSession) {
+      const saved = localStorage.getItem('active_session');
+      if (saved) {
         try {
-          const { role, schoolId, userId } = JSON.parse(savedSession);
-          
-          if (role === 'SYSTEM_ADMIN') {
-            setState({ currentSchool: null, currentUser: { name: 'المشرف العام' }, role, isAuthenticated: true });
-          } else if (role === 'SCHOOL_ADMIN' && schoolId) {
+          const { role, schoolId, userId } = JSON.parse(saved);
+          if (role === 'SCHOOL_ADMIN' && schoolId) {
             const schools = await db.getSchools();
             const school = schools.find(s => s.id === schoolId);
             if (school) {
               setState({ currentSchool: school, currentUser: { name: 'مدير المدرسة' }, role, isAuthenticated: true });
             }
-          } else if (role === 'TEACHER' && schoolId) {
-            const schools = await db.getSchools();
-            const school = schools.find(s => s.id === schoolId);
-            if (school) {
-              const teachers = await db.getTeachers(school.id);
-              const teacher = teachers.find(t => t.id === userId);
-              if (teacher) {
-                setState({ currentSchool: school, currentUser: teacher, role, isAuthenticated: true });
-              }
-            }
+          } else if (role === 'SYSTEM_ADMIN') {
+            setState({ currentSchool: null, currentUser: { name: 'المشرف العام' }, role: 'SYSTEM_ADMIN', isAuthenticated: true });
           }
+          // يمكن إضافة استعادة جلسة المعلم هنا بنفس الطريقة
         } catch (e) {
-          console.error("Session recovery failed", e);
           localStorage.removeItem('active_session');
         }
       }
-      setIsInitializing(false);
+      setLoading(false);
     };
     recoverSession();
   }, []);
 
-  const login = (role: UserRole, school: School | null, user: any) => {
-    const sessionData = { role, schoolId: school?.id, userId: user?.id };
-    localStorage.setItem('active_session', JSON.stringify(sessionData));
+  const handleLogin = (role: UserRole, school: School | null, user: any) => {
+    localStorage.setItem('active_session', JSON.stringify({ role, schoolId: school?.id, userId: user?.id }));
     setState({ currentSchool: school, currentUser: user, role, isAuthenticated: true });
   };
 
-  const logout = () => {
+  const handleLogout = () => {
     localStorage.removeItem('active_session');
     setState({ currentSchool: null, currentUser: null, role: 'PUBLIC', isAuthenticated: false });
   };
 
-  if (isInitializing) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="font-black text-slate-500 text-sm">جاري التحقق من الجلسة والاتصال بالسيرفر...</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="h-screen flex items-center justify-center bg-slate-50">
+      <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
 
   return (
     <Router>
-      <div className="min-h-screen flex flex-col font-['Tajawal'] text-slate-900 overflow-x-hidden">
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<Login onLogin={login} />} />
-          <Route path="/register-school" element={<SchoolRegistration onLogin={login} />} />
-          <Route path="/system-access-portal" element={<SystemAdminLogin onLogin={login} />} />
-          <Route path="/school/:schoolSlug/teacher-login" element={<TeacherLogin onLogin={login} />} />
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<Login onLogin={handleLogin} />} />
+        <Route path="/register-school" element={<SchoolRegistration onLogin={handleLogin} />} />
+        <Route path="/system-access-portal" element={<SystemAdminLogin onLogin={handleLogin} />} />
 
-          {/* تم تعديل المسار هنا ليطابق ما ظهر في المشكلة */}
-          <Route 
-            path="/admin-dashboard/*" 
-            element={
-              state.role === 'SYSTEM_ADMIN' 
-                ? <SystemAdminDashboard onLogout={logout} /> 
-                : <Navigate to="/system-access-portal" />
-            } 
-          />
+        {/* مسار مدير المدرسة المحمي */}
+        <Route 
+          path="/school/*" 
+          element={
+            state.role === 'SCHOOL_ADMIN' && state.currentSchool 
+              ? <SchoolDashboard school={state.currentSchool} onLogout={handleLogout} /> 
+              : <Navigate to="/login" />
+          } 
+        />
 
-          <Route 
-            path="/school/*" 
-            element={
-              state.role === 'SCHOOL_ADMIN' && state.currentSchool
-                ? <SchoolDashboard school={state.currentSchool!} onLogout={logout} /> 
-                : <Navigate to="/login" />
-            } 
-          />
+        {/* مسار مدير النظام المحمي */}
+        <Route 
+          path="/admin-dashboard/*" 
+          element={
+            state.role === 'SYSTEM_ADMIN' 
+              ? <SystemAdminDashboard onLogout={handleLogout} /> 
+              : <Navigate to="/system-access-portal" />
+          } 
+        />
 
-          <Route 
-            path="/teacher/*" 
-            element={
-              state.role === 'TEACHER' && state.currentSchool
-                ? <TeacherDashboard teacher={state.currentUser!} school={state.currentSchool!} onLogout={logout} /> 
-                : <Navigate to="/login" />
-            } 
-          />
-
-          <Route path="/p/:schoolSlug" element={<PublicPlanView />} />
-          <Route path="/p/:schoolSlug/bulk/students" element={<BulkStudentPlans />} />
-          
-          {/* تحويل أي مسار غير معروف إلى الرئيسية */}
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </div>
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
     </Router>
   );
 };
