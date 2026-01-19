@@ -61,7 +61,8 @@ const TeacherLogin: React.FC<Props> = ({ onLogin }) => {
     setError('');
     try {
       const result = await db.authenticateBiometric();
-      if (result && result.type === 'TEACHER' && result.data.schoolId === school?.id) {
+      // Fix: Check role from result.data if success is true
+      if (result && result.success && result.data?.role === 'TEACHER' && result.data.schoolId === school?.id) {
         onLogin('TEACHER', school, result.data);
         navigate('/teacher');
       } else {

@@ -17,6 +17,7 @@ const BulkStudentPlans: React.FC = () => {
   const [studentsToPrint, setStudentsToPrint] = useState<Student[]>([]);
   const [activeWeek, setActiveWeek] = useState<AcademicWeek | undefined>(undefined);
 
+  // Fix: Handle async database calls in useEffect with proper typing
   useEffect(() => {
     const loadData = async () => {
       if (schoolSlug) {
@@ -25,15 +26,27 @@ const BulkStudentPlans: React.FC = () => {
           setSchool(s);
           const week = await db.getActiveWeek(s.id);
           setActiveWeek(week);
-          if (week) setAllPlans(await db.getPlans(s.id, week.id));
-          setSubjects(await db.getSubjects(s.id));
+          
+          if (week) {
+            const plans = await db.getPlans(s.id, week.id);
+            setAllPlans(plans);
+          }
+          
+          const subjectsRes = await db.getSubjects(s.id);
+          setSubjects(subjectsRes);
+          
           let students = await db.getStudents(s.id);
-          if (filterClass) students = students.filter(st => `${st.grade} - فصل ${st.section}` === filterClass);
+          if (filterClass) {
+            students = students.filter(st => `${st.grade} - فصل ${st.section}` === filterClass);
+          }
           setStudentsToPrint(students);
           
-          const classes = Array.from(new Set(students.map(st => `${st.grade} - فصل ${st.section}`)));
+          // Fix: Ensure classes is typed as string[] to avoid index type errors
+          const classes: string[] = Array.from(new Set(students.map(st => `${st.grade} - فصل ${st.section}`)));
           const schedules: any = {};
-          for (const cls of classes) schedules[cls] = await db.getSchedule(s.id, cls);
+          for (const cls of classes) {
+            schedules[cls] = await db.getSchedule(s.id, cls);
+          }
           setAllSchedules(schedules);
         }
       }

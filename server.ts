@@ -16,7 +16,8 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
 // Middleware لمعالجة طلبات الـ API الموحدة
-app.all('/api', async (req: Request, res: Response) => {
+// Fix: Use 'any' to bypass Express typing issues in this environment
+app.all('/api', async (req: any, res: any) => {
   const action = req.query.action as string;
   const body = req.body;
   const q = req.query;
@@ -34,7 +35,7 @@ app.all('/api', async (req: Request, res: Response) => {
       case 'saveSchool':
         await sql`
           INSERT INTO schools (id, name, slug, email, admin_username, admin_password, subscription_active, expiry_date, header_content, general_messages, weekly_notes, logo_url, weekly_notes_image)
-          VALUES (${body.id}, ${body.name}, ${body.slug}, ${body.email}, ${body.adminUsername}, ${body.adminPassword}, ${body.subscriptionActive}, ${body.expiryDate}, ${body.headerContent || ''}, ${body.generalMessages || ''}, ${body.weeklyNotes || ''}, ${body.logoUrl || ''}, ${body.weeklyNotesImage || ''})
+          VALUES (${body.id}, ${body.name}, ${body.slug}, ${body.email}, ${body.adminUsername}, ${body.adminPassword}, ${body.subscriptionActive}, ${body.expiryDate}, ${body.headerContent || ''}, ${body.generalMessages || ''}, ${body.weeklyNotes || ''}, ${body.logoUrl || ''}, ${body.weekly_notes_image || ''})
           ON CONFLICT (id) DO UPDATE SET 
             name = EXCLUDED.name, slug = EXCLUDED.slug, admin_password = EXCLUDED.admin_password, 
             subscription_active = EXCLUDED.subscription_active, header_content = EXCLUDED.header_content,
@@ -176,7 +177,8 @@ app.all('/api', async (req: Request, res: Response) => {
 
 // خدمة ملفات الـ Frontend
 app.use(express.static(path.join(__dirname, 'dist')));
-app.get('*', (req: Request, res: Response) => {
+// Fix: Use 'any' for catch-all route to avoid SendFile typing error
+app.get('*', (req: any, res: any) => {
   if (req.path.startsWith('/api')) return;
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
